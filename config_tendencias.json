@@ -1,0 +1,202 @@
+{
+  "TENDENCIAS_GLOBALES": {
+    "SOSTENIBILIDAD": {
+      "keywords": [
+        "sostenibilidad",
+        "sostenible",
+        "desarrollo sostenible",
+        "ODS",
+        "objetivos desarrollo",
+        "medio ambiente",
+        "ambiental",
+        "ecologia",
+        "verde",
+        "cambio climatico",
+        "huella carbono",
+        "economia circular",
+        "recursos naturales"
+      ],
+      "color": "#2ECC71",
+      "descripcion": "Sostenibilidad y Desarrollo Sostenible (ODS)"
+    },
+    "INTELIGENCIA_ARTIFICIAL": {
+      "keywords": [
+        "inteligencia artificial",
+        "IA",
+        "machine learning",
+        "aprendizaje automatico",
+        "deep learning",
+        "redes neuronales",
+        "algoritmos",
+        "big data",
+        "data science",
+        "ciencia datos",
+        "analytics",
+        "mineria datos",
+        "chatbot",
+        "NLP",
+        "vision artificial"
+      ],
+      "color": "#3498DB",
+      "descripcion": "Inteligencia Artificial y Tecnologias Emergentes"
+    },
+    "TRANSFORMACION_DIGITAL": {
+      "keywords": [
+        "transformacion digital",
+        "digitalizacion",
+        "digital",
+        "industria 4.0",
+        "automatizacion",
+        "robotica",
+        "internet cosas",
+        "IoT",
+        "cloud computing",
+        "nube",
+        "ciberseguridad",
+        "blockchain",
+        "tecnologia"
+      ],
+      "color": "#9B59B6",
+      "descripcion": "Transformacion Digital e Industria 4.0"
+    },
+    "INNOVACION": {
+      "keywords": [
+        "innovacion",
+        "innovar",
+        "emprendimiento",
+        "emprender",
+        "startup",
+        "creatividad",
+        "disrupcion",
+        "disruptivo",
+        "Design thinking",
+        "lean",
+        "agil",
+        "prototipo"
+      ],
+      "color": "#E74C3C",
+      "descripcion": "Innovacion y Emprendimiento"
+    },
+    "ETICA": {
+      "keywords": [
+        "etica",
+        "valores",
+        "responsabilidad social",
+        "RSE",
+        "RSC",
+        "deontologia",
+        "codigo etico",
+        "integridad",
+        "transparencia",
+        "buen gobierno",
+        "compliance"
+      ],
+      "color": "#F39C12",
+      "descripcion": "Etica, Valores y Responsabilidad Social"
+    },
+    "GLOBALIZACION": {
+      "keywords": [
+        "globalizacion",
+        "global",
+        "internacional",
+        "glocal",
+        "interculturalidad",
+        "multicultural",
+        "diversidad cultural",
+        "comercio internacional",
+        "exportacion",
+        "importacion"
+      ],
+      "color": "#1ABC9C",
+      "descripcion": "Globalizacion y Perspectiva Glocal"
+    },
+    "LIDERAZGO": {
+      "keywords": [
+        "liderazgo",
+        "trabajo equipo",
+        "colaborativo",
+        "comunicacion",
+        "habilidades blandas",
+        "soft skills",
+        "gestion personas",
+        "talento humano",
+        "coaching",
+        "mentoring",
+        "negociacion"
+      ],
+      "color": "#E67E22",
+      "descripcion": "Liderazgo y Habilidades Blandas"
+    },
+    "ANALISIS_DATOS": {
+      "keywords": [
+        "analisis datos",
+        "estadistica",
+        "data analytics",
+        "visualizacion datos",
+        "business intelligence",
+        "BI",
+        "dashboard",
+        "metricas",
+        "KPI",
+        "indicadores",
+        "toma decisiones basada datos"
+      ],
+      "color": "#16A085",
+      "descripcion": "Analisis de Datos y Business Intelligence"
+    },
+    "GESTION_CAMBIO": {
+      "keywords": [
+        "gestion cambio",
+        "adaptabilidad",
+        "resiliencia",
+        "agilidad organizacional",
+        "transformacion organizacional",
+        "cultura organizacional",
+        "cambio organizacional"
+      ],
+      "color": "#8E44AD",
+      "descripcion": "Gestion del Cambio y Adaptabilidad"
+    },
+    "CALIDAD": {
+      "keywords": [
+        "calidad",
+        "mejora continua",
+        "excelencia",
+        "ISO",
+        "normas",
+        "estandares",
+        "certificacion",
+        "auditoria",
+        "procesos",
+        "eficiencia",
+        "productividad"
+      ],
+      "color": "#27AE60",
+      "descripcion": "Calidad y Mejora Continua"
+    }
+  },
+  "INSTRUCCIONES": {
+    "descripcion": "Este archivo permite personalizar las tendencias globales a detectar",
+    "como_usar": [
+      "1. Edita las tendencias existentes modificando keywords, color o descripcion",
+      "2. Agrega nuevas tendencias siguiendo la misma estructura",
+      "3. Elimina tendencias que no sean relevantes",
+      "4. Guarda el archivo y ejecuta nuevamente el analisis"
+    ],
+    "estructura_tendencia": {
+      "NOMBRE_TENDENCIA": {
+        "keywords": ["lista", "de", "palabras", "clave"],
+        "color": "#HEXCOLOR",
+        "descripcion": "Descripcion breve de la tendencia"
+      }
+    },
+    "notas": [
+      "- Las keywords NO son case-sensitive (se buscan en minusculas)",
+      "- Puedes usar frases completas como keywords",
+      "- Los colores son en formato hexadecimal (#RRGGBB)",
+      "- El ID de la tendencia (NOMBRE_TENDENCIA) debe ser unico y sin espacios"
+    ]
+  },
+  "VERSION": "1.0",
+  "FECHA_ACTUALIZACION": "2026-02-10"
+}
