@@ -23,6 +23,12 @@ from scipy.stats import entropy
 import warnings
 warnings.filterwarnings('ignore')
 
+
+def _limpiar_nucleo(texto: str) -> str:
+    """Elimina numeracion inicial tipo '1. ', '2. ', etc. de un nucleo tematico."""
+    return re.sub(r'^\d+\.\s*', '', texto)
+
+
 # ============================================================================
 # CONFIGURACION DE PAGINA
 # ============================================================================
@@ -242,7 +248,7 @@ def analizar_cobertura(df: pd.DataFrame) -> Dict:
         nucleos_raw = str(row.get('Nucleos tematicos', ''))
         if nucleos_raw and nucleos_raw != 'nan':
             nucleos = re.split(r'[,;\n]+', nucleos_raw)
-            nucleos = [n.strip() for n in nucleos if n.strip() and len(n.strip()) > 3]
+            nucleos = [_limpiar_nucleo(n.strip()) for n in nucleos if n.strip() and len(n.strip()) > 3]
             nucleos_list.extend(nucleos)
 
     nucleos_counter = Counter(nucleos_list)
@@ -271,7 +277,7 @@ def analizar_cobertura(df: pd.DataFrame) -> Dict:
         nucleos_raw = str(row.get('Nucleos tematicos', ''))
         if nucleos_raw and nucleos_raw != 'nan':
             nucleos = re.split(r'[,;\n]+', nucleos_raw)
-            for nucleo in [n.strip() for n in nucleos if n.strip()]:
+            for nucleo in [_limpiar_nucleo(n.strip()) for n in nucleos if n.strip()]:
                 if nucleo in top_20:
                     matriz.loc[programa, nucleo] += 1
 
@@ -526,7 +532,7 @@ def pagina_cobertura(df: pd.DataFrame, resultados: Dict):
         nucleos_raw = str(row.get('Nucleos tematicos', ''))
         if nucleos_raw and nucleos_raw != 'nan':
             nucleos = re.split(r'[,;\n]+', nucleos_raw)
-            nucleos_prog.extend([n.strip() for n in nucleos if n.strip() and len(n.strip()) > 3])
+            nucleos_prog.extend([_limpiar_nucleo(n.strip()) for n in nucleos if n.strip() and len(n.strip()) > 3])
 
     if nucleos_prog:
         counter_prog = Counter(nucleos_prog)
@@ -631,7 +637,7 @@ def pagina_tendencias(df: pd.DataFrame, tendencias: Dict, resultados: Dict):
                     for h in hallazgos:
                         asig_set.add(h.get('asignatura', 'N/A'))
                     st.markdown(f"**Asignaturas:** {len(asig_set)}")
-                    for asig in sorted(asig_set):
+                    for asig in sorted(asig_set, key=lambda x: str(x)):
                         st.markdown(f"- {asig}")
 
 
@@ -859,7 +865,7 @@ def pagina_datos(df: pd.DataFrame):
             default=list(df['Tipo de Saber'].unique())
         )
     with col3:
-        semestres_disponibles = sorted(df['Semestre'].dropna().unique())
+        semestres_disponibles = sorted(df['Semestre'].dropna().unique(), key=lambda x: str(x))
         sem_filter = st.multiselect(
             "Semestre:", semestres_disponibles,
             default=list(semestres_disponibles)
