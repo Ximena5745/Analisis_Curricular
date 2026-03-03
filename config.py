@@ -22,7 +22,7 @@ BASE_DIR = Path(__file__).parent.absolute()
 
 # Directorios de datos
 DATA_DIR = BASE_DIR / "data"
-INPUT_FOLDER = DATA_DIR / "raw"
+INPUT_FOLDER = DATA_DIR / "raw"  # Archivos Excel de entrada
 PROCESSED_FOLDER = DATA_DIR / "processed"
 OUTPUT_FOLDER = DATA_DIR / "output"
 
@@ -58,7 +58,7 @@ EXCEL_SHEETS = {
 # Fila donde empiezan los headers en cada hoja (0-indexed)
 HEADER_ROWS = {
     'COMPETENCIAS': 1,  # Header en fila 2 (índice 1)
-    'RESULTADOS_APRENDIZAJE': 0,  # Header en fila 1 (índice 0)
+    'RESULTADOS_APRENDIZAJE': 1,  # Header en fila 2 (índice 1) - la fila 1 tiene instrucciones
     'ESTRATEGIAS_MESO': 0,
     'ESTRATEGIAS_MICRO': 1  # Header en fila 2 (índice 1)
 }

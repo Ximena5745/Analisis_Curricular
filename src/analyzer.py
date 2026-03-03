@@ -270,7 +270,7 @@ class CurricularAnalyzer:
             Dict con estructura:
             {
                 'num_estrategias_unicas': 12,
-                'estrategias_mas_frecuentes': [('ABP', 15), ('Estudio de caso', 10)],
+                'estrategias_mas_frecuentes': [('Taller', 15), ('Caso', 10), ('Proyecto', 8)],
                 'porcentaje_metodologias_activas': 65.0
             }
         """
@@ -281,37 +281,51 @@ class CurricularAnalyzer:
                 'porcentaje_metodologias_activas': 0.0
             }
 
-        # Extraer estrategias
-        if 'Estrategias de enseñanza aprendizaje' in self.estrategias_micro.columns:
-            estrategias = self.estrategias_micro['Estrategias de enseñanza aprendizaje'].dropna()
-
-            # Contar únicas
-            estrategias_unicas = estrategias.unique()
-            num_unicas = len(estrategias_unicas)
-
-            # Contar frecuencias
-            frecuencias = Counter(estrategias)
-            mas_frecuentes = frecuencias.most_common(5)
-
-            # Detectar metodologías activas
-            metodologias_activas_keywords = [
-                'abp', 'aprendizaje basado en proyectos',
-                'caso', 'estudio de caso',
-                'problema', 'aprendizaje basado en problemas',
-                'proyecto', 'simulación', 'debate', 'taller'
-            ]
-
-            activas_count = 0
-            for estrategia in estrategias:
-                estrategia_lower = str(estrategia).lower()
-                if any(keyword in estrategia_lower for keyword in metodologias_activas_keywords):
-                    activas_count += 1
-
-            porcentaje_activas = (activas_count / len(estrategias) * 100) if len(estrategias) > 0 else 0
-
+        # Buscar columnas de estrategias
+        estrategias_col = None
+        for col_name in ['Actividades de aprendizaje', 'Estrategias de enseñanza aprendizaje', 'Estrategias']:
+            if col_name in self.estrategias_micro.columns:
+                estrategias_col = col_name
+                break
+        
+        # Keywords de estrategias para buscar
+        keywords_estrategias = [
+            'clase magistral', 'taller', 'laboratorio', 'caso', 'estudio de caso',
+            'problema', 'proyecto', 'simulación', 'debate', 'ejercicio',
+            'lectura', 'seminario', 'tutoría', 'investigación', 'exposición',
+            'charla', 'demonstración', 'demostración', 'mapeo', 'analogía'
+        ]
+        
+        # Buscar columnas de evaluación también
+        evaluacion_col = None
+        for col_name in ['Actividades de evaluación', 'Estrategias de evaluación']:
+            if col_name in self.estrategias_micro.columns:
+                evaluacion_col = col_name
+                break
+        
+        # Extraer y contar keywords de estrategias
+        todas_estrategias = []
+        
+        if estrategias_col:
+            for texto in self.estrategias_micro[estrategias_col].dropna():
+                texto_lower = str(texto).lower()
+                for kw in keywords_estrategias:
+                    if kw in texto_lower:
+                        todas_estrategias.append(kw.title())
+        
+        # Contar keywords encontradas
+        if todas_estrategias:
+            frecuencias = Counter(todas_estrategias)
+            mas_frecuentes = frecuencias.most_common(10)
+            num_unicas = len(frecuencias)
+            
+            # Calcular porcentaje de metodologías activas
+            metodologias_activas = ['Taller', 'Laboratorio', 'Caso', 'Problema', 'Proyecto', 'Simulación', 'Debate']
+            activas_count = sum(frecuencias.get(m, 0) for m in metodologias_activas)
+            porcentaje_activas = (activas_count / len(todas_estrategias) * 100) if todas_estrategias else 0
         else:
-            num_unicas = 0
             mas_frecuentes = []
+            num_unicas = 0
             porcentaje_activas = 0.0
 
         resultado = {
