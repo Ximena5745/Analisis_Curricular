@@ -260,7 +260,7 @@ class ThematicDetector:
 
     def analyze_programa(self, programa_data: Dict) -> Dict:
         """
-        Analiza todas las competencias y RA de un programa completo.
+        Analiza todas las competencias, RA y estrategias micro de un programa completo.
 
         Args:
             programa_data (Dict): Datos extraídos con ExcelExtractor.extract_all()
@@ -275,14 +275,17 @@ class ThematicDetector:
                         'presente': True,
                         'frecuencia_competencias': 3,
                         'frecuencia_ra': 5,
-                        'total_coincidencias': 8,
+                        'frecuencia_estrategias': 8,
+                        'total_coincidencias': 16,
+                        'por_creditos': 0.5,
                         'keywords_mas_frecuentes': ['sostenible', 'ambiental']
                     },
                     ...
                 },
                 'detalle': {
                     'competencias': DataFrame,
-                    'resultados_aprendizaje': DataFrame
+                    'resultados_aprendizaje': DataFrame,
+                    'estrategias_micro': DataFrame
                 }
             }
 
@@ -297,6 +300,7 @@ class ThematicDetector:
         # DataFrames
         df_comp = programa_data['competencias']
         df_ra = programa_data['resultados_aprendizaje']
+        df_estrategias = programa_data.get('estrategias_micro', pd.DataFrame())
 
         # Detectar en competencias
         if not df_comp.empty:
@@ -306,6 +310,21 @@ class ThematicDetector:
         if not df_ra.empty:
             df_ra = self.detect_in_dataframe(df_ra, ['Resultados Aprendizaje'])
 
+        # Detectar en estrategias micro
+        if not df_estrategias.empty:
+            text_cols_estrategias = [
+                'Actividades de aprendizaje',
+                'Actividades de evaluación',
+                'Núcleos temáticos',
+                'Resultado de aprendizaje'
+            ]
+            df_estrategias = self.detect_in_dataframe(df_estrategias, text_cols_estrategias)
+
+        # Calcular créditos totales
+        creditos_totales = 0
+        if not df_estrategias.empty and 'Créditos' in df_estrategias.columns:
+            creditos_totales = pd.to_numeric(df_estrategias['Créditos'], errors='coerce').sum()
+
         # Construir resumen
         resumen = {}
         tematicas_presentes = []
@@ -313,7 +332,6 @@ class ThematicDetector:
         for tematica in self.tematicas_config.keys():
             # Contar en competencias
             freq_comp = 0
-            keywords_comp = []
             if not df_comp.empty and f'{tematica}_presente' in df_comp.columns:
                 freq_comp = df_comp[f'{tematica}_presente'].sum()
 
@@ -322,7 +340,16 @@ class ThematicDetector:
             if not df_ra.empty and f'{tematica}_presente' in df_ra.columns:
                 freq_ra = df_ra[f'{tematica}_presente'].sum()
 
-            total = freq_comp + freq_ra
+            # Contar en estrategias micro
+            freq_estrategias = 0
+            if not df_estrategias.empty and f'{tematica}_presente' in df_estrategias.columns:
+                freq_estrategias = df_estrategias[f'{tematica}_presente'].sum()
+
+            total = freq_comp + freq_ra + freq_estrategias
+            
+            # Normalizar por créditos (por cada 10 créditos)
+            por_creditos = (total / creditos_totales * 10) if creditos_totales > 0 else 0
+            
             presente = total > 0
 
             if presente:
@@ -332,17 +359,21 @@ class ThematicDetector:
                 'presente': presente,
                 'frecuencia_competencias': int(freq_comp),
                 'frecuencia_ra': int(freq_ra),
-                'total_coincidencias': int(total)
+                'frecuencia_estrategias': int(freq_estrategias),
+                'total_coincidencias': int(total),
+                'por_creditos': round(por_creditos, 2)
             }
 
         return {
             'programa': programa,
             'tematicas_presentes': tematicas_presentes,
             'num_tematicas': len(tematicas_presentes),
+            'creditos_totales': creditos_totales,
             'resumen': resumen,
             'detalle': {
                 'competencias': df_comp,
-                'resultados_aprendizaje': df_ra
+                'resultados_aprendizaje': df_ra,
+                'estrategias_micro': df_estrategias
             }
         }
 
@@ -356,8 +387,8 @@ class ThematicDetector:
 
         Returns:
             pd.DataFrame: Matriz con estructura:
-                Columnas: Programa, Competencias, RA, [TEMATICAS...]
-                Valores en temáticas: frecuencia de coincidencias
+                Columnas: Programa, Competencias, RA, Estrategias, Créditos, [TEMATICAS...]
+                Valores en temáticas: frecuencia de coincidencias Y normalizado por créditos
 
         Example:
             >>> all_data = [extractor1.extract_all(), extractor2.extract_all()]
@@ -375,12 +406,15 @@ class ThematicDetector:
             row = {
                 'Programa': analisis['programa'],
                 'Competencias': len(programa_data['competencias']),
-                'Resultados_Aprendizaje': len(programa_data['resultados_aprendizaje'])
+                'Resultados_Aprendizaje': len(programa_data['resultados_aprendizaje']),
+                'Estrategias_Micro': len(programa_data.get('estrategias_micro', pd.DataFrame())),
+                'Creditos': analisis.get('creditos_totales', 0)
             }
 
             # Agregar frecuencias de temáticas
             for tematica, data in analisis['resumen'].items():
                 row[tematica] = data['total_coincidencias']
+                row[f'{tematica}_x10cred'] = data.get('por_creditos', 0)
 
             rows.append(row)
 
@@ -394,11 +428,14 @@ class ThematicDetector:
         totales = {
             'Programa': 'TOTAL',
             'Competencias': df_matriz['Competencias'].sum(),
-            'Resultados_Aprendizaje': df_matriz['Resultados_Aprendizaje'].sum()
+            'Resultados_Aprendizaje': df_matriz['Resultados_Aprendizaje'].sum(),
+            'Estrategias_Micro': df_matriz['Estrategias_Micro'].sum(),
+            'Creditos': df_matriz['Creditos'].sum()
         }
 
         for tematica in self.tematicas_config.keys():
             totales[tematica] = df_matriz[tematica].sum()
+            totales[f'{tematica}_x10cred'] = df_matriz[f'{tematica}_x10cred'].mean()
 
         # Concatenar totales
         df_totales = pd.DataFrame([totales])

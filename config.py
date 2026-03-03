@@ -60,7 +60,7 @@ HEADER_ROWS = {
     'COMPETENCIAS': 1,  # Header en fila 2 (índice 1)
     'RESULTADOS_APRENDIZAJE': 0,  # Header en fila 1 (índice 0)
     'ESTRATEGIAS_MESO': 0,
-    'ESTRATEGIAS_MICRO': 0
+    'ESTRATEGIAS_MICRO': 1  # Header en fila 2 (índice 1)
 }
 
 # Columnas esperadas por hoja

@@ -97,7 +97,7 @@ def main():
     # Menú de navegación
     page = st.sidebar.radio(
         "Ir a:",
-        ["🏠 Inicio", "📊 Programas", "🏷️ Temáticas", "📈 Comparativa"]
+        ["🏠 Inicio", "📊 Programas", "🏷️ Temáticas", "📈 Comparativa", "📋 Estrategias Micro"]
     )
 
     # ========================================================================
@@ -151,6 +151,7 @@ def main():
                 if tematica in tematicas_count:
                     tematicas_count[tematica] += 1
 
+        # Calcular también métricas normalizadas por créditos
         df_tematicas = pd.DataFrame([
             {'Temática': k, 'Programas': v}
             for k, v in tematicas_count.items()
@@ -412,6 +413,268 @@ def main():
 
         df_comparativa = pd.DataFrame(datos_comparativa)
         st.dataframe(df_comparativa, use_container_width=True, hide_index=True)
+
+    # ========================================================================
+    # PÁGINA: ESTRATEGIAS MICRO
+    # ========================================================================
+    elif page == "📋 Estrategias Micro":
+        st.title("📋 Análisis de Estrategias Microcurriculares")
+        st.markdown("---")
+
+        st.subheader("📊 Distribución Tipo de Saber por Programa")
+        
+        # Cargar datos de estrategias micro para todos los programas
+        from src.extractor import ExcelExtractor
+        from pathlib import Path
+        
+        input_folder = Path(INPUT_FOLDER)
+        excel_files = list(input_folder.glob('*.xlsx'))
+        
+        datos_tipo_saber = []
+        datos_tipologia = []
+        datos_horas = []
+        datos_estrategias = []
+        
+        for file_path in excel_files:
+            try:
+                extractor = ExcelExtractor(str(file_path))
+                estrategias_micro = extractor.extract_estrategias_micro()
+                nombre_prog = extractor.programa_nombre
+                
+                if not estrategias_micro.empty:
+                    # Tipo de Saber
+                    tipo_saber_counts = estrategias_micro['Tipo de Saber'].value_counts()
+                    for tipo, count in tipo_saber_counts.items():
+                        if pd.notna(tipo):
+                            datos_tipo_saber.append({
+                                'Programa': nombre_prog,
+                                'Tipo de Saber': tipo,
+                                'Cantidad': count
+                            })
+                    
+                    # Tipología (omitir vacíos)
+                    tipologia = estrategias_micro['Tipología'].dropna()
+                    if len(tipologia) > 0:
+                        tipologia_counts = tipologia.value_counts()
+                        for tipo, count in tipologia_counts.items():
+                            datos_tipologia.append({
+                                'Programa': nombre_prog,
+                                'Tipología': tipo,
+                                'Cantidad': count
+                            })
+                    
+                    # Horas
+                    estrategias_micro['HorasDirectas'] = pd.to_numeric(
+                        estrategias_micro['Número de horas trabajo directo'], errors='coerce'
+                    )
+                    estrategias_micro['HorasIndep'] = pd.to_numeric(
+                        estrategias_micro['Número de horas trabajo independiente'], errors='coerce'
+                    )
+                    estrategias_micro['Creditos'] = pd.to_numeric(
+                        estrategias_micro['Créditos'], errors='coerce'
+                    )
+                    
+                    ht = estrategias_micro['HorasDirectas'].dropna()
+                    hi = estrategias_micro['HorasIndep'].dropna()
+                    cr = estrategias_micro['Creditos'].dropna()
+                    
+                    if len(ht) > 0 and len(hi) > 0:
+                        datos_horas.append({
+                            'Programa': nombre_prog,
+                            'Horas Directas (Promedio)': ht.mean(),
+                            'Horas Independientes (Promedio)': hi.mean(),
+                            'Créditos (Promedio)': cr.mean() if len(cr) > 0 else 0,
+                            'Ratio Indep/Directo': hi.mean() / ht.mean() if ht.mean() > 0 else 0
+                        })
+                    
+                    # Estrategias de Aprendizaje - contar keywords
+                    acts = estrategias_micro['Actividades de aprendizaje'].dropna().str.lower().str.cat(sep=' ')
+                    
+                    keywords_aprendizaje = [
+                        'clase magistral', 'taller', 'laboratorio', 'caso', 'problema',
+                        'proyecto', 'exposición', 'lectura', 'simulación', 'seminario',
+                        'tutoría', 'investigación', 'debate', 'ejercicio', 'estudio'
+                    ]
+                    
+                    for kw in keywords_aprendizaje:
+                        count = acts.count(kw)
+                        if count > 0:
+                            datos_estrategias.append({
+                                'Programa': nombre_prog,
+                                'Estrategia': kw.title(),
+                                'Cantidad': count
+                            })
+                            
+            except Exception as e:
+                st.warning(f"Error procesando {file_path.name}: {str(e)}")
+
+        # 1. Gráfico Tipo de Saber por Programa
+        if datos_tipo_saber:
+            df_tipo_saber = pd.DataFrame(datos_tipo_saber)
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                # Barras agrupadas
+                fig_saber_bar = px.bar(
+                    df_tipo_saber,
+                    x='Programa',
+                    y='Cantidad',
+                    color='Tipo de Saber',
+                    title='Distribución Tipo de Saber por Programa',
+                    barmode='group',
+                    color_discrete_sequence=['#1f77b4', '#ff7f0e', '#2ca02c']
+                )
+                fig_saber_bar.update_layout(height=400)
+                st.plotly_chart(fig_saber_bar, use_container_width=True)
+            
+            with col2:
+                # Pie consolidado
+                total_tipo = df_tipo_saber.groupby('Tipo de Saber')['Cantidad'].sum().reset_index()
+                fig_saber_pie = px.pie(
+                    total_tipo,
+                    values='Cantidad',
+                    names='Tipo de Saber',
+                    title='Distribución Consolidada de Tipo de Saber',
+                    color_discrete_sequence=['#1f77b4', '#ff7f0e', '#2ca02c']
+                )
+                st.plotly_chart(fig_saber_pie, use_container_width=True)
+        
+        st.markdown("---")
+        
+        # 2. Tipología por Programa
+        st.subheader("🏷️ Tipología de Asignaturas por Programa (sin vacíos)")
+        
+        if datos_tipologia:
+            df_tipologia = pd.DataFrame(datos_tipologia)
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                fig_tipo_bar = px.bar(
+                    df_tipologia,
+                    x='Programa',
+                    y='Cantidad',
+                    color='Tipología',
+                    title='Tipología por Programa',
+                    barmode='group',
+                    color_discrete_sequence=px.colors.qualitative.Set2
+                )
+                fig_tipo_bar.update_layout(height=400)
+                st.plotly_chart(fig_tipo_bar, use_container_width=True)
+            
+            with col2:
+                total_tipologia = df_tipologia.groupby('Tipología')['Cantidad'].sum().reset_index()
+                fig_tipo_pie = px.pie(
+                    total_tipologia,
+                    values='Cantidad',
+                    names='Tipología',
+                    title='Distribución Consolidada de Tipología',
+                    color_discrete_sequence=px.colors.qualitative.Set2
+                )
+                st.plotly_chart(fig_tipo_pie, use_container_width=True)
+        else:
+            st.info("No hay datos de tipología disponibles")
+        
+        st.markdown("---")
+        
+        # 3. Análisis de Horas
+        st.subheader("⏰ Análisis de Horas de Trabajo")
+        
+        if datos_horas:
+            df_horas = pd.DataFrame(datos_horas)
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                fig_horas = px.bar(
+                    df_horas,
+                    x='Programa',
+                    y=['Horas Directas (Promedio)', 'Horas Independientes (Promedio)'],
+                    title='Horas Promedio por Programa',
+                    barmode='group',
+                    color_discrete_sequence=['#3498db', '#e74c3c']
+                )
+                fig_horas.update_layout(height=400)
+                st.plotly_chart(fig_horas, use_container_width=True)
+            
+            with col2:
+                fig_ratio = px.bar(
+                    df_horas,
+                    x='Programa',
+                    y='Ratio Indep/Directo',
+                    title='Ratio Trabajo Independiente / Directo',
+                    color='Ratio Indep/Directo',
+                    color_continuous_scale='RdYlGn'
+                )
+                fig_ratio.update_layout(height=400)
+                st.plotly_chart(fig_ratio, use_container_width=True)
+            
+            # Tabla de horas
+            st.subheader("📋 Detalle de Horas")
+            st.dataframe(
+                df_horas.style.format({
+                    'Horas Directas (Promedio)': '{:.1f}',
+                    'Horas Independientes (Promedio)': '{:.1f}',
+                    'Créditos (Promedio)': '{:.1f}',
+                    'Ratio Indep/Directo': '{:.2f}'
+                }),
+                use_container_width=True
+            )
+        else:
+            st.info("No hay datos de horas disponibles")
+        
+        st.markdown("---")
+        
+        # 4. Estrategias de Aprendizaje - Frecuencia de Palabras
+        st.subheader("📚 Frecuencia de Estrategias de Aprendizaje")
+        
+        if datos_estrategias:
+            df_estrategias = pd.DataFrame(datos_estrategias)
+            
+            # Consolidado por estrategia
+            estrategia_total = df_estrategias.groupby('Estrategia')['Cantidad'].sum().reset_index()
+            estrategia_total = estrategia_total.sort_values('Cantidad', ascending=False)
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                fig_estrategias_bar = px.bar(
+                    estrategia_total.head(10),
+                    x='Cantidad',
+                    y='Estrategia',
+                    orientation='h',
+                    title='Top 10 Estrategias de Aprendizaje (Frecuencia Total)',
+                    color='Cantidad',
+                    color_continuous_scale='Blues'
+                )
+                fig_estrategias_bar.update_layout(height=400, showlegend=False)
+                st.plotly_chart(fig_estrategias_bar, use_container_width=True)
+            
+            with col2:
+                fig_estrategias_prog = px.sunburst(
+                    df_estrategias,
+                    path=['Programa', 'Estrategia'],
+                    values='Cantidad',
+                    title='Estrategias por Programa'
+                )
+                fig_estrategias_prog.update_layout(height=400)
+                st.plotly_chart(fig_estrategias_prog, use_container_width=True)
+            
+            # Tabla detallada
+            st.subheader("📋 Detalle de Estrategias por Programa")
+            
+            pivot_estrategias = df_estrategias.pivot_table(
+                index='Programa',
+                columns='Estrategia',
+                values='Cantidad',
+                fill_value=0,
+                aggfunc='sum'
+            ).reset_index()
+            
+            st.dataframe(pivot_estrategias, use_container_width=True)
+        else:
+            st.info("No hay datos de estrategias de aprendizaje disponibles")
 
 
 if __name__ == '__main__':
