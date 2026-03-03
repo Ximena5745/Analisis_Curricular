@@ -324,27 +324,42 @@ class ThematicDetector:
         # Calcular créditos totales (suma de créditos únicos por asignatura)
         creditos_totales = 0
         nombre_asignatura_col = None
+        semestre_col = None
         if not df_estrategias.empty:
             # Buscar columna de nombre de asignatura
             for col in df_estrategias.columns:
                 if 'Nombre' in col and 'asignatura' in col.lower():
                     nombre_asignatura_col = col
-                    break
+                if 'Semestre' in col:
+                    semestre_col = col
             
             if nombre_asignatura_col and 'Créditos' in df_estrategias.columns:
                 # Obtener créditos por asignatura (primera fila de cada asignatura)
                 df_estrategias['_creditos_num'] = pd.to_numeric(df_estrategias['Créditos'], errors='coerce')
                 
+                # Filtrar filas válidas:
+                # 1. Excluir filas donde Semestre contenga "Total" o sea nulo
+                # 2. Excluir filas donde el nombre de asignatura sea nulo o contenga solo números
+                if semestre_col:
+                    df_estrategias['_es_fila_valida'] = ~(
+                        df_estrategias[semestre_col].astype(str).str.contains('Total', na=False) |
+                        df_estrategias[semestre_col].isna()
+                    )
+                else:
+                    df_estrategias['_es_fila_valida'] = True
+                
+                # Filtrar también por créditos válidos (<=30)
+                df_estrategias['_es_fila_valida'] = df_estrategias['_es_fila_valida'] & (
+                    (df_estrategias['_creditos_num'].notna()) & 
+                    (df_estrategias['_creditos_num'] <= 30)
+                )
+                
                 # Agrupar por asignatura y tomar el primer valor de créditos válido
-                asignaturas_creditos = df_estrategias.groupby(nombre_asignatura_col)['_creditos_num'].first()
+                df_validas = df_estrategias[df_estrategias['_es_fila_valida']]
+                asignaturas_creditos = df_validas.groupby(nombre_asignatura_col)['_creditos_num'].first()
                 
-                # Filtrar valores válidos: no null y <= 30
-                asignaturas_validas = asignaturas_creditos[
-                    (asignaturas_creditos.notna()) & 
-                    (asignaturas_creditos <= 30)
-                ]
-                
-                creditos_totales = float(asignaturas_validas.sum()) if len(asignaturas_validas) > 0 else 0.0
+                # Filtrar valores válidos
+                creditos_totales = float(asignaturas_creditos.sum()) if len(asignaturas_creditos) > 0 else 0.0
                 logger.info(f"Créditos totales calculados: {creditos_totales}")
 
         # Construir resumen
