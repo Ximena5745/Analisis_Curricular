@@ -332,11 +332,19 @@ class ThematicDetector:
                     break
             
             if nombre_asignatura_col and 'Créditos' in df_estrategias.columns:
-                # Agrupar por asignatura y tomar el primer valor de créditos (son iguales por asignatura)
-                asignaturas_creditos = df_estrategias.groupby(nombre_asignatura_col)['Créditos'].first()
-                # Filtrar valores anómalos (más de 30 créditos probablemente son totales, no asignaturas)
-                asignaturas_creditos = asignaturas_creditos[asignaturas_creditos <= 30]
-                creditos_totales = pd.to_numeric(asignaturas_creditos, errors='coerce').sum()
+                # Obtener créditos por asignatura (primera fila de cada asignatura)
+                df_estrategias['_creditos_num'] = pd.to_numeric(df_estrategias['Créditos'], errors='coerce')
+                
+                # Agrupar por asignatura y tomar el primer valor de créditos válido
+                asignaturas_creditos = df_estrategias.groupby(nombre_asignatura_col)['_creditos_num'].first()
+                
+                # Filtrar valores válidos: no null y <= 30
+                asignaturas_validas = asignaturas_creditos[
+                    (asignaturas_creditos.notna()) & 
+                    (asignaturas_creditos <= 30)
+                ]
+                
+                creditos_totales = float(asignaturas_validas.sum()) if len(asignaturas_validas) > 0 else 0.0
                 logger.info(f"Créditos totales calculados: {creditos_totales}")
 
         # Construir resumen
