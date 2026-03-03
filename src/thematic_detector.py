@@ -276,6 +276,7 @@ class ThematicDetector:
                         'frecuencia_competencias': 3,
                         'frecuencia_ra': 5,
                         'frecuencia_estrategias': 8,
+                        'asignaturas_con_tematica': 5,
                         'total_coincidencias': 16,
                         'por_creditos': 0.5,
                         'keywords_mas_frecuentes': ['sostenible', 'ambiental']
@@ -320,10 +321,23 @@ class ThematicDetector:
             ]
             df_estrategias = self.detect_in_dataframe(df_estrategias, text_cols_estrategias)
 
-        # Calcular créditos totales
+        # Calcular créditos totales (suma de créditos únicos por asignatura)
         creditos_totales = 0
-        if not df_estrategias.empty and 'Créditos' in df_estrategias.columns:
-            creditos_totales = pd.to_numeric(df_estrategias['Créditos'], errors='coerce').sum()
+        nombre_asignatura_col = None
+        if not df_estrategias.empty:
+            # Buscar columna de nombre de asignatura
+            for col in df_estrategias.columns:
+                if 'Nombre' in col and 'asignatura' in col.lower():
+                    nombre_asignatura_col = col
+                    break
+            
+            if nombre_asignatura_col and 'Créditos' in df_estrategias.columns:
+                # Agrupar por asignatura y tomar el primer valor de créditos (son iguales por asignatura)
+                asignaturas_creditos = df_estrategias.groupby(nombre_asignatura_col)['Créditos'].first()
+                # Filtrar valores anómalos (más de 30 créditos probablemente son totales, no asignaturas)
+                asignaturas_creditos = asignaturas_creditos[asignaturas_creditos <= 30]
+                creditos_totales = pd.to_numeric(asignaturas_creditos, errors='coerce').sum()
+                logger.info(f"Créditos totales calculados: {creditos_totales}")
 
         # Construir resumen
         resumen = {}
@@ -340,10 +354,16 @@ class ThematicDetector:
             if not df_ra.empty and f'{tematica}_presente' in df_ra.columns:
                 freq_ra = df_ra[f'{tematica}_presente'].sum()
 
-            # Contar en estrategias micro
+            # Contar en estrategias micro - UNA SOLA VEZ POR ASIGNATURA
             freq_estrategias = 0
-            if not df_estrategias.empty and f'{tematica}_presente' in df_estrategias.columns:
-                freq_estrategias = df_estrategias[f'{tematica}_presente'].sum()
+            asignaturas_con_tematica = 0
+            if not df_estrategias.empty and f'{tematica}_presente' in df_estrategias.columns and nombre_asignatura_col:
+                # Agrupar por asignatura y verificar si al menos una fila de esa asignatura tiene la temática
+                estrategias_tematica = df_estrategias[df_estrategias[f'{tematica}_presente'] == True]
+                if not estrategias_tematica.empty:
+                    # Contar asignaturas únicas que tienen esta temática
+                    asignaturas_con_tematica = estrategias_tematica[nombre_asignatura_col].nunique()
+                    freq_estrategias = asignaturas_con_tematica
 
             total = freq_comp + freq_ra + freq_estrategias
             
@@ -360,6 +380,7 @@ class ThematicDetector:
                 'frecuencia_competencias': int(freq_comp),
                 'frecuencia_ra': int(freq_ra),
                 'frecuencia_estrategias': int(freq_estrategias),
+                'asignaturas_con_tematica': int(asignaturas_con_tematica),
                 'total_coincidencias': int(total),
                 'por_creditos': round(por_creditos, 2)
             }
