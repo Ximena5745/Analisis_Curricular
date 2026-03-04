@@ -49,6 +49,9 @@ def _es_nucleo_valido(texto: str) -> bool:
     # Descartar si es sólo números o caracteres especiales
     if re.match(r'^[\d\s\.\,\;\:\-]+$', t):
         return False
+    # Requerir mínimo 2 palabras (filtra términos sueltos como "construcción", "dinámicas")
+    if len(t.split()) < 2:
+        return False
     # Descartar patrones no temáticos
     t_norm = unicodedata.normalize('NFKD', t.lower()).encode('ascii', 'ignore').decode('ascii')
     if _PATRON_NO_NUCLEO.match(t_norm):
@@ -75,11 +78,32 @@ st.set_page_config(
 
 st.markdown("""
 <style>
+/* ── Forzar tema claro siempre ───────────────────────────────────────────── */
+:root { color-scheme: light !important; }
+
 /* ── Fuente base ─────────────────────────────────────────────────────────── */
-html, body, [class*="css"] {
-    font-family: 'Segoe UI', 'Inter', sans-serif;
-    background-color: #FFFFFF;
-    color: #1A1A2E;
+html, body, [class*="css"], .stApp, .main, .block-container {
+    font-family: 'Segoe UI', 'Inter', sans-serif !important;
+    background-color: #FFFFFF !important;
+    color: #1A1A2E !important;
+}
+
+/* ── Forzar texto oscuro en inputs, selectbox, multiselect ──────────────── */
+.stSelectbox > div, .stMultiSelect > div,
+[data-baseweb="select"] *, [data-baseweb="popover"] *,
+[role="listbox"] *, [role="option"] *,
+.stTextInput input, .stTextArea textarea, .stNumberInput input {
+    background-color: #FFFFFF !important;
+    color: #0F385A !important;
+}
+[data-baseweb="menu"] {
+    background-color: #FFFFFF !important;
+}
+[data-baseweb="menu"] li {
+    color: #0F385A !important;
+}
+[data-baseweb="menu"] li:hover {
+    background-color: #EAF9FD !important;
 }
 
 /* ── Barra lateral ──────────────────────────────────────────────────────── */
@@ -468,64 +492,56 @@ def normalizar_columnas(df: pd.DataFrame) -> pd.DataFrame:
 
 def leer_taxonomias_bloom(uploaded_files) -> Dict[str, list]:
     """
-    Intenta leer la hoja 'Taxonomias para RA' de los archivos Excel cargados.
-    Retorna un dict {nivel_bloom: [verbos...]} o dict vacío si no existe la hoja.
+    Lee TODAS las hojas con 'taxon' en el nombre de todos los archivos Excel cargados.
+    Retorna un dict {nivel_bloom: [verbos...]} mergeado de todas las hojas.
     Esperado: columnas 'Nivel' y 'Verbos' (o similares).
     """
     taxonomias: Dict[str, list] = {}
+
+    def _parsear_hoja(df_tax: pd.DataFrame):
+        df_tax.columns = [str(c).strip() for c in df_tax.columns]
+        col_nivel = next((c for c in df_tax.columns
+                          if any(k in c.lower() for k in ['nivel', 'categor', 'bloom', 'taxon'])), None)
+        col_verbos = next((c for c in df_tax.columns
+                           if any(k in c.lower() for k in ['verb', 'palabra', 'accion', 'ejemplo'])), None)
+        if col_nivel is None or col_verbos is None:
+            if len(df_tax.columns) >= 2:
+                col_nivel, col_verbos = df_tax.columns[0], df_tax.columns[1]
+            else:
+                return
+        for _, row in df_tax.iterrows():
+            nivel = str(row.get(col_nivel, '')).strip()
+            verbos_raw = str(row.get(col_verbos, '')).strip()
+            if not nivel or nivel in ('nan', '') or not verbos_raw or verbos_raw == 'nan':
+                continue
+            nivel_n = unicodedata.normalize('NFKD', nivel).encode('ascii', 'ignore').decode('ascii').title()
+            verbos = [
+                unicodedata.normalize('NFKD', v.strip().lower()).encode('ascii', 'ignore').decode('ascii')
+                for v in re.split(r'[,;\n/]+', verbos_raw)
+                if v.strip() and len(v.strip()) > 2
+            ]
+            if nivel_n not in taxonomias:
+                taxonomias[nivel_n] = []
+            taxonomias[nivel_n].extend(verbos)
+
     for uploaded_file in uploaded_files:
         try:
-            # Resetear el puntero del archivo antes de leer
             uploaded_file.seek(0)
             xl = pd.ExcelFile(uploaded_file, engine='openpyxl')
-            # Buscar hoja con nombre similar a "Taxonomias"
-            hoja_tax = next(
-                (h for h in xl.sheet_names
-                 if 'taxon' in unicodedata.normalize('NFKD', h.lower()).encode('ascii', 'ignore').decode('ascii')),
-                None
-            )
-            if hoja_tax is None:
-                continue
-            df_tax = xl.parse(hoja_tax)
-            df_tax.columns = [str(c).strip() for c in df_tax.columns]
-
-            # Intentar detectar columnas de nivel y verbos
-            col_nivel = next((c for c in df_tax.columns
-                              if any(k in c.lower() for k in ['nivel', 'categor', 'bloom', 'taxon'])), None)
-            col_verbos = next((c for c in df_tax.columns
-                               if any(k in c.lower() for k in ['verb', 'palabra', 'accion', 'ejemplo'])), None)
-
-            if col_nivel is None or col_verbos is None:
-                # Asumir primera columna = nivel, segunda = verbos
-                if len(df_tax.columns) >= 2:
-                    col_nivel, col_verbos = df_tax.columns[0], df_tax.columns[1]
-                else:
+            # Leer TODAS las hojas con 'taxon' en el nombre
+            hojas_tax = [
+                h for h in xl.sheet_names
+                if 'taxon' in unicodedata.normalize('NFKD', h.lower()).encode('ascii', 'ignore').decode('ascii')
+            ]
+            for hoja in hojas_tax:
+                try:
+                    _parsear_hoja(xl.parse(hoja))
+                except Exception:
                     continue
-
-            for _, row in df_tax.iterrows():
-                nivel = str(row.get(col_nivel, '')).strip()
-                verbos_raw = str(row.get(col_verbos, '')).strip()
-                if not nivel or nivel in ('nan', '') or not verbos_raw or verbos_raw == 'nan':
-                    continue
-                # Normalizar nivel
-                nivel_n = unicodedata.normalize('NFKD', nivel).encode('ascii', 'ignore').decode('ascii').title()
-                # Parsear verbos (separados por coma, punto y coma, salto de línea o espacio)
-                verbos = [
-                    unicodedata.normalize('NFKD', v.strip().lower()).encode('ascii', 'ignore').decode('ascii')
-                    for v in re.split(r'[,;\n/]+', verbos_raw)
-                    if v.strip() and len(v.strip()) > 2
-                ]
-                if nivel_n not in taxonomias:
-                    taxonomias[nivel_n] = []
-                taxonomias[nivel_n].extend(verbos)
-
-            if taxonomias:
-                # Solo necesitamos leer de un archivo (todos deben tener la misma hoja)
-                break
         except Exception:
             continue
 
-    # Dedup verbos
+    # Dedup verbos preservando orden
     return {nivel: list(dict.fromkeys(verbos)) for nivel, verbos in taxonomias.items()}
 
 
@@ -821,8 +837,11 @@ def calcular_similitud_asignaturas(df_filtrado: pd.DataFrame) -> Dict:
 def _creditos_unicos_programa(grupo: pd.DataFrame) -> int:
     """Suma créditos únicos por asignatura (sin duplicar por número de RAs)."""
     asig_col = 'Nombre asignatura o modulo'
-    cred_col = 'Creditos'
-    if asig_col not in grupo.columns or cred_col not in grupo.columns:
+    cred_col = next(
+        (c for c in grupo.columns if c.lower().replace('é', 'e') in ('creditos', 'credito')),
+        None
+    )
+    if asig_col not in grupo.columns or cred_col is None:
         return 0
     # Un crédito por asignatura única (primer valor no nulo)
     cred = (
@@ -1131,30 +1150,46 @@ def pagina_tendencias(df: pd.DataFrame, tendencias: Dict, resultados: Dict):
 
     # ── TAB 1: VISTA GLOBAL ───────────────────────────────────────────────────
     with tab_global:
-        st.subheader("Intensidad por Programa y Tendencia")
+        st.subheader("Asignaturas que abordan cada tendencia por programa")
         st.caption(
-            "Cada celda muestra cuántos registros de cada programa mencionan "
-            "palabras clave de cada tendencia. Mayor valor = mayor énfasis."
+            "Número de asignaturas **únicas** (cada una contada una sola vez) "
+            "que tratan cada tendencia, desglosado por programa."
         )
-        matriz = resultados['matriz']
-        col_names = {tid: tendencias[tid]['descripcion'] for tid in matriz.columns if tid in tendencias}
-        matriz_display = matriz.rename(columns=col_names)
-        # Truncar nombres largos
-        short_cols = {c: (c[:30] + '…' if len(c) > 30 else c) for c in matriz_display.columns}
-        matriz_display = matriz_display.rename(columns=short_cols)
-
-        fig = px.imshow(
-            matriz_display.values,
-            x=matriz_display.columns.tolist(),
-            y=matriz_display.index.tolist(),
-            color_continuous_scale=[[0, '#EAF9FD'], [0.4, '#1FB2DE'], [0.8, '#0F385A'], [1, '#EC0677']],
-            text_auto=True,
-            aspect='auto'
-        )
-        fig.update_layout(height=400, xaxis_tickangle=40,
-                          xaxis=dict(tickfont=dict(size=10)),
-                          yaxis=dict(tickfont=dict(size=11)))
-        st.plotly_chart(fig, use_container_width=True)
+        # Construir tabla: programa × tendencia → # asignaturas únicas
+        detalle = resultados['detalle']
+        rows_bar = []
+        for tid, por_prog in detalle.items():
+            nombre_tend = tendencias[tid]['descripcion'] if tid in tendencias else tid
+            nombre_tend_corto = nombre_tend[:35] + '…' if len(nombre_tend) > 35 else nombre_tend
+            for prog, registros in por_prog.items():
+                n_uniq = len({r['asignatura'] for r in registros if r['asignatura'] != 'Sin nombre'})
+                if n_uniq > 0:
+                    rows_bar.append({'Tendencia': nombre_tend_corto, 'Programa': str(prog), 'Asignaturas': n_uniq})
+        if rows_bar:
+            df_bar_global = pd.DataFrame(rows_bar)
+            # Ordenar tendencias por total descendente
+            orden = (
+                df_bar_global.groupby('Tendencia')['Asignaturas'].sum()
+                .sort_values(ascending=False).index.tolist()
+            )
+            fig_bar_global = px.bar(
+                df_bar_global,
+                x='Tendencia', y='Asignaturas', color='Programa',
+                barmode='group',
+                color_discrete_sequence=['#0F385A', '#1FB2DE', '#42F2F2', '#FBAF17', '#EC0677'],
+                labels={'Asignaturas': 'N° Asignaturas únicas'},
+                category_orders={'Tendencia': orden}
+            )
+            fig_bar_global.update_layout(
+                height=480,
+                xaxis_tickangle=35,
+                xaxis=dict(tickfont=dict(size=10)),
+                legend=dict(orientation='h', y=1.08),
+                yaxis_title='N° Asignaturas únicas'
+            )
+            st.plotly_chart(fig_bar_global, use_container_width=True)
+        else:
+            st.info("No se detectaron tendencias en los datos cargados.")
 
         st.markdown("---")
 
@@ -1624,9 +1659,8 @@ def pagina_tipo_saber(df: pd.DataFrame):
     pivot_wide = pivot.pivot_table(index='Programa', columns='Tipo de Saber',
                                    values='Porcentaje', fill_value=0).reset_index()
 
-    tab_radar, tab_scatter, tab_barra = st.tabs([
+    tab_radar, tab_barra = st.tabs([
         "🕸️ Radar de Competencias",
-        "⚖️ Mapa de Balance",
         "📊 Comparativo Detallado"
     ])
 
@@ -1668,34 +1702,6 @@ def pagina_tipo_saber(df: pd.DataFrame):
         )
         st.plotly_chart(fig_radar, use_container_width=True)
         st.caption("La zona dorada punteada representa el rango de referencia ideal.")
-
-    with tab_scatter:
-        if 'SaberHacer' in pivot_wide.columns and 'SaberSer' in pivot_wide.columns:
-            pivot_wide['Saber_val'] = pivot_wide.get('Saber', 0)
-            fig_scatter = px.scatter(
-                pivot_wide,
-                x='SaberHacer', y='SaberSer',
-                size='Saber_val', color='Programa',
-                text='Programa',
-                color_discrete_sequence=['#0F385A', '#1FB2DE', '#42F2F2', '#FBAF17', '#EC0677'],
-                title="Mapa de balance: SaberHacer vs SaberSer (tamaño = % Saber)",
-                labels={'SaberHacer': '% SaberHacer (habilidades prácticas)',
-                        'SaberSer': '% SaberSer (valores/actitudes)'}
-            )
-            fig_scatter.add_shape(type='rect', x0=35, x1=60, y0=10, y1=30,
-                                  fillcolor='rgba(251,175,23,0.1)',
-                                  line=dict(color='#FBAF17', dash='dot'))
-            fig_scatter.add_annotation(x=47.5, y=20, text="Zona ideal", showarrow=False,
-                                       font=dict(color='#FBAF17', size=11))
-            fig_scatter.update_traces(textposition='top center', marker=dict(sizemin=10))
-            fig_scatter.update_layout(height=420, showlegend=False,
-                                      xaxis=dict(range=[0, 100]),
-                                      yaxis=dict(range=[0, 100]))
-            st.plotly_chart(fig_scatter, use_container_width=True)
-            st.caption(
-                "**Lectura:** Programas dentro del rectángulo dorado tienen un balance ideal. "
-                "Programas a la izquierda tienen bajo SaberHacer; hacia abajo, bajo SaberSer."
-            )
 
     with tab_barra:
         fig_bar = px.bar(
@@ -2369,9 +2375,9 @@ def pagina_bloom_integracion(df: pd.DataFrame, taxonomias_externas: Dict | None 
             raw_nuc = str(row.get('Nucleos tematicos', '')).strip()
             if raw_nuc and raw_nuc not in ('nan', ''):
                 nset = {
-                    _limpiar_nucleo(n.strip()).lower()
+                    unicodedata.normalize('NFKD', _limpiar_nucleo(n.strip()).lower()).encode('ascii', 'ignore').decode('ascii')
                     for n in re.split(r'[,;\n]+', raw_nuc)
-                    if n.strip() and len(n.strip()) > 3
+                    if _es_nucleo_valido(n.strip())
                 }
             else:
                 nset = set()
@@ -2879,28 +2885,29 @@ def main():
     st.sidebar.markdown("---")
 
     # Navegacion
-    st.sidebar.subheader("Navegación")
-    st.sidebar.caption("Selecciona una sección para analizar:")
+    st.sidebar.markdown(
+        "<div style='font-size:0.7em;letter-spacing:1.5px;text-transform:uppercase;"
+        "color:rgba(255,255,255,0.5);padding:4px 0 2px 0'>MENÚ PRINCIPAL</div>",
+        unsafe_allow_html=True
+    )
 
     PAGINAS = {
-        "📋 Resumen Ejecutivo": "Alertas, fortalezas y recomendaciones para toma de decisiones",
-        "🏠 Inicio": "Resumen general y métricas clave del currículo",
-        "📊 Tipo de Saber": "Saber, SaberHacer y SaberSer por semestre y asignatura",
-        "🗂️ Cobertura Temática": "Núcleos temáticos: diversidad y densidad por programa",
-        "🌍 Tendencias Globales": "Alineación con IA, Sostenibilidad, Innovación, etc.",
-        "🔍 Minería de Texto": "Términos clave, similitud y frases frecuentes",
-        "🎓 Bloom & Integración": "Taxonomía de Bloom por semestre y mapa de integración temática",
-        "⚙️ Configurar Tendencias": "Personalizar las tendencias globales a detectar",
-        "📄 Explorar Datos": "Explorar y filtrar los registros cargados",
+        "Inicio": "Resumen general y métricas clave del currículo",
+        "Tipo de Saber": "Saber, SaberHacer y SaberSer por semestre y asignatura",
+        "Cobertura Temática": "Núcleos temáticos: diversidad y densidad por programa",
+        "Tendencias Globales": "Alineación con IA, Sostenibilidad, Innovación, etc.",
+        "Minería de Texto": "Términos clave, similitud y frases frecuentes",
+        "Bloom & Integración": "Taxonomía de Bloom por semestre y mapa de integración temática",
+        "Configurar Tendencias": "Personalizar las tendencias globales a detectar",
+        "Explorar Datos": "Explorar y filtrar los registros cargados",
     }
 
     pagina = st.sidebar.radio(
-        "Ir a:",
+        "",
         list(PAGINAS.keys()),
-        format_func=lambda x: x
+        label_visibility="collapsed"
     )
 
-    # Mostrar descripcion de la pagina seleccionada
     st.sidebar.caption(f"_{PAGINAS[pagina]}_")
     st.sidebar.markdown("---")
     st.sidebar.markdown(
@@ -2918,39 +2925,35 @@ def main():
     tendencias = obtener_tendencias()
 
     # Renderizar pagina
-    if pagina == "📋 Resumen Ejecutivo":
-        with st.spinner("Generando resumen ejecutivo..."):
-            pagina_resumen_ejecutivo(df, tendencias)
-
-    elif pagina == "🏠 Inicio":
+    if pagina == "Inicio":
         pagina_inicio(df)
 
-    elif pagina == "📊 Tipo de Saber":
+    elif pagina == "Tipo de Saber":
         pagina_tipo_saber(df)
 
-    elif pagina == "🗂️ Cobertura Temática":
+    elif pagina == "Cobertura Temática":
         with st.spinner("Analizando cobertura temática..."):
             resultados_cob = analizar_cobertura(df)
         pagina_cobertura(df, resultados_cob)
 
-    elif pagina == "🌍 Tendencias Globales":
+    elif pagina == "Tendencias Globales":
         with st.spinner("Detectando tendencias globales..."):
             resultados_tend = analizar_tendencias(df, tendencias)
         pagina_tendencias(df, tendencias, resultados_tend)
 
-    elif pagina == "🔍 Minería de Texto":
+    elif pagina == "Minería de Texto":
         with st.spinner("Ejecutando análisis de texto..."):
             resultados_nlp = analizar_nlp(df)
         pagina_nlp(df, resultados_nlp)
 
-    elif pagina == "🎓 Bloom & Integración":
+    elif pagina == "Bloom & Integración":
         taxonomias_bloom = leer_taxonomias_bloom(uploaded_files)
         pagina_bloom_integracion(df, taxonomias_bloom)
 
-    elif pagina == "⚙️ Configurar Tendencias":
+    elif pagina == "Configurar Tendencias":
         pagina_config_tendencias()
 
-    elif pagina == "📄 Explorar Datos":
+    elif pagina == "Explorar Datos":
         pagina_datos(df)
 
 
