@@ -122,21 +122,52 @@ html, body,
 }
 
 /* ── Inputs, selectbox, multiselect ─────────────────────────────────────── */
-.stSelectbox > div, .stMultiSelect > div,
-[data-baseweb="select"] *, [data-baseweb="popover"] *,
-[role="listbox"] *, [role="option"] *,
+/* Caja de control (fondo blanco, texto navy) */
+[data-baseweb="select"] > div:first-child,
+[data-baseweb="base-input"],
 .stTextInput input, .stTextArea textarea, .stNumberInput input {
     background-color: #FFFFFF !important;
     color: #0F385A !important;
+    border-color: #1FB2DE !important;
 }
-[data-baseweb="menu"] {
+/* Texto del placeholder e input interno */
+[data-baseweb="select"] input,
+[data-baseweb="select"] [data-id="datepicker-input"] {
+    color: #0F385A !important;
+    background-color: transparent !important;
+}
+/* Chips / tags de items seleccionados en multiselect */
+[data-baseweb="tag"] {
+    background-color: #EAF9FD !important;
+    border: 1px solid #1FB2DE !important;
+}
+[data-baseweb="tag"] span {
+    color: #0F385A !important;
+    background-color: transparent !important;
+}
+[data-baseweb="tag"] button,
+[data-baseweb="tag"] [role="button"] {
+    color: #0F385A !important;
+    background-color: transparent !important;
+}
+/* Lista desplegable de opciones */
+[data-baseweb="menu"],
+[data-baseweb="popover"] > div {
     background-color: #FFFFFF !important;
 }
-[data-baseweb="menu"] li {
+[data-baseweb="menu"] li,
+[data-baseweb="menu"] [role="option"] {
     color: #0F385A !important;
+    background-color: #FFFFFF !important;
 }
-[data-baseweb="menu"] li:hover {
+[data-baseweb="menu"] li:hover,
+[data-baseweb="menu"] [role="option"]:hover {
     background-color: #EAF9FD !important;
+}
+/* Opción seleccionada en el dropdown */
+[data-baseweb="menu"] [aria-selected="true"] {
+    background-color: #D0F4FA !important;
+    color: #0F385A !important;
 }
 
 /* ── Métricas y texto general ───────────────────────────────────────────── */
