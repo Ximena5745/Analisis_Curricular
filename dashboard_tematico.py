@@ -19,6 +19,7 @@ import unicodedata
 from typing import Dict
 from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.cluster import AgglomerativeClustering
 from scipy.stats import entropy
 import warnings
 warnings.filterwarnings('ignore')
@@ -1673,36 +1674,60 @@ def pagina_nlp(df: pd.DataFrame, resultados: Dict):
                 else:
                     sim_df_heat = sim_df
 
-                tab_heat, tab_pares = st.tabs(["🗺️ Mapa de Calor", "📋 Pares Más Similares"])
+                tab_grupos, tab_pares = st.tabs(["🔍 Grupos Temáticos", "📋 Pares Más Similares"])
 
-                with tab_heat:
-                    font_size = max(7, min(11, int(320 / len(sim_df_heat))))
-                    fig = px.imshow(
-                        sim_df_heat.values,
-                        x=sim_df_heat.columns.tolist(),
-                        y=sim_df_heat.index.tolist(),
-                        color_continuous_scale=[
-                            [0, '#EAF9FD'], [0.5, '#1FB2DE'], [0.8, '#FBAF17'], [1, '#EC0677']
-                        ],
-                        zmin=0, zmax=1,
-                        aspect='auto',
-                        title="Mapa de calor de similitud entre asignaturas"
-                    )
-                    fig.update_layout(
-                        height=max(450, len(sim_df_heat) * 18),
-                        xaxis_tickangle=45,
-                        xaxis=dict(tickfont=dict(size=font_size)),
-                        yaxis=dict(tickfont=dict(size=font_size)),
-                        coloraxis_colorbar=dict(
-                            title="Similitud",
-                            tickvals=[0, 0.5, 0.8, 1.0],
-                            ticktext=["0%", "50%", "80%", "100%"]
-                        )
-                    )
-                    st.plotly_chart(fig, use_container_width=True)
+                with tab_grupos:
                     st.caption(
-                        "🟡 Similitud ≥ 0.80 (naranja→magenta) puede indicar **redundancia curricular**. "
-                        "Las celdas más oscuras requieren revisión."
+                        "Las asignaturas se agrupan automáticamente según similitud de contenido. "
+                        "Grupos con alta cohesión comparten vocabulario y temáticas similares."
+                    )
+                    n_max = min(10, max(2, len(sim_df) // 2))
+                    n_clusters = st.slider(
+                        "Número de grupos:", min_value=2, max_value=n_max,
+                        value=min(5, n_max), key="n_clusters_nlp"
+                    )
+
+                    # Clustering aglomerativo sobre matriz de distancias
+                    dist_matrix = 1.0 - sim_df.values.clip(0, 1)
+                    np.fill_diagonal(dist_matrix, 0.0)
+                    clustering = AgglomerativeClustering(
+                        n_clusters=n_clusters, metric='precomputed', linkage='average'
+                    )
+                    labels = clustering.fit_predict(dist_matrix)
+
+                    PALETA = ['#0F385A', '#1FB2DE', '#42F2F2', '#FBAF17', '#EC0677',
+                              '#2E7D32', '#6A1B9A', '#E65100', '#00695C', '#AD1457']
+
+                    for cid in range(n_clusters):
+                        idx = [i for i, lb in enumerate(labels) if lb == cid]
+                        subjects = sorted([sim_df.index[i] for i in idx])
+                        if not subjects:
+                            continue
+
+                        # Cohesión intra-grupo (similitud promedio)
+                        if len(idx) > 1:
+                            sub_sim = sim_df.values[np.ix_(idx, idx)].copy()
+                            np.fill_diagonal(sub_sim, 0)
+                            cohesion = sub_sim.sum() / (len(idx) * (len(idx) - 1))
+                        else:
+                            cohesion = 1.0
+
+                        color = PALETA[cid % len(PALETA)]
+                        label = f"Grupo {cid + 1} &nbsp;·&nbsp; {len(subjects)} asignaturas &nbsp;·&nbsp; Cohesión: {cohesion:.0%}"
+
+                        with st.expander(f"Grupo {cid + 1} — {len(subjects)} asignaturas (cohesión {cohesion:.0%})"):
+                            cols = st.columns(2)
+                            for k, subj in enumerate(subjects):
+                                cols[k % 2].markdown(
+                                    f"<div style='padding:4px 8px;margin:2px 0;border-radius:4px;"
+                                    f"border-left:3px solid {color};background:#F5FDFF;font-size:0.88em'>"
+                                    f"{subj}</div>",
+                                    unsafe_allow_html=True
+                                )
+
+                    st.caption(
+                        "💡 Cohesión alta = asignaturas muy similares entre sí (posible redundancia). "
+                        "Ajusta el número de grupos para obtener agrupaciones más o menos detalladas."
                     )
 
                 with tab_pares:
@@ -1712,9 +1737,9 @@ def pagina_nlp(df: pd.DataFrame, resultados: Dict):
                     for i in range(len(sim_vals)):
                         for j in range(i + 1, len(sim_vals)):
                             pares.append({
-                                'Asignatura 1': sim_df.index[i],
-                                'Asignatura 2': sim_df.columns[j],
-                                'Similitud': round(sim_vals[i, j], 4)
+                                'Asignatura 1': str(sim_df.index[i]),
+                                'Asignatura 2': str(sim_df.columns[j]),
+                                'Similitud': round(float(sim_vals[i, j]), 4)
                             })
                     df_pares = (
                         pd.DataFrame(pares)
@@ -1724,12 +1749,12 @@ def pagina_nlp(df: pd.DataFrame, resultados: Dict):
                     def highlight_similar(val):
                         if isinstance(val, float):
                             if val >= 0.8:
-                                return 'background-color: #FEE5F2; color: #EC0677; font-weight:bold'
+                                return 'background-color:#FEE5F2;color:#EC0677;font-weight:bold'
                             if val >= 0.6:
-                                return 'background-color: #FFFBEA; color: #8C6000'
+                                return 'background-color:#FFFBEA;color:#8C6000'
                         return ''
                     st.dataframe(
-                        df_pares.style.applymap(highlight_similar, subset=['Similitud']),
+                        df_pares.style.map(highlight_similar, subset=['Similitud']),
                         use_container_width=True,
                         hide_index=True
                     )
