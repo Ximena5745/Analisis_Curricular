@@ -155,13 +155,43 @@ html, body,
 [data-testid="stSidebar"] * {
     color: #FFFFFF !important;
 }
-/* option_menu: fondo transparente para integrarse con el gradiente del sidebar */
-[data-testid="stSidebar"] .nav-link {
-    border-left: 3px solid transparent;
+/* ── option_menu: fondo y texto ─────────────────────────────────────────── */
+/* Contenedor principal del menú */
+[data-testid="stSidebar"] .nav,
+[data-testid="stSidebar"] .nav-pills,
+[data-testid="stSidebar"] ul.nav {
+    background-color: transparent !important;
+}
+/* Cada ítem */
+[data-testid="stSidebar"] .nav-link,
+[data-testid="stSidebar"] a.nav-link {
+    color: rgba(255,255,255,0.85) !important;
+    background-color: transparent !important;
+    border-left: 3px solid transparent !important;
+    border-radius: 6px !important;
+    padding: 7px 12px !important;
+    margin: 2px 0 !important;
+    font-size: 13px !important;
     transition: background 0.2s, border-left 0.2s;
 }
-[data-testid="stSidebar"] .nav-link.active {
+/* Hover */
+[data-testid="stSidebar"] .nav-link:hover,
+[data-testid="stSidebar"] a.nav-link:hover {
+    background-color: rgba(31,178,222,0.20) !important;
+    color: #FFFFFF !important;
+}
+/* Activo */
+[data-testid="stSidebar"] .nav-link.active,
+[data-testid="stSidebar"] a.nav-link.active {
+    background-color: rgba(31,178,222,0.30) !important;
     border-left: 3px solid #FBAF17 !important;
+    color: #FFFFFF !important;
+    font-weight: 600 !important;
+}
+/* Iconos */
+[data-testid="stSidebar"] .nav-link i,
+[data-testid="stSidebar"] a.nav-link i {
+    color: #42F2F2 !important;
 }
 [data-testid="stSidebar"] hr {
     border-color: rgba(66,242,242,0.25) !important;
