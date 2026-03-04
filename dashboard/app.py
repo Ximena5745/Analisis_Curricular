@@ -66,12 +66,40 @@ def load_all_programs():
             analyzer = CurricularAnalyzer(data)
             indicadores = analyzer.generar_reporte_indicadores()
             tematicas = detector.analyze_programa(data)
-
+            
+            # Calcular creditos totales del programa
+            creditos_total = 0
+            estrategias = data.get('estrategias_micro')
+            if estrategias is not None and len(estrategias) > 0:
+                # Buscar columnas
+                semestre_col = None
+                creditos_col = None
+                nombre_col = None
+                for col in estrategias.columns:
+                    if 'Semestre' in col:
+                        semestre_col = col
+                    if 'Creditos' in col or ('Cr' in col and 'ditos' in col):
+                        creditos_col = col
+                    if 'Nombre' in col and 'asignatura' in col.lower():
+                        nombre_col = col
+                
+                #优先: buscar fila con "Total" en Semestre
+                if semestre_col and creditos_col:
+                    filas_total = estrategias[estrategias[semestre_col].astype(str).str.contains('Total', na=False)]
+                    if len(filas_total) > 0:
+                        creditos_total = pd.to_numeric(filas_total[creditos_col].iloc[0], errors='coerce')
+                    # Si no hay fila Total, calcular suma de creditos por asignatura
+                    elif nombre_col:
+                        creditos_unicos = estrategias.groupby(nombre_col)[creditos_col].first()
+                        creditos_validos = creditos_unicos[pd.to_numeric(creditos_unicos, errors='coerce') <= 30]
+                        creditos_total = float(pd.to_numeric(creditos_validos, errors='coerce').sum())
+            
             programs.append({
                 'nombre': data['metadata']['programa'],
                 'data': data,
                 'indicadores': indicadores,
-                'tematicas': tematicas
+                'tematicas': tematicas,
+                'creditos_total': creditos_total
             })
         except Exception as e:
             st.warning(f"Error cargando {file_path.name}: {str(e)}")
@@ -345,22 +373,38 @@ def main():
         st.title("📈 Comparativa de Programas")
         st.markdown("---")
 
-        # Selector múltiple
+        # Dos listas desplegables para comparar
         program_names = [p['nombre'] for p in programs]
-        selected_programs = st.multiselect(
-            "Seleccionar programas para comparar (2-5):",
-            program_names,
-            default=program_names[:2] if len(program_names) >= 2 else program_names
-        )
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            prog1_name = st.selectbox(
+                "Programa 1",
+                program_names,
+                index=0 if len(program_names) > 0 else 0
+            )
+        
+        with col2:
+            prog2_name = st.selectbox(
+                "Programa 2",
+                program_names,
+                index=1 if len(program_names) > 1 else 0
+            )
 
-        if len(selected_programs) < 2:
-            st.warning("Selecciona al menos 2 programas para comparar")
+        if prog1_name == prog2_name:
+            st.warning("Selecciona dos programas diferentes")
             return
 
-        # Obtener datos de programas seleccionados
-        programas_comparar = [p for p in programs if p['nombre'] in selected_programs]
+        # Obtener datos de los programas seleccionados
+        prog1 = next((p for p in programs if p['nombre'] == prog1_name), None)
+        prog2 = next((p for p in programs if p['nombre'] == prog2_name), None)
 
-        # Radar chart de indicadores
+        if prog1 is None or prog2 is None:
+            st.error("Error al cargar los programas")
+            return
+
+        # Radar chart
         st.subheader("🕸️ Comparativa de Indicadores")
 
         categories = ['Score Calidad', 'Completitud', 'Índice Complejidad',
@@ -368,22 +412,26 @@ def main():
 
         fig_radar = go.Figure()
 
-        for prog in programas_comparar:
-            ind = prog['indicadores']
+        for prog in [prog1, prog2]:
+            if prog is None:
+                continue
+            ind = prog.get('indicadores')
+            if ind is None:
+                continue
 
             values = [
-                ind['score_calidad'],
-                ind['completitud']['completitud_total'],
-                ind['complejidad_cognitiva']['indice_complejidad'],
-                ind['cobertura_competencias']['porcentaje_cobertura'],
-                min(100, ind['diversidad_metodologica']['num_estrategias_unicas'] * 8)
+                ind.get('score_calidad', 0),
+                ind.get('completitud', {}).get('completitud_total', 0),
+                ind.get('complejidad_cognitiva', {}).get('indice_complejidad', 0),
+                ind.get('cobertura_competencias', {}).get('porcentaje_cobertura', 0),
+                min(100, ind.get('diversidad_metodologica', {}).get('num_estrategias_unicas', 0) * 8)
             ]
 
             fig_radar.add_trace(go.Scatterpolar(
                 r=values,
                 theta=categories,
                 fill='toself',
-                name=prog['nombre']
+                name=prog.get('nombre', 'Unknown')
             ))
 
         fig_radar.update_layout(
@@ -399,20 +447,173 @@ def main():
         st.subheader("📊 Tabla Comparativa")
 
         datos_comparativa = []
-        for prog in programas_comparar:
-            ind = prog['indicadores']
+        for prog in [prog1, prog2]:
+            if prog is None:
+                continue
+            ind = prog.get('indicadores')
+            if ind is None:
+                continue
             datos_comparativa.append({
-                'Programa': prog['nombre'],
-                'Score': ind['score_calidad'],
-                'Competencias': ind['resumen']['total_competencias'],
-                'RA': ind['resumen']['total_ra'],
-                'Completitud %': ind['completitud']['completitud_total'],
-                'Complejidad Avanzado %': ind['complejidad_cognitiva']['Avanzado'],
-                'Num Temáticas': prog['tematicas']['num_tematicas']
+                'Programa': prog.get('nombre', 'Unknown'),
+                'Score': ind.get('score_calidad', 0),
+                'Competencias': ind.get('resumen', {}).get('total_competencias', 0),
+                'RA (Asignaturas)': ind.get('resumen', {}).get('total_ra', 0),
+                'Creditos': int(prog.get('creditos_total', 0)),
+                'Completitud %': ind.get('completitud', {}).get('completitud_total', 0),
+                'Complejidad Avanzado %': ind.get('complejidad_cognitiva', {}).get('Avanzado', 0),
+                'Num Tematicas': prog.get('tematicas', {}).get('num_tematicas', 0)
             })
 
-        df_comparativa = pd.DataFrame(datos_comparativa)
-        st.dataframe(df_comparativa, use_container_width=True, hide_index=True)
+        if len(datos_comparativa) > 0:
+            df_comparativa = pd.DataFrame(datos_comparativa)
+            st.dataframe(df_comparativa, use_container_width=True, hide_index=True)
+
+            # Comparar créditos entre los dos programas
+            if prog1 is not None and prog2 is not None:
+                cred1 = prog1.get('creditos_total', 0)
+                cred2 = prog2.get('creditos_total', 0)
+                
+                diff = abs(cred1 - cred2)
+                diff_pct = (diff / max(cred1, cred2) * 100) if max(cred1, cred2) > 0 else 0
+                
+                if cred1 == cred2:
+                    st.success(f"✓ Los dos programas tienen la misma cantidad de creditos: **{int(cred1)}** creditos")
+                else:
+                    st.warning(f"⚠ Los programas tienen creditos diferentes: **{prog1.get('nombre')}** tiene {int(cred1)} creditos y **{prog2.get('nombre')}** tiene {int(cred2)} creditos (Diferencia: {int(diff)} creditos / {diff_pct:.1f}%)")
+
+        # Comparativa de Temáticas
+        st.markdown("---")
+        st.subheader("🏷️ Comparativa de Temáticas")
+
+        datos_tematicas = []
+        for prog in [prog1, prog2]:
+            tematicas = prog['tematicas']
+            row = {'Programa': prog['nombre']}
+            for tema, datos in tematicas['resumen'].items():
+                if datos['presente']:
+                    row[tema] = datos['asignaturas_con_tematica']
+            datos_tematicas.append(row)
+
+        df_tematicas = pd.DataFrame(datos_tematicas)
+        if len(df_tematicas) > 0:
+            # Llenar NaN con 0
+            numeric_cols = df_tematicas.select_dtypes(include='number').columns
+            df_tematicas[numeric_cols] = df_tematicas[numeric_cols].fillna(0)
+            st.dataframe(df_tematicas, use_container_width=True, hide_index=True)
+
+        # Similitud entre programas
+        st.markdown("---")
+        st.subheader("🔗 Similitud entre Programas")
+
+        # Calcular TF-IDF y cosine similarity
+        try:
+            from sklearn.feature_extraction.text import TfidfVectorizer
+            from sklearn.metrics.pairwise import cosine_similarity
+        except ImportError:
+            st.info("Instala scikit-learn para analisis de similitud")
+            st.stop()
+
+        from pathlib import Path as PathLib
+        from src.extractor import ExcelExtractor
+        
+        input_folder = PathLib(INPUT_FOLDER)
+        
+        similitud_data = []
+        programas_texto = []
+        
+        for prog in [prog1, prog2]:
+            file_name = None
+            for f in input_folder.glob('*.xlsx'):
+                if prog['nombre'] in f.name:
+                    file_name = str(f)
+                    break
+            
+            if file_name:
+                extractor = ExcelExtractor(file_name)
+                data = extractor.extract_all()
+                estr = data.get('estrategias_micro')
+                
+                if estr is not None and len(estr) > 0:
+                    textos = []
+                    for _, row in estr.iterrows():
+                        texto = ''
+                        for col in ['Actividades de aprendizaje', 'Actividades de evaluacion', 'Nucleos tematicos']:
+                            if col in estr.columns:
+                                val = row.get(col)
+                                if pd.notna(val):
+                                    texto += ' ' + str(val)
+                        if texto.strip():
+                            textos.append(texto)
+                    
+                    texto_programa = ' '.join(textos)
+                    similitud_data.append(texto_programa)
+                    programas_texto.append(prog['nombre'])
+
+        if len(similitud_data) == 2:
+            # TF-IDF
+            try:
+                import numpy as np
+                vectorizer = TfidfVectorizer(max_features=100, stop_words='spanish')
+                tfidf = vectorizer.fit_transform(similitud_data)
+                
+                # Cosine similarity
+                sim_matrix = cosine_similarity(tfidf)
+                similitud = float(sim_matrix[0][1])
+
+                col1, col2 = st.columns(2)
+                col1.metric("Similitud (TF-IDF)", f"{similitud:.1%}")
+                
+                # Terminos mas similares
+                feature_names = vectorizer.get_feature_names_out()
+                tfidf_dense = tfidf.toarray()
+                
+                # Terminos comunes con mayor peso
+                comun = tfidf_dense[0] * tfidf_dense[1]
+                comun_nonzero = comun[comun > 0]
+                top_common = [str(feature_names[i]) for i in range(len(comun)) if comun[i] > 0]
+                
+                col2.metric("Terminos en comun", str(len(top_common)))
+                
+            except Exception as e:
+                st.warning(f"Error calculando similitud: {e}")
+
+            # Gráfico de comparación de estrategias
+            st.markdown("#### Comparación de Estrategias Pedagógicas")
+            
+            datos_estrategias = []
+            for prog in [prog1, prog2]:
+                file_name = next((f.name for f in input_folder.glob('*.xlsx') if prog['nombre'] in f.name), None)
+                if file_name:
+                    extractor = ExcelExtractor(str(input_folder / file_name))
+                    data = extractor.extract_all()
+                    estr = data['estrategias_micro']
+                    
+                    keywords = ['taller', 'caso', 'problema', 'proyecto', 'laboratorio', 
+                               'lectura', 'exposición', 'debate', 'simulación', 'ejercicio']
+                    
+                    texto = ' '.join(estr['Actividades de aprendizaje'].dropna().str.lower())
+                    
+                    for kw in keywords:
+                        count = texto.count(kw)
+                        datos_estrategias.append({
+                            'Programa': prog['nombre'],
+                            'Estrategia': kw.title(),
+                            'Cantidad': count
+                        })
+
+            df_estr = pd.DataFrame(datos_estrategias)
+            if not df_estr.empty:
+                fig_estr = px.bar(
+                    df_estr,
+                    x='Estrategia',
+                    y='Cantidad',
+                    color='Programa',
+                    barmode='group',
+                    title='Comparación de Estrategias Pedagógicas',
+                    color_discrete_sequence=['#1f77b4', '#ff7f0e']
+                )
+                fig_estr.update_layout(height=400)
+                st.plotly_chart(fig_estr, use_container_width=True)
 
     # ========================================================================
     # PÁGINA: ESTRATEGIAS MICRO

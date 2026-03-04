@@ -161,6 +161,35 @@ class CurricularAnalyzer:
         # Nivel por defecto
         return 2
 
+    def _contar_ra_unicos(self) -> int:
+        """
+        Cuenta asignaturas que tienen al menos un RA.
+        Cada RA se cuenta solo una vez por cada asignatura.
+        
+        Returns:
+            int: Número de asignaturas con RA
+        """
+        if self.ra.empty:
+            return 0
+        
+        # Buscar columnas
+        ra_col = None
+        nombre_col = None
+        for col in self.ra.columns:
+            if 'Resultado de aprendizaje' in col:
+                ra_col = col
+            if 'Competencia' in col and 'desarrollar' in col.lower():
+                nombre_col = col
+        
+        if ra_col is None or nombre_col is None:
+            return len(self.ra)
+        
+        # Contar asignaturas que tienen al menos un RA
+        df_con_ra = self.ra[self.ra[ra_col].notna()]
+        asignaturas_con_ra = df_con_ra[nombre_col].nunique()
+        
+        return int(asignaturas_con_ra)
+
     def calcular_complejidad_cognitiva(self) -> Dict[str, float]:
         """
         Calcula la distribución de niveles de complejidad cognitiva según Bloom.
@@ -461,7 +490,7 @@ class CurricularAnalyzer:
             'completitud': self.calcular_completitud(),
             'resumen': {
                 'total_competencias': len(self.competencias),
-                'total_ra': len(self.ra),
+                'total_ra': self._contar_ra_unicos(),
                 'total_estrategias_meso': len(self.estrategias_meso),
                 'total_estrategias_micro': len(self.estrategias_micro)
             }

@@ -426,8 +426,8 @@ class ThematicDetector:
         Genera matriz consolidada Programas × Temáticas.
 
         Args:
-            all_programas (List[Dict]): Lista de datos de programas
-                                       (salida de ExcelExtractor.extract_all())
+            all_programas (List[Dict]): Lista de análisis de programas
+                                       (salida de ThematicDetector.analyze_programa())
 
         Returns:
             pd.DataFrame: Matriz con estructura:
@@ -435,7 +435,7 @@ class ThematicDetector:
                 Valores en temáticas: frecuencia de coincidencias Y normalizado por créditos
 
         Example:
-            >>> all_data = [extractor1.extract_all(), extractor2.extract_all()]
+            >>> all_data = [detector.analyze_programa(data1), detector.analyze_programa(data2)]
             >>> matriz = detector.generate_thematic_matrix(all_data)
             >>> matriz.to_excel('matriz_tematicas.xlsx', index=False)
         """
@@ -443,15 +443,10 @@ class ThematicDetector:
 
         rows = []
 
-        for programa_data in all_programas:
-            # Analizar programa
-            analisis = self.analyze_programa(programa_data)
-
+        for analisis in all_programas:
+            # analisis ya es el resultado de analyze_programa
             row = {
                 'Programa': analisis['programa'],
-                'Competencias': len(programa_data['competencias']),
-                'Resultados_Aprendizaje': len(programa_data['resultados_aprendizaje']),
-                'Estrategias_Micro': len(programa_data.get('estrategias_micro', pd.DataFrame())),
                 'Creditos': analisis.get('creditos_totales', 0)
             }
 
@@ -471,15 +466,14 @@ class ThematicDetector:
         # Agregar fila de totales
         totales = {
             'Programa': 'TOTAL',
-            'Competencias': df_matriz['Competencias'].sum(),
-            'Resultados_Aprendizaje': df_matriz['Resultados_Aprendizaje'].sum(),
-            'Estrategias_Micro': df_matriz['Estrategias_Micro'].sum(),
             'Creditos': df_matriz['Creditos'].sum()
         }
 
         for tematica in self.tematicas_config.keys():
-            totales[tematica] = df_matriz[tematica].sum()
-            totales[f'{tematica}_x10cred'] = df_matriz[f'{tematica}_x10cred'].mean()
+            if tematica in df_matriz.columns:
+                totales[tematica] = df_matriz[tematica].sum()
+            if f'{tematica}_x10cred' in df_matriz.columns:
+                totales[f'{tematica}_x10cred'] = df_matriz[f'{tematica}_x10cred'].mean()
 
         # Concatenar totales
         df_totales = pd.DataFrame([totales])
