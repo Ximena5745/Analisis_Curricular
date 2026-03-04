@@ -531,7 +531,7 @@ TENDENCIAS_DEFAULT = {
             "deontologia", "codigo etico", "integridad",
             "transparencia", "buen gobierno", "compliance"
         ],
-        "color": "#F39C12",
+        "color": "#42F2F2",
         "descripcion": "Etica, Valores y Responsabilidad Social"
     },
     "GLOBALIZACION": {
@@ -549,7 +549,7 @@ TENDENCIAS_DEFAULT = {
             "habilidades blandas", "soft skills", "gestion personas",
             "talento humano", "coaching", "mentoring", "negociacion"
         ],
-        "color": "#E67E22",
+        "color": "#1A5276",
         "descripcion": "Liderazgo y Habilidades Blandas"
     },
     "ANALISIS_DATOS": {
@@ -647,15 +647,15 @@ _SUBCAT_COLORS: Dict[str, str] = {
     'Sintesis':     '#7D3C98', 'Evaluacion':  '#922B21',
     'Imitacion':    '#ABEBC6', 'Manipulacion': '#58D68D',
     'Precision':    '#1E8449', 'Control':     '#0B5345',
-    'Percepcion':   '#FAD7A0', 'Responder':   '#F5B041',
-    'Valorar':      '#E67E22', 'Organizar':   '#D35400',
-    'Caracterizar': '#873600',
+    'Percepcion':   '#B3DCF0', 'Responder':   '#5DADE2',
+    'Valorar':      '#2E86C1', 'Organizar':   '#1A5276',
+    'Caracterizar': '#0F385A',
 }
 
 _DOMAIN_COLORS: Dict[str, str] = {
     'Cognitivo':      '#2E86C1',
     'Procedimental':  '#1E8449',
-    'Actitudinal':    '#E67E22',
+    'Actitudinal':    '#42F2F2',
     'No identificado': '#BDC3C7',
 }
 
@@ -1337,7 +1337,7 @@ def pagina_cobertura(df: pd.DataFrame, resultados: Dict):
         )
         fig = px.bar(df_densidad, y='Asig_display', x='Nucleos',
                      orientation='h', color='Nucleos',
-                     color_continuous_scale='Oranges',
+                     color_continuous_scale='Blues',
                      labels={'Asig_display': 'Asignatura', 'Nucleos': 'N° Núcleos'},
                      hover_data={'Asignatura': True, 'Nucleos': True, 'Asig_display': False})
         fig.update_layout(height=600, yaxis={'categoryorder': 'total ascending'})
@@ -1593,7 +1593,7 @@ def pagina_tendencias(df: pd.DataFrame, tendencias: Dict, resultados: Dict):
             df_cob_prog.sort_values('Cobertura', ascending=True),
             y='Tendencia', x='Cobertura', orientation='h',
             color='Cobertura',
-            color_continuous_scale=[[0, '#EC0677'], [0.3, '#FBAF17'], [0.6, '#1FB2DE'], [1, '#0F385A']],
+            color_continuous_scale=[[0, '#EC0677'], [0.3, '#42F2F2'], [0.6, '#1FB2DE'], [1, '#0F385A']],
             range_color=[0, 100],
             hover_data=['Asignaturas'],
             title=f"Cobertura de tendencias en {prog_sel}",
@@ -3118,13 +3118,13 @@ def main():
 
         with col3:
             st.markdown("""
-            <div class="section-card" style="border-left:4px solid #F7941D">
+            <div class="section-card" style="border-left:4px solid #1FB2DE">
                 <h3 style="color:#003F8A;margin-top:0">🎓 Bloom & Integración</h3>
                 <p style="font-size:0.88em;color:#444"><b>Taxonomía de Bloom:</b> clasificación cognitiva
                 de RAs (Recordar→Crear) y progresión por semestre.<br>
                 <b>Mapa de integración:</b> red que muestra qué asignaturas comparten núcleos temáticos.</p>
             </div>
-            <div class="section-card" style="margin-top:10px;border-left:4px solid #F7941D">
+            <div class="section-card" style="margin-top:10px;border-left:4px solid #1FB2DE">
                 <h3 style="color:#003F8A;margin-top:0">⚙️ Configurar Tendencias</h3>
                 <p style="font-size:0.88em;color:#444">Personaliza las tendencias globales a detectar:
                 agrega, edita o elimina tendencias con sus palabras clave. Exporta/importa en JSON.</p>
