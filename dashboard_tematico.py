@@ -635,16 +635,26 @@ def procesar_archivos(uploaded_files) -> pd.DataFrame:
         df_consolidado['Tipo de Saber'].astype(str).str.strip() != ''
     ]
 
-    # Normalizar Tipo de Saber
-    norm_map = {
-        'saber': 'Saber', 'saberhacer': 'SaberHacer', 'saberser': 'SaberSer',
-        'Saber': 'Saber', 'SaberHacer': 'SaberHacer', 'SaberSer': 'SaberSer',
-        'Saberhacer': 'SaberHacer', 'Saberser': 'SaberSer'
-    }
+    # Normalizar Tipo de Saber (tolerante a espacios, guiones, acentos, mayúsculas)
+    def _norm_tipo_saber(valor: str) -> str:
+        v = unicodedata.normalize('NFKD', str(valor).strip().lower()).encode('ascii', 'ignore').decode('ascii')
+        v = re.sub(r'[\s\-_/]+', '', v)   # quitar espacios, guiones, barras
+        if v in ('saber', 'conocimiento', 'conceptual', 'teorico', 'conocer'):
+            return 'Saber'
+        if 'saberhacer' in v or v in ('hacer', 'practica', 'procedimental', 'habilidad', 'proceder'):
+            return 'SaberHacer'
+        if 'saberser' in v or v in ('ser', 'actitud', 'valor', 'etica', 'actitudinal', 'humano'):
+            return 'SaberSer'
+        return valor  # mantener original si no se reconoce
+
     df_consolidado['Tipo de Saber'] = (
         df_consolidado['Tipo de Saber'].astype(str).str.strip()
-        .map(lambda x: norm_map.get(x, x))
+        .map(_norm_tipo_saber)
     )
+    # Descartar filas cuyo Tipo de Saber no sea uno de los tres válidos
+    df_consolidado = df_consolidado[
+        df_consolidado['Tipo de Saber'].isin({'Saber', 'SaberHacer', 'SaberSer'})
+    ]
 
     # Preparar texto combinado
     df_consolidado['Texto_Completo'] = (
@@ -1613,6 +1623,9 @@ def pagina_nlp(df: pd.DataFrame, resultados: Dict):
 
 def pagina_tipo_saber(df: pd.DataFrame):
     """Pagina de analisis profundo del Tipo de Saber."""
+    # Garantizar que solo entran los tres tipos válidos
+    df = df[df['Tipo de Saber'].isin({'Saber', 'SaberHacer', 'SaberSer'})].copy()
+
     st.title("Análisis de Tipo de Saber")
     st.markdown("---")
     st.info(
@@ -1853,32 +1866,75 @@ def pagina_tipo_saber(df: pd.DataFrame):
     todas = pivot_asig['Nombre asignatura o modulo'].unique().tolist()
     orden_completo = orden + [a for a in todas if a not in orden]
 
-    fig = px.bar(
-        pivot_asig, y='Nombre asignatura o modulo', x='Porcentaje',
-        color='Tipo de Saber',
-        color_discrete_map=COLORES_SABER,
-        barmode='stack',
-        orientation='h',
-        category_orders={'Nombre asignatura o modulo': orden_completo},
-        title=f'Perfil de Tipo de Saber por asignatura — {prog_asig_sel}',
-        labels={'Porcentaje': '%', 'Nombre asignatura o modulo': 'Asignatura'}
-    )
-    fig.update_layout(
-        height=max(400, len(orden_completo) * 25 + 100),
-        xaxis_range=[0, 100]
-    )
-    st.plotly_chart(fig, use_container_width=True)
+    # ── Tabla semáforo por asignatura ───────────────────────────────────────
+    tabla_wide = pivot_asig.pivot_table(
+        index='Nombre asignatura o modulo',
+        columns='Tipo de Saber',
+        values='Porcentaje',
+        fill_value=0
+    ).round(1).reset_index()
+    tabla_wide.columns.name = None
 
-    # Tabla resumen
-    with st.expander("Ver tabla de datos"):
-        tabla = pivot_asig.pivot_table(
-            index='Nombre asignatura o modulo',
-            columns='Tipo de Saber',
-            values='Porcentaje',
-            fill_value=0
-        ).round(1).reset_index()
-        tabla.columns.name = None
-        st.dataframe(tabla, use_container_width=True, hide_index=True)
+    # Asegurar que existen las columnas aunque no haya datos
+    for col in ['Saber', 'SaberHacer', 'SaberSer']:
+        if col not in tabla_wide.columns:
+            tabla_wide[col] = 0.0
+
+    # Ordenar igual que antes (por SaberHacer desc)
+    tabla_wide = tabla_wide.set_index('Nombre asignatura o modulo').loc[
+        [a for a in orden_completo if a in tabla_wide['Nombre asignatura o modulo'].values]
+    ].reset_index()
+
+    # Estado de balance por asignatura
+    def _estado(row):
+        fuera = []
+        for tipo, (rmin, rmax) in REFS_SABER.items():
+            v = row.get(tipo, 0)
+            if v < rmin or v > rmax:
+                fuera.append(tipo)
+        if not fuera:
+            return '✅ En rango'
+        if len(fuera) == 1:
+            return f'⚠️ Revisar {fuera[0]}'
+        return f'🔴 {len(fuera)} tipos fuera'
+
+    tabla_wide['Balance'] = tabla_wide.apply(_estado, axis=1)
+
+    # Función de color para celda de cada tipo
+    def _color_celda(val, tipo):
+        rmin, rmax = REFS_SABER.get(tipo, (0, 100))
+        if val < rmin:
+            return 'background-color:#FDECEA;color:#C62828'   # rojo suave
+        if val > rmax:
+            return 'background-color:#FFF8E1;color:#E65100'   # naranja suave
+        return 'background-color:#E8F5E9;color:#2E7D32'       # verde suave
+
+    def _estilo_tabla(df):
+        estilos = pd.DataFrame('', index=df.index, columns=df.columns)
+        for tipo in ['Saber', 'SaberHacer', 'SaberSer']:
+            if tipo in df.columns:
+                estilos[tipo] = df[tipo].apply(lambda v: _color_celda(v, tipo))
+        return estilos
+
+    st.caption(
+        f"🟢 En rango ideal &nbsp;|&nbsp; 🟡 Ligeramente fuera &nbsp;|&nbsp; 🔴 Fuera del rango  &nbsp;&nbsp;"
+        f"Referencia: Saber {REFS_SABER['Saber'][0]}–{REFS_SABER['Saber'][1]}% &nbsp;·&nbsp; "
+        f"SaberHacer {REFS_SABER['SaberHacer'][0]}–{REFS_SABER['SaberHacer'][1]}% &nbsp;·&nbsp; "
+        f"SaberSer {REFS_SABER['SaberSer'][0]}–{REFS_SABER['SaberSer'][1]}%"
+    )
+
+    cols_mostrar = ['Nombre asignatura o modulo', 'Saber', 'SaberHacer', 'SaberSer', 'Balance']
+    tabla_display = tabla_wide[[c for c in cols_mostrar if c in tabla_wide.columns]].rename(
+        columns={'Nombre asignatura o modulo': 'Asignatura'}
+    )
+    st.dataframe(
+        tabla_display.style.apply(_estilo_tabla, axis=None).format(
+            {c: '{:.1f}%' for c in ['Saber', 'SaberHacer', 'SaberSer'] if c in tabla_display.columns}
+        ),
+        use_container_width=True,
+        hide_index=True,
+        height=min(600, len(tabla_display) * 35 + 60)
+    )
 
 
 def pagina_resumen_ejecutivo(df: pd.DataFrame, tendencias: Dict) -> None:
