@@ -7,6 +7,7 @@ Deploy cloud:   Subir repo a GitHub y conectar en share.streamlit.io
 """
 
 import streamlit as st
+from streamlit_option_menu import option_menu
 import pandas as pd
 import numpy as np
 import plotly.express as px
@@ -78,17 +79,49 @@ st.set_page_config(
 
 st.markdown("""
 <style>
-/* ── Forzar tema claro siempre ───────────────────────────────────────────── */
-:root { color-scheme: light !important; }
-
-/* ── Fuente base ─────────────────────────────────────────────────────────── */
-html, body, [class*="css"], .stApp, .main, .block-container {
-    font-family: 'Segoe UI', 'Inter', sans-serif !important;
-    background-color: #FFFFFF !important;
-    color: #1A1A2E !important;
+/* ══════════════════════════════════════════════════════════════════════════
+   FORZAR MODO CLARO SIEMPRE — pisa variables CSS de Streamlit en dark mode
+   ══════════════════════════════════════════════════════════════════════════ */
+:root,
+:root[data-theme="dark"],
+:root[data-theme="light"] {
+    color-scheme: light !important;
+    --background-color:           #FFFFFF !important;
+    --secondary-background-color: #EAF9FD !important;
+    --text-color:                 #0F385A !important;
+    --font:                       'Segoe UI', 'Inter', sans-serif !important;
+    --primary-color:              #1FB2DE !important;
+}
+/* Cubre la preferencia del sistema operativo en dark mode */
+@media (prefers-color-scheme: dark) {
+    :root {
+        color-scheme: light !important;
+        --background-color:           #FFFFFF !important;
+        --secondary-background-color: #EAF9FD !important;
+        --text-color:                 #0F385A !important;
+    }
 }
 
-/* ── Forzar texto oscuro en inputs, selectbox, multiselect ──────────────── */
+/* ── Fondo y texto de la app principal ──────────────────────────────────── */
+html, body,
+.stApp, .stApp > div,
+.main, .block-container,
+[data-testid="stAppViewContainer"],
+[data-testid="stHeader"] {
+    font-family: 'Segoe UI', 'Inter', sans-serif !important;
+    background-color: #FFFFFF !important;
+    color: #0F385A !important;
+}
+
+/* ── Contenido dentro de tabs, expanders, columnas ─────────────────────── */
+.stTabs [data-baseweb="tab-panel"],
+[data-testid="stExpander"],
+[data-testid="column"] {
+    background-color: #FFFFFF !important;
+    color: #0F385A !important;
+}
+
+/* ── Inputs, selectbox, multiselect ─────────────────────────────────────── */
 .stSelectbox > div, .stMultiSelect > div,
 [data-baseweb="select"] *, [data-baseweb="popover"] *,
 [role="listbox"] *, [role="option"] *,
@@ -106,6 +139,14 @@ html, body, [class*="css"], .stApp, .main, .block-container {
     background-color: #EAF9FD !important;
 }
 
+/* ── Métricas y texto general ───────────────────────────────────────────── */
+[data-testid="stMetricValue"],
+[data-testid="stMetricLabel"],
+[data-testid="stMetricDelta"],
+.stMarkdown, .stText, p, h1, h2, h3, h4, h5, label {
+    color: #0F385A !important;
+}
+
 /* ── Barra lateral ──────────────────────────────────────────────────────── */
 [data-testid="stSidebar"] {
     background: linear-gradient(180deg, #0F385A 0%, #071E32 100%);
@@ -114,22 +155,12 @@ html, body, [class*="css"], .stApp, .main, .block-container {
 [data-testid="stSidebar"] * {
     color: #FFFFFF !important;
 }
-[data-testid="stSidebar"] .stRadio label {
-    background: rgba(255,255,255,0.07);
-    border-radius: 8px;
-    padding: 6px 10px;
-    margin: 3px 0;
-    display: block;
-    transition: background 0.2s;
+/* option_menu: fondo transparente para integrarse con el gradiente del sidebar */
+[data-testid="stSidebar"] .nav-link {
     border-left: 3px solid transparent;
+    transition: background 0.2s, border-left 0.2s;
 }
-[data-testid="stSidebar"] .stRadio label:hover {
-    background: rgba(31,178,222,0.2) !important;
-    border-left: 3px solid #42F2F2 !important;
-}
-[data-testid="stSidebar"] .stRadio [aria-checked="true"] + div label,
-[data-testid="stSidebar"] input[type="radio"]:checked ~ label {
-    background: rgba(31,178,222,0.3) !important;
+[data-testid="stSidebar"] .nav-link.active {
     border-left: 3px solid #FBAF17 !important;
 }
 [data-testid="stSidebar"] hr {
@@ -2989,31 +3020,51 @@ def main():
 
     st.sidebar.markdown("---")
 
-    # Navegacion
-    st.sidebar.markdown(
-        "<div style='font-size:0.7em;letter-spacing:1.5px;text-transform:uppercase;"
-        "color:rgba(255,255,255,0.5);padding:4px 0 2px 0'>MENÚ PRINCIPAL</div>",
-        unsafe_allow_html=True
-    )
-
+    # Navegacion con option_menu
     PAGINAS = {
-        "Inicio": "Resumen general y métricas clave del currículo",
-        "Tipo de Saber": "Saber, SaberHacer y SaberSer por semestre y asignatura",
-        "Cobertura Temática": "Núcleos temáticos: diversidad y densidad por programa",
-        "Tendencias Globales": "Alineación con IA, Sostenibilidad, Innovación, etc.",
-        "Minería de Texto": "Términos clave, similitud y frases frecuentes",
-        "Bloom & Integración": "Taxonomía de Bloom por semestre y mapa de integración temática",
-        "Configurar Tendencias": "Personalizar las tendencias globales a detectar",
-        "Explorar Datos": "Explorar y filtrar los registros cargados",
+        "Inicio":               ("house",          "Resumen general y métricas clave del currículo"),
+        "Tipo de Saber":        ("bar-chart",       "Saber, SaberHacer y SaberSer por semestre y asignatura"),
+        "Cobertura Temática":   ("map",             "Núcleos temáticos: diversidad y densidad por programa"),
+        "Tendencias Globales":  ("graph-up-arrow",  "Alineación con IA, Sostenibilidad, Innovación, etc."),
+        "Minería de Texto":     ("search",          "Términos clave, similitud y frases frecuentes"),
+        "Bloom & Integración":  ("diagram-3",       "Taxonomía de Bloom y mapa de integración temática"),
+        "Configurar Tendencias":("sliders",         "Personalizar las tendencias globales a detectar"),
+        "Explorar Datos":       ("table",           "Explorar y filtrar los registros cargados"),
     }
 
-    pagina = st.sidebar.radio(
-        "",
-        list(PAGINAS.keys()),
-        label_visibility="collapsed"
-    )
+    with st.sidebar:
+        pagina = option_menu(
+            menu_title=None,
+            options=list(PAGINAS.keys()),
+            icons=[v[0] for v in PAGINAS.values()],
+            default_index=0,
+            styles={
+                "container": {
+                    "padding": "4px 0",
+                    "background-color": "transparent",
+                },
+                "icon": {
+                    "color": "#42F2F2",
+                    "font-size": "14px",
+                },
+                "nav-link": {
+                    "font-size": "13px",
+                    "color": "#FFFFFF",
+                    "padding": "7px 12px",
+                    "border-radius": "6px",
+                    "margin": "2px 0",
+                    "--hover-color": "rgba(31,178,222,0.2)",
+                },
+                "nav-link-selected": {
+                    "background-color": "rgba(31,178,222,0.30)",
+                    "border-left": "3px solid #FBAF17",
+                    "font-weight": "600",
+                    "color": "#FFFFFF",
+                },
+            }
+        )
 
-    st.sidebar.caption(f"_{PAGINAS[pagina]}_")
+    st.sidebar.caption(f"_{PAGINAS[pagina][1]}_")
     st.sidebar.markdown("---")
     st.sidebar.markdown(
         """
