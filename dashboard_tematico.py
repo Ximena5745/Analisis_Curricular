@@ -609,106 +609,78 @@ def normalizar_columnas(df: pd.DataFrame) -> pd.DataFrame:
     return df.rename(columns=nuevos_nombres)
 
 
-def leer_taxonomias_bloom(uploaded_files) -> Dict[str, list]:
-    """
-    Lee la hoja de taxonomías y extrae TODAS las tablas que contenga.
-    La hoja puede tener múltiples tablas apiladas verticalmente o en columnas paralelas.
-    Cada tabla tiene su propio encabezado con columnas tipo Nivel/Categoría y Verbos/Palabras.
-    """
-    taxonomias: Dict[str, list] = {}
+_TAXONOMIAS_MATRIZ_PATH = "data/raw/Taxonomias_MatrizBD.xlsx"
 
-    KW_NIVEL  = ['nivel', 'categor', 'bloom', 'taxon', 'dimension', 'proceso', 'habilidad']
-    KW_VERBOS = ['verb', 'palabra', 'accion', 'ejemplo', 'indicador', 'descriptor', 'termino']
+# Mapeo explícito: nombre_subcategoria (normalizado sin acentos) → nivel Bloom
+_SUBCAT_TO_BLOOM: Dict[str, str] = {
+    'conocimiento':  'Recordar',
+    'comprension':   'Comprender',
+    'aplicacion':    'Aplicar',
+    'analisis':      'Analizar',
+    'sintesis':      'Crear',
+    'evaluacion':    'Evaluar',
+    'creacion':      'Crear',
+    # Procedimental → Aplicar (uso práctico de habilidades)
+    'imitacion':     'Aplicar',
+    'manipulacion':  'Aplicar',
+    'precision':     'Aplicar',
+    'control':       'Evaluar',
+    # Actitudinal → distribuir entre niveles inferiores
+    'percepcion':    'Recordar',
+    'responder':     'Comprender',
+    'valorar':       'Evaluar',
+    'organizar':     'Analizar',
+    'caracterizar':  'Crear',
+}
+
+
+def _stem_es(word: str) -> str:
+    """Extrae el stem aproximado de un verbo español quitando terminaciones comunes."""
+    w = word.strip().lower()
+    # Longer suffixes first to avoid premature truncation
+    for suf in ('ando', 'iendo', 'ados', 'idos', 'ado', 'ido',
+                'amos', 'emos', 'imos', 'aron', 'ieron',
+                'ará', 'erá', 'irá', 'ara', 'era', 'ira',
+                'ar', 'er', 'ir',
+                'as', 'es', 'an', 'en',
+                'a', 'e', 'o'):
+        if w.endswith(suf) and len(w) - len(suf) >= 4:
+            return w[:-len(suf)]
+    return w
+
+
+def leer_taxonomias_bloom(uploaded_files=None) -> Dict[str, list]:
+    """
+    Carga verbos desde data/raw/Taxonomias_MatrizBD.xlsx, hoja 'Verbos'.
+    Estructura: id_verbo | verbo | id_subcategoria | nombre_subcategoria |
+                id_dominio | nombre_dominio
+    Retorna: {nombre_subcategoria_normalizado: [verbos...]}
+    """
+    import os
 
     def _norm(s: str) -> str:
         return unicodedata.normalize('NFKD', str(s).strip().lower()).encode('ascii', 'ignore').decode('ascii')
 
-    def _es_nivel(celda) -> bool:
-        return pd.notna(celda) and any(k in _norm(celda) for k in KW_NIVEL)
+    taxonomias: Dict[str, list] = {}
 
-    def _es_verbos(celda) -> bool:
-        return pd.notna(celda) and any(k in _norm(celda) for k in KW_VERBOS)
-
-    def _registrar(nivel: str, verbos_raw: str):
-        nivel_n = _norm(nivel).title()
-        if not nivel_n or nivel_n in ('Nan', ''):
-            return
-        verbos = [
-            _norm(v) for v in re.split(r'[,;\n/]+', verbos_raw)
-            if v.strip() and len(v.strip()) > 2 and _norm(v) != 'nan'
-        ]
-        if not verbos:
-            return
-        if nivel_n not in taxonomias:
-            taxonomias[nivel_n] = []
-        taxonomias[nivel_n].extend(verbos)
-
-    def _parsear_hoja_raw(raw: pd.DataFrame):
-        """
-        Detecta múltiples tablas en la hoja leyendo el DataFrame sin encabezados.
-        Estrategia:
-          1. Buscar filas que actúen como encabezado (contienen keywords de nivel Y verbos).
-          2. Cada fila-encabezado puede definir uno o más pares (col_nivel, col_verbos)
-             para tablas lado a lado en la misma hoja.
-          3. Los datos de cada tabla van desde su fila-encabezado+1 hasta la siguiente
-             fila-encabezado (o el fin de la hoja).
-        """
-        nrows, ncols = raw.shape
-        # table_defs: lista de (fila_header, [(col_nivel, col_verbos), ...])
-        table_defs = []
-
-        for r in range(nrows):
-            row = raw.iloc[r]
-            cols_nivel  = [c for c in range(ncols) if _es_nivel(row.iloc[c])]
-            cols_verbos = [c for c in range(ncols) if _es_verbos(row.iloc[c])]
-            if not cols_nivel or not cols_verbos:
-                continue
-            # Emparejar cada col_nivel con el col_verbos más cercano
-            pairs = []
-            usados = set()
-            for cn in cols_nivel:
-                candidatos = [cv for cv in cols_verbos if cv not in usados and cv != cn]
-                if not candidatos:
-                    continue
-                cv = min(candidatos, key=lambda v: abs(v - cn))
-                pairs.append((cn, cv))
-                usados.add(cv)
-            if pairs:
-                table_defs.append((r, pairs))
-
-        # Extraer datos de cada tabla
-        for t_idx, (hdr_row, pairs) in enumerate(table_defs):
-            end_row = table_defs[t_idx + 1][0] if t_idx + 1 < len(table_defs) else nrows
-            for dr in range(hdr_row + 1, end_row):
-                data = raw.iloc[dr]
-                for cn, cv in pairs:
-                    nivel_val   = str(data.iloc[cn]).strip() if cn < ncols else ''
-                    verbos_val  = str(data.iloc[cv]).strip() if cv < ncols else ''
-                    if nivel_val in ('', 'nan', 'NaN') or verbos_val in ('', 'nan', 'NaN'):
-                        continue
-                    _registrar(nivel_val, verbos_val)
-
-    leido = False
-    for uploaded_file in uploaded_files:
-        if leido:
-            break
+    if os.path.exists(_TAXONOMIAS_MATRIZ_PATH):
         try:
-            uploaded_file.seek(0)
-            xl = pd.ExcelFile(uploaded_file, engine='openpyxl')
-            hojas_tax = [
-                h for h in xl.sheet_names
-                if 'taxon' in _norm(h)
-            ]
-            for hoja in hojas_tax:
-                try:
-                    raw = xl.parse(hoja, header=None)
-                    _parsear_hoja_raw(raw)
-                    if taxonomias:
-                        leido = True
-                except Exception:
-                    continue
+            df_v = pd.read_excel(_TAXONOMIAS_MATRIZ_PATH, sheet_name='Verbos', engine='openpyxl')
+            # Normalize column names for safe access
+            df_v.columns = [_norm(c) for c in df_v.columns]
+
+            col_verbo  = next((c for c in df_v.columns if c == 'verbo'), None)
+            col_subcat = next((c for c in df_v.columns if 'nombre_subcategoria' in c), None)
+
+            if col_verbo and col_subcat:
+                for _, row in df_v.iterrows():
+                    subcat = _norm(str(row[col_subcat]))
+                    verbo  = _norm(str(row[col_verbo]))
+                    if subcat in ('', 'nan') or verbo in ('', 'nan') or len(verbo) < 3:
+                        continue
+                    taxonomias.setdefault(subcat, []).append(verbo)
         except Exception:
-            continue
+            taxonomias = {}
 
     return {nivel: list(dict.fromkeys(verbos)) for nivel, verbos in taxonomias.items()}
 
@@ -2340,30 +2312,29 @@ def pagina_bloom_integracion(df: pd.DataFrame, taxonomias_externas: Dict | None 
             },
         }
 
-        # Enriquecer BLOOM con verbos de la hoja "Taxonomias para RA" (si existe)
+        # Enriquecer BLOOM con verbos de Taxonomias_MatrizBD.xlsx (si existe)
         fuente_bloom = "diccionario por defecto"
         if taxonomias_externas:
-            for nivel_ext, verbos_ext in taxonomias_externas.items():
-                # Buscar nivel equivalente en BLOOM (por nombre aproximado)
-                match = next(
-                    (k for k in BLOOM
-                     if unicodedata.normalize('NFKD', k.lower()).encode('ascii', 'ignore').decode('ascii')
-                     in unicodedata.normalize('NFKD', nivel_ext.lower()).encode('ascii', 'ignore').decode('ascii')
-                     or unicodedata.normalize('NFKD', nivel_ext.lower()).encode('ascii', 'ignore').decode('ascii')
-                     in unicodedata.normalize('NFKD', k.lower()).encode('ascii', 'ignore').decode('ascii')),
-                    None
-                )
-                if match:
-                    BLOOM[match]["verbos"] = list(dict.fromkeys(BLOOM[match]["verbos"] + verbos_ext))
-                else:
-                    # Nivel nuevo no reconocido — agregar como Analizar (orden 4) si no existe
-                    if nivel_ext not in BLOOM:
-                        BLOOM[nivel_ext] = {"verbos": verbos_ext, "color": "#42F2F2", "orden": 4,
-                                            "desc": f"Nivel personalizado: {nivel_ext}"}
-            fuente_bloom = "hoja **Taxonomias para RA** del Excel (enriquecida con verbos locales)"
+            n_verbos_nuevos = 0
+            for subcat_norm, verbos_ext in taxonomias_externas.items():
+                # Mapeo explícito: subcategoría BD → nivel Bloom
+                bloom_nivel = _SUBCAT_TO_BLOOM.get(subcat_norm)
+                if bloom_nivel is None:
+                    # Fallback: buscar por substring (ej. "comprension" in "comprender")
+                    bloom_nivel = next(
+                        (k for k in BLOOM
+                         if subcat_norm in unicodedata.normalize('NFKD', k.lower()).encode('ascii', 'ignore').decode('ascii')
+                         or unicodedata.normalize('NFKD', k.lower()).encode('ascii', 'ignore').decode('ascii') in subcat_norm),
+                        None
+                    )
+                if bloom_nivel and bloom_nivel in BLOOM:
+                    antes = len(BLOOM[bloom_nivel]["verbos"])
+                    BLOOM[bloom_nivel]["verbos"] = list(dict.fromkeys(BLOOM[bloom_nivel]["verbos"] + verbos_ext))
+                    n_verbos_nuevos += len(BLOOM[bloom_nivel]["verbos"]) - antes
+            fuente_bloom = "**Taxonomias_MatrizBD.xlsx** (646 verbos, enriquecida)"
             st.success(
-                f"✅ Verbos de Bloom cargados desde la {fuente_bloom}. "
-                f"Total niveles detectados: {len(BLOOM)}."
+                f"✅ Verbos cargados desde {fuente_bloom}. "
+                f"+{n_verbos_nuevos} verbos nuevos · {len(BLOOM)} niveles activos."
             )
 
         # Build normalized verb lookup — higher order wins for ambiguous verbs
@@ -2378,13 +2349,29 @@ def pagina_bloom_integracion(df: pd.DataFrame, taxonomias_externas: Dict | None 
             if not texto or str(texto).strip() in ('nan', ''):
                 return "No identificado"
             t = unicodedata.normalize('NFKD', str(texto).lower()).encode('ascii', 'ignore').decode('ascii')
+            # Tokenizar el RA en palabras individuales para comparación por stem
+            words_in_text = re.findall(r'\b[a-z]{3,}\b', t)
+            text_stems = [(w, _stem_es(w)) for w in words_in_text]
+
             best_orden = 0
             best_nivel = "No identificado"
             for v_n, (nivel, orden) in verb_lookup.items():
+                if orden <= best_orden:
+                    continue
+                # 1. Coincidencia exacta por palabra completa
                 if re.search(r'\b' + re.escape(v_n) + r'\b', t):
-                    if orden > best_orden:
+                    best_orden = orden
+                    best_nivel = nivel
+                    continue
+                # 2. Coincidencia por stem: el verbo del RA comparte raíz con el verbo del diccionario
+                v_stem = _stem_es(v_n)
+                if len(v_stem) < 4:
+                    continue
+                for word, word_stem in text_stems:
+                    if word_stem == v_stem or word.startswith(v_stem) or v_n.startswith(word_stem):
                         best_orden = orden
                         best_nivel = nivel
+                        break
             return best_nivel
 
         # Apply Bloom classification
