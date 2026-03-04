@@ -172,7 +172,14 @@ html, body,
     padding: 8px;
     border: 1px solid rgba(31,178,222,0.3);
 }
-/* Textos del file uploader en sidebar: etiqueta, zona de drop, instrucciones */
+/* Zona de drop: fondo oscuro para que el texto blanco sea visible */
+[data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"],
+[data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] > div {
+    background-color: rgba(7, 30, 50, 0.85) !important;
+    border: 1px dashed rgba(66,242,242,0.5) !important;
+    border-radius: 6px !important;
+}
+/* Todos los textos dentro del file uploader */
 [data-testid="stSidebar"] [data-testid="stFileUploader"] label,
 [data-testid="stSidebar"] [data-testid="stFileUploader"] span,
 [data-testid="stSidebar"] [data-testid="stFileUploader"] small,
@@ -180,8 +187,9 @@ html, body,
 [data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] *,
 [data-testid="stSidebar"] [data-testid="stFileUploaderDropzoneInstructions"] * {
     color: #FFFFFF !important;
+    background-color: transparent !important;
 }
-/* Botón "Browse files" dentro del sidebar */
+/* Botón "Browse files" */
 [data-testid="stSidebar"] [data-testid="stFileUploader"] button,
 [data-testid="stSidebar"] [data-testid="stBaseButton-secondary"] {
     background: rgba(31,178,222,0.25) !important;
