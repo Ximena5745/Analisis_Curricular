@@ -7,6 +7,7 @@ Deploy cloud:   Subir repo a GitHub y conectar en share.streamlit.io
 """
 
 import streamlit as st
+import streamlit.components.v1 as st_components
 from streamlit_option_menu import option_menu
 import pandas as pd
 import numpy as np
@@ -3165,6 +3166,12 @@ def main():
 
     # Obtener tendencias
     tendencias = obtener_tendencias()
+
+    # Scroll al top al cambiar de página
+    st_components.html(
+        "<script>window.parent.document.querySelector('.main').scrollTo(0, 0);</script>",
+        height=0
+    )
 
     # Renderizar pagina
     if pagina == "Inicio":
