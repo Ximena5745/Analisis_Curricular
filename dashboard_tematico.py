@@ -3096,22 +3096,24 @@ def main():
             styles={
                 "container": {
                     "padding": "4px 0",
-                    "background-color": "transparent",
+                    "background-color": "#0F385A",
+                    "border-radius": "0px",
                 },
                 "icon": {
                     "color": "#42F2F2",
-                    "font-size": "14px",
+                    "font-size": "15px",
                 },
                 "nav-link": {
                     "font-size": "13px",
                     "color": "#FFFFFF",
-                    "padding": "7px 12px",
+                    "background-color": "transparent",
+                    "padding": "8px 14px",
                     "border-radius": "6px",
-                    "margin": "2px 0",
-                    "--hover-color": "rgba(31,178,222,0.2)",
+                    "margin": "2px 4px",
+                    "--hover-color": "rgba(31,178,222,0.25)",
                 },
                 "nav-link-selected": {
-                    "background-color": "rgba(31,178,222,0.30)",
+                    "background-color": "rgba(31,178,222,0.35)",
                     "border-left": "3px solid #FBAF17",
                     "font-weight": "600",
                     "color": "#FFFFFF",
