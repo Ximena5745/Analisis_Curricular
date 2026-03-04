@@ -15,7 +15,7 @@ from collections import Counter
 import re
 import json
 import unicodedata
-from typing import Dict, Optional
+from typing import Dict
 from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from scipy.stats import entropy
@@ -580,11 +580,6 @@ def procesar_archivos(uploaded_files) -> pd.DataFrame:
         df_consolidado['Tipo de Saber'].astype(str).str.strip()
         .map(lambda x: norm_map.get(x, x))
     )
-
-    # Convertir Semestre a string para evitar tipos mixtos (int/str) que rompen PyArrow
-    if 'Semestre' in df_consolidado.columns:
-        df_consolidado['Semestre'] = df_consolidado['Semestre'].fillna('').astype(str).str.strip()
-        df_consolidado['Semestre'] = df_consolidado['Semestre'].replace({'': 'N/A', 'nan': 'N/A'})
 
     # Preparar texto combinado
     df_consolidado['Texto_Completo'] = (
@@ -1497,9 +1492,9 @@ def pagina_nlp(df: pd.DataFrame, resultados: Dict):
                     for i in range(len(sim_vals)):
                         for j in range(i + 1, len(sim_vals)):
                             pares.append({
-                                'Asignatura 1': str(sim_df.index[i]),
-                                'Asignatura 2': str(sim_df.columns[j]),
-                                'Similitud': round(float(sim_vals[i, j]), 4)
+                                'Asignatura 1': sim_df.index[i],
+                                'Asignatura 2': sim_df.columns[j],
+                                'Similitud': round(sim_vals[i, j], 4)
                             })
                     df_pares = (
                         pd.DataFrame(pares)
@@ -1507,14 +1502,14 @@ def pagina_nlp(df: pd.DataFrame, resultados: Dict):
                         .head(40)
                     )
                     def highlight_similar(val):
-                        if isinstance(val, (int, float)):
+                        if isinstance(val, float):
                             if val >= 0.8:
                                 return 'background-color: #FEE5F2; color: #EC0677; font-weight:bold'
                             if val >= 0.6:
                                 return 'background-color: #FFFBEA; color: #8C6000'
                         return ''
                     st.dataframe(
-                        df_pares.style.map(highlight_similar, subset=['Similitud']),
+                        df_pares.style.applymap(highlight_similar, subset=['Similitud']),
                         use_container_width=True,
                         hide_index=True
                     )
@@ -1637,46 +1632,42 @@ def pagina_tipo_saber(df: pd.DataFrame):
 
     with tab_radar:
         tipos_disp = [t for t in ['Saber', 'SaberHacer', 'SaberSer'] if t in pivot_wide.columns]
-        if not tipos_disp:
-            st.warning("No se encontraron tipos de saber estándar (Saber/SaberHacer/SaberSer) en los datos.")
-        else:
-            fig_radar = go.Figure()
-            palette_radar = ['#0F385A', '#1FB2DE', '#42F2F2', '#FBAF17', '#EC0677']
-            for i, row in pivot_wide.iterrows():
-                vals = [row.get(t, 0) for t in tipos_disp]
-                vals_closed = vals + [vals[0]]
-                cats_closed = tipos_disp + [tipos_disp[0]]
-                fig_radar.add_trace(go.Scatterpolar(
-                    r=vals_closed,
-                    theta=cats_closed,
-                    fill='toself',
-                    fillcolor=f"rgba({int(palette_radar[i % len(palette_radar)].lstrip('#')[0:2], 16)},"
-                              f"{int(palette_radar[i % len(palette_radar)].lstrip('#')[2:4], 16)},"
-                              f"{int(palette_radar[i % len(palette_radar)].lstrip('#')[4:6], 16)},0.15)",
-                    line=dict(color=palette_radar[i % len(palette_radar)], width=2),
-                    name=str(row['Programa'])
-                ))
-            # Zona de referencia (midpoint of recommended ranges per tipo)
-            ref_vals_map = {'Saber': 35.0, 'SaberHacer': 47.5, 'SaberSer': 20.0}
-            ref_vals = [ref_vals_map.get(t, 30.0) for t in tipos_disp]
+        fig_radar = go.Figure()
+        palette_radar = ['#0F385A', '#1FB2DE', '#42F2F2', '#FBAF17', '#EC0677']
+        for i, row in pivot_wide.iterrows():
+            vals = [row.get(t, 0) for t in tipos_disp]
+            vals_closed = vals + [vals[0]]
+            cats_closed = tipos_disp + [tipos_disp[0]]
             fig_radar.add_trace(go.Scatterpolar(
-                r=ref_vals + [ref_vals[0]],
-                theta=tipos_disp + [tipos_disp[0]],
+                r=vals_closed,
+                theta=cats_closed,
                 fill='toself',
-                fillcolor='rgba(251,175,23,0.07)',
-                line=dict(color='#FBAF17', width=1, dash='dot'),
-                name='Zona referencia'
+                fillcolor=f"rgba({int(palette_radar[i % len(palette_radar)].lstrip('#')[0:2], 16)},"
+                          f"{int(palette_radar[i % len(palette_radar)].lstrip('#')[2:4], 16)},"
+                          f"{int(palette_radar[i % len(palette_radar)].lstrip('#')[4:6], 16)},0.15)",
+                line=dict(color=palette_radar[i % len(palette_radar)], width=2),
+                name=str(row['Programa'])
             ))
-            fig_radar.update_layout(
-                polar=dict(radialaxis=dict(visible=True, range=[0, 100],
-                                           tickfont=dict(size=10), ticksuffix='%')),
-                height=450,
-                showlegend=True,
-                legend=dict(orientation='h', y=-0.15),
-                title="Radar de tipos de saber por programa (zona dorada = rango ideal)"
-            )
-            st.plotly_chart(fig_radar, use_container_width=True)
-            st.caption("La zona dorada punteada representa el rango de referencia ideal.")
+        # Zona de referencia
+        ref_vals = [35, 47.5, 20]
+        fig_radar.add_trace(go.Scatterpolar(
+            r=ref_vals + [ref_vals[0]],
+            theta=tipos_disp + [tipos_disp[0]],
+            fill='toself',
+            fillcolor='rgba(251,175,23,0.07)',
+            line=dict(color='#FBAF17', width=1, dash='dot'),
+            name='Zona referencia'
+        ))
+        fig_radar.update_layout(
+            polar=dict(radialaxis=dict(visible=True, range=[0, 100],
+                                       tickfont=dict(size=10), ticksuffix='%')),
+            height=450,
+            showlegend=True,
+            legend=dict(orientation='h', y=-0.15),
+            title="Radar de tipos de saber por programa (zona dorada = rango ideal)"
+        )
+        st.plotly_chart(fig_radar, use_container_width=True)
+        st.caption("La zona dorada punteada representa el rango de referencia ideal.")
 
     with tab_scatter:
         if 'SaberHacer' in pivot_wide.columns and 'SaberSer' in pivot_wide.columns:
@@ -2046,7 +2037,7 @@ def pagina_resumen_ejecutivo(df: pd.DataFrame, tendencias: Dict) -> None:
             )
 
 
-def pagina_bloom_integracion(df: pd.DataFrame, taxonomias_externas: Optional[Dict] = None):
+def pagina_bloom_integracion(df: pd.DataFrame, taxonomias_externas: Dict | None = None):
     """Pagina de Taxonomia de Bloom por semestre y Mapa de Integracion entre asignaturas."""
     import math as _math
 
