@@ -172,6 +172,23 @@ html, body,
     padding: 8px;
     border: 1px solid rgba(31,178,222,0.3);
 }
+/* Textos del file uploader en sidebar: etiqueta, zona de drop, instrucciones */
+[data-testid="stSidebar"] [data-testid="stFileUploader"] label,
+[data-testid="stSidebar"] [data-testid="stFileUploader"] span,
+[data-testid="stSidebar"] [data-testid="stFileUploader"] small,
+[data-testid="stSidebar"] [data-testid="stFileUploader"] p,
+[data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] *,
+[data-testid="stSidebar"] [data-testid="stFileUploaderDropzoneInstructions"] * {
+    color: #FFFFFF !important;
+}
+/* Botón "Browse files" dentro del sidebar */
+[data-testid="stSidebar"] [data-testid="stFileUploader"] button,
+[data-testid="stSidebar"] [data-testid="stBaseButton-secondary"] {
+    background: rgba(31,178,222,0.25) !important;
+    border: 1px solid rgba(66,242,242,0.5) !important;
+    color: #FFFFFF !important;
+    border-radius: 6px !important;
+}
 
 /* ── Encabezados principales ─────────────────────────────────────────────── */
 h1 {
