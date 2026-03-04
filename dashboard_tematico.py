@@ -492,56 +492,105 @@ def normalizar_columnas(df: pd.DataFrame) -> pd.DataFrame:
 
 def leer_taxonomias_bloom(uploaded_files) -> Dict[str, list]:
     """
-    Lee TODAS las hojas con 'taxon' en el nombre de todos los archivos Excel cargados.
-    Retorna un dict {nivel_bloom: [verbos...]} mergeado de todas las hojas.
-    Esperado: columnas 'Nivel' y 'Verbos' (o similares).
+    Lee la hoja de taxonomías y extrae TODAS las tablas que contenga.
+    La hoja puede tener múltiples tablas apiladas verticalmente o en columnas paralelas.
+    Cada tabla tiene su propio encabezado con columnas tipo Nivel/Categoría y Verbos/Palabras.
     """
     taxonomias: Dict[str, list] = {}
 
-    def _parsear_hoja(df_tax: pd.DataFrame):
-        df_tax.columns = [str(c).strip() for c in df_tax.columns]
-        col_nivel = next((c for c in df_tax.columns
-                          if any(k in c.lower() for k in ['nivel', 'categor', 'bloom', 'taxon'])), None)
-        col_verbos = next((c for c in df_tax.columns
-                           if any(k in c.lower() for k in ['verb', 'palabra', 'accion', 'ejemplo'])), None)
-        if col_nivel is None or col_verbos is None:
-            if len(df_tax.columns) >= 2:
-                col_nivel, col_verbos = df_tax.columns[0], df_tax.columns[1]
-            else:
-                return
-        for _, row in df_tax.iterrows():
-            nivel = str(row.get(col_nivel, '')).strip()
-            verbos_raw = str(row.get(col_verbos, '')).strip()
-            if not nivel or nivel in ('nan', '') or not verbos_raw or verbos_raw == 'nan':
-                continue
-            nivel_n = unicodedata.normalize('NFKD', nivel).encode('ascii', 'ignore').decode('ascii').title()
-            verbos = [
-                unicodedata.normalize('NFKD', v.strip().lower()).encode('ascii', 'ignore').decode('ascii')
-                for v in re.split(r'[,;\n/]+', verbos_raw)
-                if v.strip() and len(v.strip()) > 2
-            ]
-            if nivel_n not in taxonomias:
-                taxonomias[nivel_n] = []
-            taxonomias[nivel_n].extend(verbos)
+    KW_NIVEL  = ['nivel', 'categor', 'bloom', 'taxon', 'dimension', 'proceso', 'habilidad']
+    KW_VERBOS = ['verb', 'palabra', 'accion', 'ejemplo', 'indicador', 'descriptor', 'termino']
 
+    def _norm(s: str) -> str:
+        return unicodedata.normalize('NFKD', str(s).strip().lower()).encode('ascii', 'ignore').decode('ascii')
+
+    def _es_nivel(celda) -> bool:
+        return pd.notna(celda) and any(k in _norm(celda) for k in KW_NIVEL)
+
+    def _es_verbos(celda) -> bool:
+        return pd.notna(celda) and any(k in _norm(celda) for k in KW_VERBOS)
+
+    def _registrar(nivel: str, verbos_raw: str):
+        nivel_n = _norm(nivel).title()
+        if not nivel_n or nivel_n in ('Nan', ''):
+            return
+        verbos = [
+            _norm(v) for v in re.split(r'[,;\n/]+', verbos_raw)
+            if v.strip() and len(v.strip()) > 2 and _norm(v) != 'nan'
+        ]
+        if not verbos:
+            return
+        if nivel_n not in taxonomias:
+            taxonomias[nivel_n] = []
+        taxonomias[nivel_n].extend(verbos)
+
+    def _parsear_hoja_raw(raw: pd.DataFrame):
+        """
+        Detecta múltiples tablas en la hoja leyendo el DataFrame sin encabezados.
+        Estrategia:
+          1. Buscar filas que actúen como encabezado (contienen keywords de nivel Y verbos).
+          2. Cada fila-encabezado puede definir uno o más pares (col_nivel, col_verbos)
+             para tablas lado a lado en la misma hoja.
+          3. Los datos de cada tabla van desde su fila-encabezado+1 hasta la siguiente
+             fila-encabezado (o el fin de la hoja).
+        """
+        nrows, ncols = raw.shape
+        # table_defs: lista de (fila_header, [(col_nivel, col_verbos), ...])
+        table_defs = []
+
+        for r in range(nrows):
+            row = raw.iloc[r]
+            cols_nivel  = [c for c in range(ncols) if _es_nivel(row.iloc[c])]
+            cols_verbos = [c for c in range(ncols) if _es_verbos(row.iloc[c])]
+            if not cols_nivel or not cols_verbos:
+                continue
+            # Emparejar cada col_nivel con el col_verbos más cercano
+            pairs = []
+            usados = set()
+            for cn in cols_nivel:
+                candidatos = [cv for cv in cols_verbos if cv not in usados and cv != cn]
+                if not candidatos:
+                    continue
+                cv = min(candidatos, key=lambda v: abs(v - cn))
+                pairs.append((cn, cv))
+                usados.add(cv)
+            if pairs:
+                table_defs.append((r, pairs))
+
+        # Extraer datos de cada tabla
+        for t_idx, (hdr_row, pairs) in enumerate(table_defs):
+            end_row = table_defs[t_idx + 1][0] if t_idx + 1 < len(table_defs) else nrows
+            for dr in range(hdr_row + 1, end_row):
+                data = raw.iloc[dr]
+                for cn, cv in pairs:
+                    nivel_val   = str(data.iloc[cn]).strip() if cn < ncols else ''
+                    verbos_val  = str(data.iloc[cv]).strip() if cv < ncols else ''
+                    if nivel_val in ('', 'nan', 'NaN') or verbos_val in ('', 'nan', 'NaN'):
+                        continue
+                    _registrar(nivel_val, verbos_val)
+
+    leido = False
     for uploaded_file in uploaded_files:
+        if leido:
+            break
         try:
             uploaded_file.seek(0)
             xl = pd.ExcelFile(uploaded_file, engine='openpyxl')
-            # Leer TODAS las hojas con 'taxon' en el nombre
             hojas_tax = [
                 h for h in xl.sheet_names
-                if 'taxon' in unicodedata.normalize('NFKD', h.lower()).encode('ascii', 'ignore').decode('ascii')
+                if 'taxon' in _norm(h)
             ]
             for hoja in hojas_tax:
                 try:
-                    _parsear_hoja(xl.parse(hoja))
+                    raw = xl.parse(hoja, header=None)
+                    _parsear_hoja_raw(raw)
+                    if taxonomias:
+                        leido = True
                 except Exception:
                     continue
         except Exception:
             continue
 
-    # Dedup verbos preservando orden
     return {nivel: list(dict.fromkeys(verbos)) for nivel, verbos in taxonomias.items()}
 
 
