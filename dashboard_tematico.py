@@ -611,6 +611,54 @@ def normalizar_columnas(df: pd.DataFrame) -> pd.DataFrame:
 
 _TAXONOMIAS_MATRIZ_PATH = "data/raw/Taxonomias_MatrizBD.xlsx"
 
+# ── Dominio de cada subcategoría (clave normalizada sin acentos) ──────────────
+_SUBCAT_TO_DOMAIN: Dict[str, str] = {
+    'conocimiento':  'Cognitivo',
+    'comprension':   'Cognitivo',
+    'aplicacion':    'Cognitivo',
+    'analisis':      'Cognitivo',
+    'sintesis':      'Cognitivo',
+    'evaluacion':    'Cognitivo',
+    'creacion':      'Cognitivo',
+    'imitacion':     'Procedimental',
+    'manipulacion':  'Procedimental',
+    'precision':     'Procedimental',
+    'control':       'Procedimental',
+    'percepcion':    'Actitudinal',
+    'responder':     'Actitudinal',
+    'valorar':       'Actitudinal',
+    'organizar':     'Actitudinal',
+    'caracterizar':  'Actitudinal',
+}
+
+# Orden jerárquico (1=más básico … 15=más complejo) para priorizar al detectar
+_SUBCAT_ORDER: Dict[str, int] = {
+    'conocimiento': 1,  'comprension': 2,  'aplicacion': 3,
+    'analisis':     4,  'sintesis':    5,  'evaluacion': 6,
+    'imitacion':    7,  'manipulacion': 8, 'precision':  9, 'control': 10,
+    'percepcion':  11,  'responder':   12, 'valorar':   13,
+    'organizar':   14,  'caracterizar': 15,
+}
+
+# Colores por subcategoría (tonos del dominio)
+_SUBCAT_COLORS: Dict[str, str] = {
+    'Conocimiento': '#AED6F1', 'Comprension': '#5DADE2',
+    'Aplicacion':   '#2E86C1', 'Analisis':    '#1A5276',
+    'Sintesis':     '#7D3C98', 'Evaluacion':  '#922B21',
+    'Imitacion':    '#ABEBC6', 'Manipulacion': '#58D68D',
+    'Precision':    '#1E8449', 'Control':     '#0B5345',
+    'Percepcion':   '#FAD7A0', 'Responder':   '#F5B041',
+    'Valorar':      '#E67E22', 'Organizar':   '#D35400',
+    'Caracterizar': '#873600',
+}
+
+_DOMAIN_COLORS: Dict[str, str] = {
+    'Cognitivo':      '#2E86C1',
+    'Procedimental':  '#1E8449',
+    'Actitudinal':    '#E67E22',
+    'No identificado': '#BDC3C7',
+}
+
 # Mapeo explícito: nombre_subcategoria (normalizado sin acentos) → nivel Bloom
 _SUBCAT_TO_BLOOM: Dict[str, str] = {
     'conocimiento':  'Recordar',
@@ -1013,6 +1061,41 @@ def _creditos_unicos_programa(grupo: pd.DataFrame) -> int:
     return int(cred_num[cred_num > 0].sum())
 
 
+def _creditos_por_bloque(grupo: pd.DataFrame) -> Dict[str, int]:
+    """
+    Desglosa créditos únicos por bloque (Institucional, Disciplinar, Electivo).
+    Cada subject se cuenta una sola vez (primer valor no nulo de créditos).
+    """
+    asig_col = 'Nombre asignatura o modulo'
+    cred_col = next(
+        (c for c in grupo.columns if c.lower().replace('é', 'e') in ('creditos', 'credito')),
+        None
+    )
+    if asig_col not in grupo.columns or cred_col is None:
+        return {'Institucional': 0, 'Disciplinar': 0, 'Electivo': 0, 'Total': 0}
+
+    # Una fila por asignatura única (toma la primera fila con nombre)
+    asig_df = (
+        grupo.dropna(subset=[asig_col])
+        .groupby(asig_col, as_index=False)
+        .first()
+    )
+    asig_df = asig_df.copy()
+    asig_df[cred_col] = pd.to_numeric(asig_df[cred_col], errors='coerce').fillna(0)
+
+    def _sum_bloque(col_name: str) -> int:
+        if col_name not in asig_df.columns:
+            return 0
+        mask = asig_df[col_name].astype(str).str.strip().str.upper().isin(['X', 'SI', 'SÍ', '1', 'TRUE'])
+        return int(asig_df.loc[mask, cred_col].sum())
+
+    inst  = _sum_bloque('B.Institucional')
+    disc  = _sum_bloque('B.Disciplinar')
+    elec  = _sum_bloque('B.Electivo')
+    total = int(asig_df[asig_df[cred_col] > 0][cred_col].sum())
+    return {'Institucional': inst, 'Disciplinar': disc, 'Electivo': elec, 'Total': total}
+
+
 def pagina_inicio(df: pd.DataFrame):
     """Pagina de inicio con metricas generales."""
     st.title("Análisis Temático Microcurricular")
@@ -1097,15 +1180,39 @@ def pagina_inicio(df: pd.DataFrame):
     resumen_rows = []
     for prog in df['Programa'].unique():
         g = df[df['Programa'] == prog]
+        bloques = _creditos_por_bloque(g)
+        total_calc = bloques['Institucional'] + bloques['Disciplinar'] + bloques['Electivo']
+        total_real = bloques['Total']
+        diferencia = total_real - total_calc
         resumen_rows.append({
-            'Programa': prog,
-            'Registros': len(g),
-            'Asignaturas': g['Nombre asignatura o modulo'].nunique(),
-            'Semestres': g['Semestre'].nunique(),
-            'Créditos (únicos)': _creditos_unicos_programa(g)
+            'Programa':               prog,
+            'Registros':              len(g),
+            'Asignaturas':            g['Nombre asignatura o modulo'].nunique(),
+            'Semestres':              g['Semestre'].nunique(),
+            'Cr. Total':              total_real,
+            'Cr. Institucional':      bloques['Institucional'],
+            'Cr. Disciplinar':        bloques['Disciplinar'],
+            'Cr. Electivo':           bloques['Electivo'],
+            'Suma bloques':           total_calc,
+            '⚠ Diferencia':          diferencia,
         })
     resumen = pd.DataFrame(resumen_rows)
-    st.dataframe(resumen, use_container_width=True, hide_index=True)
+
+    # Semáforo en columna diferencia
+    def _color_dif(val):
+        if val == 0:
+            return 'background-color:#d4edda;color:#155724'
+        return 'background-color:#f8d7da;color:#721c24'
+
+    st.dataframe(
+        resumen.style.applymap(_color_dif, subset=['⚠ Diferencia']),
+        use_container_width=True, hide_index=True
+    )
+    st.caption(
+        "**Cr. Total**: suma de créditos únicos por asignatura (sin duplicar por número de RAs). "
+        "**Suma bloques**: B.Institucional + B.Disciplinar + B.Electivo. "
+        "Si **⚠ Diferencia ≠ 0** alguna asignatura no tiene bloque marcado en el Excel."
+    )
 
 
 def pagina_cobertura(df: pd.DataFrame, resultados: Dict):
@@ -2237,321 +2344,328 @@ def pagina_resumen_ejecutivo(df: pd.DataFrame, tendencias: Dict) -> None:
 
 
 def pagina_bloom_integracion(df: pd.DataFrame, taxonomias_externas: Dict | None = None):
-    """Pagina de Taxonomia de Bloom por semestre y Mapa de Integracion entre asignaturas."""
+    """Taxonomía por dominios/subcategorías de la BD y Mapa de Integración."""
     import math as _math
 
-    st.title("🎓 Taxonomía de Bloom e Integración Curricular")
+    st.title("🎓 Taxonomías Curriculares e Integración")
     st.markdown("---")
     st.info(
-        "Esta sección analiza dos dimensiones estratégicas del diseño curricular: "
-        "**¿Qué nivel cognitivo desarrolla el currículo por semestre?** (Taxonomía de Bloom) y "
-        "**¿Qué asignaturas comparten núcleos temáticos?** (Mapa de Integración). "
-        "Son herramientas clave para evaluar progresión cognitiva y articulación horizontal del plan de estudios."
+        "Clasifica los Resultados de Aprendizaje según los **dominios** (Cognitivo, Procedimental, Actitudinal) "
+        "y **subcategorías** definidas en la base de datos taxonómica (646 verbos). "
+        "Explore la distribución, la progresión por semestre y la articulación temática entre asignaturas."
     )
 
-    tab_bloom, tab_mapa = st.tabs([
-        "🧠 Taxonomía de Bloom por Semestre",
-        "🕸️ Mapa de Integración entre Asignaturas"
+    tab_dom, tab_sub, tab_prog, tab_ra, tab_mapa = st.tabs([
+        "🎯 Por Dominio",
+        "📊 Por Subcategoría",
+        "📈 Progresión",
+        "🔍 Explorar RAs",
+        "🕸️ Mapa de Integración",
     ])
 
-    # ─────────────────────────────────────────────────────────────────────────
-    # TAB 1 — TAXONOMÍA DE BLOOM
-    # ─────────────────────────────────────────────────────────────────────────
-    with tab_bloom:
-        st.subheader("Taxonomía de Bloom — Niveles de Pensamiento Cognitivo")
-        st.caption(
-            "La Taxonomía de Bloom clasifica los objetivos de aprendizaje en 6 niveles cognitivos, "
-            "desde el más básico (**Recordar**) hasta el más complejo (**Crear**). "
-            "Un currículo bien estructurado muestra progresión: semestres iniciales con niveles básicos "
-            "y semestres avanzados con niveles de orden superior (Analizar, Evaluar, Crear)."
+    # ── Construcción del lookup de verbos desde la BD taxonómica ─────────────
+    # verb_to_tax: {verbo_norm: (dominio, subcategoria_display, orden)}
+    verb_to_tax: Dict[str, tuple] = {}
+    subcat_display_map: Dict[str, str] = {}   # norm → display name
+
+    if taxonomias_externas:
+        for subcat_norm, verbos_bd in taxonomias_externas.items():
+            dominio  = _SUBCAT_TO_DOMAIN.get(subcat_norm, 'Cognitivo')
+            orden    = _SUBCAT_ORDER.get(subcat_norm, 0)
+            # Display name: title-case sin acentos ASCII → conservar original
+            subcat_display = subcat_norm.replace('comprension', 'Comprensión')\
+                                        .replace('aplicacion',  'Aplicación')\
+                                        .replace('analisis',    'Análisis')\
+                                        .replace('sintesis',    'Síntesis')\
+                                        .replace('evaluacion',  'Evaluación')\
+                                        .replace('creacion',    'Creación')\
+                                        .replace('imitacion',   'Imitación')\
+                                        .replace('manipulacion','Manipulación')\
+                                        .replace('precision',   'Precisión')\
+                                        .replace('percepcion',  'Percepción')\
+                                        .title()
+            subcat_display_map[subcat_norm] = subcat_display
+            for v in verbos_bd:
+                v_n = unicodedata.normalize('NFKD', v).encode('ascii', 'ignore').decode('ascii')
+                if v_n not in verb_to_tax or orden > verb_to_tax[v_n][2]:
+                    verb_to_tax[v_n] = (dominio, subcat_display, orden)
+        st.success(
+            f"✅ BD cargada: **{len(verb_to_tax)}** verbos únicos · "
+            f"**{len(subcat_display_map)}** subcategorías · "
+            f"**3** dominios (Cognitivo / Procedimental / Actitudinal)"
+        )
+    else:
+        st.warning(
+            "⚠️ No se encontró **Taxonomias_MatrizBD.xlsx** en `data/raw/`. "
+            "La clasificación usará solo los verbos base del diccionario interno."
         )
 
-        # ── Diccionario de verbos por nivel (orden importa: mayor orden = mayor prioridad) ──
-        BLOOM = {
-            "Recordar":   {
-                "verbos": ["identificar", "reconocer", "listar", "nombrar", "recordar",
-                           "definir", "enunciar", "señalar", "mencionar", "indicar",
-                           "citar", "repetir", "seleccionar", "reproducir", "describir"],
-                "color": "#95A5A6", "orden": 1,
-                "desc": "Recuperar información previamente aprendida"
-            },
-            "Comprender": {
-                "verbos": ["explicar", "interpretar", "resumir", "inferir", "parafrasear",
-                           "categorizar", "ejemplificar", "ilustrar", "generalizar",
-                           "relacionar", "contrastar", "clasificar", "comparar", "deducir"],
-                "color": "#3498DB", "orden": 2,
-                "desc": "Construir significado a partir de la información"
-            },
-            "Aplicar":    {
-                "verbos": ["aplicar", "resolver", "usar", "ejecutar", "implementar",
-                           "calcular", "operar", "practicar", "utilizar", "realizar",
-                           "desarrollar", "construir", "producir", "elaborar", "demostrar"],
-                "color": "#2ECC71", "orden": 3,
-                "desc": "Usar procedimientos en situaciones concretas"
-            },
-            "Analizar":   {
-                "verbos": ["analizar", "diferenciar", "examinar", "organizar", "descomponer",
-                           "discriminar", "estructurar", "integrar", "atribuir",
-                           "diagnosticar", "distinguir", "separar"],
-                "color": "#F39C12", "orden": 4,
-                "desc": "Descomponer en partes e identificar relaciones"
-            },
-            "Evaluar":    {
-                "verbos": ["evaluar", "justificar", "valorar", "criticar", "defender",
-                           "juzgar", "argumentar", "sustentar", "verificar", "comprobar",
-                           "fundamentar", "decidir", "priorizar", "validar"],
-                "color": "#E74C3C", "orden": 5,
-                "desc": "Emitir juicios de valor basados en criterios"
-            },
-            "Crear":      {
-                "verbos": ["diseñar", "crear", "proponer", "formular", "planear",
-                           "inventar", "combinar", "generar", "planificar", "innovar",
-                           "componer", "hipotetizar", "proyectar"],
-                "color": "#9B59B6", "orden": 6,
-                "desc": "Reunir elementos para producir algo nuevo"
-            },
-        }
+    def detectar_taxonomia(texto: str):
+        """Retorna (dominio, subcategoria) usando la BD taxonómica con stem matching."""
+        if not texto or str(texto).strip() in ('nan', ''):
+            return ('No identificado', 'No identificado')
+        t = unicodedata.normalize('NFKD', str(texto).lower()).encode('ascii', 'ignore').decode('ascii')
+        words_t = re.findall(r'\b[a-z]{3,}\b', t)
+        text_stems = [(w, _stem_es(w)) for w in words_t]
+        best_orden = -1
+        best_dom   = 'No identificado'
+        best_sub   = 'No identificado'
+        for v_n, (dom, sub, orden) in verb_to_tax.items():
+            if orden <= best_orden:
+                continue
+            if re.search(r'\b' + re.escape(v_n) + r'\b', t):
+                best_orden, best_dom, best_sub = orden, dom, sub
+                continue
+            v_stem = _stem_es(v_n)
+            if len(v_stem) < 4:
+                continue
+            for word, word_stem in text_stems:
+                if word_stem == v_stem or word.startswith(v_stem) or v_n.startswith(word_stem):
+                    best_orden, best_dom, best_sub = orden, dom, sub
+                    break
+        return (best_dom, best_sub)
 
-        # Enriquecer BLOOM con verbos de Taxonomias_MatrizBD.xlsx (si existe)
-        fuente_bloom = "diccionario por defecto"
-        if taxonomias_externas:
-            n_verbos_nuevos = 0
-            for subcat_norm, verbos_ext in taxonomias_externas.items():
-                # Mapeo explícito: subcategoría BD → nivel Bloom
-                bloom_nivel = _SUBCAT_TO_BLOOM.get(subcat_norm)
-                if bloom_nivel is None:
-                    # Fallback: buscar por substring (ej. "comprension" in "comprender")
-                    bloom_nivel = next(
-                        (k for k in BLOOM
-                         if subcat_norm in unicodedata.normalize('NFKD', k.lower()).encode('ascii', 'ignore').decode('ascii')
-                         or unicodedata.normalize('NFKD', k.lower()).encode('ascii', 'ignore').decode('ascii') in subcat_norm),
-                        None
-                    )
-                if bloom_nivel and bloom_nivel in BLOOM:
-                    antes = len(BLOOM[bloom_nivel]["verbos"])
-                    BLOOM[bloom_nivel]["verbos"] = list(dict.fromkeys(BLOOM[bloom_nivel]["verbos"] + verbos_ext))
-                    n_verbos_nuevos += len(BLOOM[bloom_nivel]["verbos"]) - antes
-            fuente_bloom = "**Taxonomias_MatrizBD.xlsx** (646 verbos, enriquecida)"
-            st.success(
-                f"✅ Verbos cargados desde {fuente_bloom}. "
-                f"+{n_verbos_nuevos} verbos nuevos · {len(BLOOM)} niveles activos."
+    df_tax = df.copy()
+    df_tax[['Dominio', 'Subcategoria']] = df_tax['Resultado de aprendizaje'].apply(
+        lambda x: pd.Series(detectar_taxonomia(x))
+    )
+
+    dominios_todos   = ['Cognitivo', 'Procedimental', 'Actitudinal', 'No identificado']
+    programas_todos  = sorted(df_tax['Programa'].unique().tolist())
+
+    # ── Filtros globales (fuera de los tabs) ──────────────────────────────────
+    with st.expander("🔧 Filtros", expanded=False):
+        col_f1, col_f2 = st.columns(2)
+        with col_f1:
+            dom_filter = st.multiselect(
+                "Dominio:", dominios_todos, default=[], key="tax_dom_filter"
+            )
+        with col_f2:
+            prog_filter = st.multiselect(
+                "Programa:", programas_todos, default=[], key="tax_prog_filter"
             )
 
-        # Build normalized verb lookup — higher order wins for ambiguous verbs
-        verb_lookup: Dict[str, tuple] = {}
-        for nivel, info in BLOOM.items():
-            for v in info["verbos"]:
-                v_n = unicodedata.normalize('NFKD', v).encode('ascii', 'ignore').decode('ascii')
-                if v_n not in verb_lookup or info["orden"] > verb_lookup[v_n][1]:
-                    verb_lookup[v_n] = (nivel, info["orden"])
+    df_filt = df_tax.copy()
+    if dom_filter:
+        df_filt = df_filt[df_filt['Dominio'].isin(dom_filter)]
+    if prog_filter:
+        df_filt = df_filt[df_filt['Programa'].isin(prog_filter)]
 
-        def detectar_bloom(texto: str) -> str:
-            if not texto or str(texto).strip() in ('nan', ''):
-                return "No identificado"
-            t = unicodedata.normalize('NFKD', str(texto).lower()).encode('ascii', 'ignore').decode('ascii')
-            # Tokenizar el RA en palabras individuales para comparación por stem
-            words_in_text = re.findall(r'\b[a-z]{3,}\b', t)
-            text_stems = [(w, _stem_es(w)) for w in words_in_text]
+    total_ras = len(df_filt)
 
-            best_orden = 0
-            best_nivel = "No identificado"
-            for v_n, (nivel, orden) in verb_lookup.items():
-                if orden <= best_orden:
-                    continue
-                # 1. Coincidencia exacta por palabra completa
-                if re.search(r'\b' + re.escape(v_n) + r'\b', t):
-                    best_orden = orden
-                    best_nivel = nivel
-                    continue
-                # 2. Coincidencia por stem: el verbo del RA comparte raíz con el verbo del diccionario
-                v_stem = _stem_es(v_n)
-                if len(v_stem) < 4:
-                    continue
-                for word, word_stem in text_stems:
-                    if word_stem == v_stem or word.startswith(v_stem) or v_n.startswith(word_stem):
-                        best_orden = orden
-                        best_nivel = nivel
-                        break
-            return best_nivel
+    # ─────────────────────────────────────────────────────────────────────────
+    # TAB 1 — POR DOMINIO
+    # ─────────────────────────────────────────────────────────────────────────
+    with tab_dom:
+        st.subheader("Distribución por Dominio Taxonómico")
+        st.caption(
+            "**Cognitivo**: qué sabe el estudiante (conocimiento, comprensión, análisis…). "
+            "**Procedimental**: qué sabe hacer (imitación → control). "
+            "**Actitudinal**: cómo actúa y valora (percepción → caracterizar)."
+        )
 
-        # Apply Bloom classification
-        df_bloom = df.copy()
-        df_bloom['Nivel_Bloom'] = df_bloom['Resultado de aprendizaje'].apply(detectar_bloom)
+        conteo_dom = df_filt['Dominio'].value_counts().reindex(dominios_todos, fill_value=0)
 
-        orden_niveles = ["Recordar", "Comprender", "Aplicar", "Analizar", "Evaluar", "Crear", "No identificado"]
-        colores_bloom = {n: BLOOM[n]["color"] for n in BLOOM}
-        colores_bloom["No identificado"] = "#ECF0F1"
-
-        # ── 1. Distribución global ────────────────────────────────────────────
-        conteo_global = df_bloom['Nivel_Bloom'].value_counts().reindex(orden_niveles, fill_value=0)
-        total_bloom = int(conteo_global.sum())
-
-        col_pie, col_ref = st.columns([1, 1])
-        with col_pie:
-            fig_pie = go.Figure(go.Pie(
-                labels=conteo_global.index.tolist(),
-                values=conteo_global.values.tolist(),
-                marker_colors=[colores_bloom[n] for n in conteo_global.index],
-                hole=0.35,
-                textinfo='label+percent'
+        col_d1, col_d2 = st.columns([1, 1])
+        with col_d1:
+            fig_dom_pie = go.Figure(go.Pie(
+                labels=conteo_dom.index.tolist(),
+                values=conteo_dom.values.tolist(),
+                marker_colors=[_DOMAIN_COLORS.get(d, '#BDC3C7') for d in conteo_dom.index],
+                hole=0.38,
+                textinfo='label+percent',
+                pull=[0.04 if d == 'No identificado' else 0 for d in conteo_dom.index]
             ))
-            fig_pie.update_layout(
-                title="Distribución global de niveles Bloom",
-                height=380, showlegend=False,
+            fig_dom_pie.update_layout(
+                title="% de RAs por dominio",
+                height=370, showlegend=False,
                 margin=dict(t=50, b=0, l=0, r=0)
             )
-            st.plotly_chart(fig_pie, use_container_width=True)
+            st.plotly_chart(fig_dom_pie, use_container_width=True)
 
-        with col_ref:
-            st.markdown("**Referencia de niveles:**")
-            for nivel in orden_niveles[:-1]:
-                pct = conteo_global.get(nivel, 0) / total_bloom * 100 if total_bloom > 0 else 0
+        with col_d2:
+            st.markdown("**Resumen de dominios:**")
+            for dom in dominios_todos:
+                n   = int(conteo_dom.get(dom, 0))
+                pct = n / total_ras * 100 if total_ras > 0 else 0
+                color = _DOMAIN_COLORS.get(dom, '#BDC3C7')
                 st.markdown(
-                    f"<div style='margin:5px 0'>"
-                    f"<span style='background:{colores_bloom[nivel]};padding:2px 10px;"
-                    f"border-radius:4px;color:white;font-size:0.82em;font-weight:bold'>"
-                    f"N{BLOOM[nivel]['orden']} {nivel}</span> "
-                    f"<span style='font-size:0.78em;color:#555'>{BLOOM[nivel]['desc']}</span><br>"
-                    f"<b>{pct:.1f}%</b> ({conteo_global.get(nivel, 0)} RAs)"
+                    f"<div style='margin:8px 0;padding:8px 12px;border-left:4px solid {color};"
+                    f"border-radius:4px;background:#f8f9fa'>"
+                    f"<b style='color:{color}'>{dom}</b><br>"
+                    f"<span style='font-size:1.3em;font-weight:bold'>{n}</span> RAs "
+                    f"<span style='color:#666'>({pct:.1f}%)</span>"
                     f"</div>",
                     unsafe_allow_html=True
                 )
 
-        # Diagnóstico automático
-        if total_bloom > 0:
-            pct_no_id = conteo_global.get("No identificado", 0) / total_bloom * 100
-            pct_altos = sum(conteo_global.get(n, 0) for n in ["Analizar", "Evaluar", "Crear"]) / total_bloom * 100
-            pct_bajos = sum(conteo_global.get(n, 0) for n in ["Recordar", "Comprender"]) / total_bloom * 100
-            if pct_no_id > 40:
-                st.warning(
-                    f"⚠️ **{pct_no_id:.0f}%** de los RAs no pudieron clasificarse por Bloom. "
-                    "Los textos pueden no iniciar con verbos de acción estandarizados."
-                )
-            if pct_altos >= 30:
-                st.success(
-                    f"✅ **{pct_altos:.0f}%** de los RAs están en niveles de orden superior "
-                    "(Analizar / Evaluar / Crear). Indica formación orientada al pensamiento crítico."
-                )
-            if pct_bajos > 55 and pct_no_id < 40:
-                st.info(
-                    f"📌 **{pct_bajos:.0f}%** de los RAs están en niveles básicos "
-                    "(Recordar / Comprender). Verifique si los semestres avanzados incluyen "
-                    "objetivos de mayor complejidad cognitiva."
-                )
-
+        # Distribución por programa
         st.markdown("---")
-
-        # ── 2. Progresión cognitiva por semestre ──────────────────────────────
-        st.subheader("Progresión Cognitiva por Semestre")
-        st.caption(
-            "Muestra cómo cambia la proporción de niveles Bloom a lo largo de los semestres. "
-            "Un currículo progresivo debería mostrar crecimiento de las bandas superiores "
-            "(Analizar/Evaluar/Crear) hacia los últimos semestres."
+        st.subheader("Distribución por Dominio y Programa")
+        prog_dom = (
+            df_filt.groupby(['Programa', 'Dominio'])
+            .size().reset_index(name='RAs')
         )
-
-        prog_bloom_filter = st.multiselect(
-            "Filtrar por programa (dejar vacío = todos los programas):",
-            sorted(df_bloom['Programa'].unique().tolist()),
-            default=[],
-            key="bloom_prog_filter"
+        total_prog = prog_dom.groupby('Programa')['RAs'].transform('sum')
+        prog_dom['pct'] = prog_dom['RAs'] / total_prog * 100
+        fig_bar_dom = px.bar(
+            prog_dom, x='Programa', y='pct', color='Dominio',
+            color_discrete_map=_DOMAIN_COLORS,
+            category_orders={'Dominio': dominios_todos},
+            barmode='stack', text_auto='.0f',
+            labels={'pct': '% RAs', 'Programa': ''},
+            title="Composición por dominio (%) por programa"
         )
-        df_bloom_filt = df_bloom[df_bloom['Programa'].isin(prog_bloom_filter)] if prog_bloom_filter else df_bloom
-
-        df_sem = df_bloom_filt.copy()
-        df_sem['Semestre_num'] = pd.to_numeric(df_sem['Semestre'], errors='coerce')
-        df_sem = df_sem.dropna(subset=['Semestre_num'])
-        df_sem['Semestre_num'] = df_sem['Semestre_num'].astype(int)
-
-        if df_sem.empty:
-            st.warning("No hay registros con semestre numérico válido para mostrar la progresión.")
-        else:
-            pivot_sem = (
-                df_sem.groupby(['Semestre_num', 'Nivel_Bloom'])
-                .size()
-                .reset_index(name='count')
-            )
-            total_sem_grp = pivot_sem.groupby('Semestre_num')['count'].transform('sum')
-            pivot_sem['pct'] = pivot_sem['count'] / total_sem_grp * 100
-
-            sems_ordenados = sorted(df_sem['Semestre_num'].unique())
-            lvls_en_datos = [n for n in orden_niveles[:-1] if n in pivot_sem['Nivel_Bloom'].values]
-
-            fig_prog = go.Figure()
-            for nivel in lvls_en_datos:
-                datos_nivel = pivot_sem[pivot_sem['Nivel_Bloom'] == nivel]
-                sem_val_map = {int(r['Semestre_num']): r['pct'] for _, r in datos_nivel.iterrows()}
-                y_vals = [sem_val_map.get(s, 0) for s in sems_ordenados]
-                fig_prog.add_trace(go.Scatter(
-                    x=sems_ordenados,
-                    y=y_vals,
-                    name=nivel,
-                    mode='lines+markers',
-                    line=dict(color=colores_bloom[nivel], width=2.5),
-                    marker=dict(size=7),
-                    stackgroup='one',
-                    groupnorm='percent'
-                ))
-            fig_prog.update_layout(
-                title="Composición por nivel Bloom (%) a lo largo del plan de estudios",
-                xaxis_title="Semestre",
-                yaxis_title="% de resultados de aprendizaje",
-                height=430,
-                legend=dict(orientation='h', y=-0.25),
-                xaxis=dict(tickmode='array', tickvals=sems_ordenados)
-            )
-            st.plotly_chart(fig_prog, use_container_width=True)
-            st.caption(
-                "**Lectura:** Cada banda de color es un nivel Bloom. "
-                "Si las bandas superiores (Evaluar/Crear — rojo/morado) crecen hacia la derecha, "
-                "el currículo muestra progresión cognitiva ascendente. "
-                "Si son constantes o disminuyen, hay oportunidad de rediseño."
-            )
-
-        st.markdown("---")
-
-        # ── 3. Por programa (barras apiladas 100%) ────────────────────────────
-        st.subheader("Distribución Bloom por Programa")
-        prog_bloom_data = (
-            df_bloom.groupby(['Programa', 'Nivel_Bloom'])
-            .size()
-            .reset_index(name='count')
-        )
-        total_prog_grp = prog_bloom_data.groupby('Programa')['count'].transform('sum')
-        prog_bloom_data['pct'] = prog_bloom_data['count'] / total_prog_grp * 100
-
-        lvls_prog = [n for n in orden_niveles if n in prog_bloom_data['Nivel_Bloom'].values]
-        fig_bar_prog = px.bar(
-            prog_bloom_data[prog_bloom_data['Nivel_Bloom'].isin(lvls_prog)],
-            x='Programa', y='pct', color='Nivel_Bloom',
-            color_discrete_map=colores_bloom,
-            category_orders={'Nivel_Bloom': lvls_prog},
-            title="Distribución de niveles Bloom por programa (100% apilado)",
-            labels={'pct': '% de RAs', 'Programa': '', 'Nivel_Bloom': 'Nivel'},
-            barmode='stack', text_auto='.0f'
-        )
-        fig_bar_prog.update_layout(height=420, xaxis_tickangle=15, yaxis_title="% de RAs")
-        st.plotly_chart(fig_bar_prog, use_container_width=True)
-
-        st.markdown("---")
-
-        # ── 4. Explorar RAs por nivel ─────────────────────────────────────────
-        st.subheader("Explorar Resultados de Aprendizaje por Nivel")
-        nivel_sel = st.selectbox(
-            "Selecciona un nivel Bloom para ver los RAs correspondientes:",
-            orden_niveles,
-            key="nivel_bloom_sel"
-        )
-        df_nivel = (
-            df_bloom[df_bloom['Nivel_Bloom'] == nivel_sel]
-            [['Programa', 'Semestre', 'Nombre asignatura o modulo', 'Resultado de aprendizaje']]
-            .drop_duplicates()
-            .sort_values(['Programa', 'Semestre'])
-        )
-        st.markdown(f"**{len(df_nivel)} resultados de aprendizaje** en nivel **{nivel_sel}**")
-        st.dataframe(df_nivel, use_container_width=True, hide_index=True)
+        fig_bar_dom.update_layout(height=400, xaxis_tickangle=15, yaxis_title="% de RAs",
+                                   legend=dict(orientation='h', y=-0.25))
+        st.plotly_chart(fig_bar_dom, use_container_width=True)
 
     # ─────────────────────────────────────────────────────────────────────────
-    # TAB 2 — MAPA DE INTEGRACIÓN
+    # TAB 2 — POR SUBCATEGORÍA
+    # ─────────────────────────────────────────────────────────────────────────
+    with tab_sub:
+        st.subheader("Distribución por Subcategoría")
+        st.caption("Seleccione uno o más dominios para filtrar las subcategorías mostradas.")
+
+        dom_sub_filter = st.multiselect(
+            "Dominio a mostrar:",
+            ['Cognitivo', 'Procedimental', 'Actitudinal'],
+            default=['Cognitivo', 'Procedimental', 'Actitudinal'],
+            key="tax_dom_sub_filter"
+        )
+        df_sub = df_filt[df_filt['Dominio'].isin(dom_sub_filter)] if dom_sub_filter else df_filt
+        df_sub = df_sub[df_sub['Subcategoria'] != 'No identificado']
+
+        conteo_sub = (
+            df_sub.groupby(['Dominio', 'Subcategoria'])
+            .size().reset_index(name='RAs')
+            .sort_values(['Dominio', 'RAs'], ascending=[True, False])
+        )
+
+        if conteo_sub.empty:
+            st.info("No hay datos para las subcategorías seleccionadas.")
+        else:
+            fig_sub_bar = px.bar(
+                conteo_sub, x='RAs', y='Subcategoria', color='Dominio',
+                color_discrete_map=_DOMAIN_COLORS,
+                orientation='h', text='RAs',
+                labels={'RAs': 'Resultados de Aprendizaje', 'Subcategoria': ''},
+                title="RAs clasificados por subcategoría taxonómica"
+            )
+            fig_sub_bar.update_layout(height=max(350, len(conteo_sub) * 30),
+                                       yaxis={'categoryorder': 'total ascending'},
+                                       legend=dict(orientation='h', y=-0.15))
+            st.plotly_chart(fig_sub_bar, use_container_width=True)
+
+            # Tabla resumen con % por subcategoría
+            total_sub = int(conteo_sub['RAs'].sum())
+            conteo_sub['%'] = (conteo_sub['RAs'] / total_sub * 100).round(1)
+            st.dataframe(
+                conteo_sub[['Dominio', 'Subcategoria', 'RAs', '%']]
+                .reset_index(drop=True),
+                use_container_width=True, hide_index=True
+            )
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # TAB 3 — PROGRESIÓN POR SEMESTRE
+    # ─────────────────────────────────────────────────────────────────────────
+    with tab_prog:
+        st.subheader("Progresión por Semestre")
+        st.caption(
+            "Un currículo progresivo muestra dominios procedimentales y actitudinales crecientes "
+            "hacia semestres superiores, junto con subcategorías cognitivas más complejas."
+        )
+
+        prog_prog_filter = st.multiselect(
+            "Programa (vacío = todos):",
+            programas_todos, default=[], key="tax_prog_prog_filter"
+        )
+        vista_prog = st.radio(
+            "Agrupar por:", ["Dominio", "Subcategoría"], horizontal=True, key="tax_vista_prog"
+        )
+
+        df_p = df_filt[df_filt['Programa'].isin(prog_prog_filter)] if prog_prog_filter else df_filt
+        df_p = df_p.copy()
+        df_p['Semestre_num'] = pd.to_numeric(df_p['Semestre'], errors='coerce')
+        df_p = df_p.dropna(subset=['Semestre_num'])
+        df_p['Semestre_num'] = df_p['Semestre_num'].astype(int)
+
+        if df_p.empty:
+            st.warning("No hay datos con semestre numérico para mostrar la progresión.")
+        else:
+            group_col = 'Dominio' if vista_prog == "Dominio" else 'Subcategoria'
+            pivot_p = (
+                df_p.groupby(['Semestre_num', group_col])
+                .size().reset_index(name='count')
+            )
+            total_g = pivot_p.groupby('Semestre_num')['count'].transform('sum')
+            pivot_p['pct'] = pivot_p['count'] / total_g * 100
+            sems_ord = sorted(df_p['Semestre_num'].unique())
+
+            color_map_prog = _DOMAIN_COLORS if vista_prog == "Dominio" else {
+                row[group_col]: _SUBCAT_COLORS.get(row[group_col], '#BDC3C7')
+                for _, row in pivot_p.iterrows()
+            }
+            cats_presentes = pivot_p[group_col].unique().tolist()
+
+            fig_p = go.Figure()
+            for cat in cats_presentes:
+                datos_cat = pivot_p[pivot_p[group_col] == cat]
+                val_map   = {int(r['Semestre_num']): r['pct'] for _, r in datos_cat.iterrows()}
+                y_vals    = [val_map.get(s, 0) for s in sems_ord]
+                fig_p.add_trace(go.Scatter(
+                    x=sems_ord, y=y_vals, name=cat,
+                    mode='lines+markers',
+                    line=dict(color=color_map_prog.get(cat, '#BDC3C7'), width=2.5),
+                    marker=dict(size=7),
+                    stackgroup='one', groupnorm='percent'
+                ))
+            fig_p.update_layout(
+                title=f"Composición por {group_col} (%) por semestre",
+                xaxis_title="Semestre", yaxis_title="% de RAs",
+                height=450,
+                legend=dict(orientation='h', y=-0.3),
+                xaxis=dict(tickmode='array', tickvals=sems_ord)
+            )
+            st.plotly_chart(fig_p, use_container_width=True)
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # TAB 4 — EXPLORAR RAs
+    # ─────────────────────────────────────────────────────────────────────────
+    with tab_ra:
+        st.subheader("Explorar Resultados de Aprendizaje")
+
+        col_e1, col_e2, col_e3 = st.columns(3)
+        with col_e1:
+            dom_e = st.selectbox(
+                "Dominio:", ['Todos'] + dominios_todos, key="tax_dom_e"
+            )
+        with col_e2:
+            subcats_disp = sorted(df_tax['Subcategoria'].unique().tolist())
+            sub_e = st.selectbox(
+                "Subcategoría:", ['Todas'] + subcats_disp, key="tax_sub_e"
+            )
+        with col_e3:
+            prog_e = st.selectbox(
+                "Programa:", ['Todos'] + programas_todos, key="tax_prog_e"
+            )
+
+        df_e = df_tax.copy()
+        if dom_e != 'Todos':
+            df_e = df_e[df_e['Dominio'] == dom_e]
+        if sub_e != 'Todas':
+            df_e = df_e[df_e['Subcategoria'] == sub_e]
+        if prog_e != 'Todos':
+            df_e = df_e[df_e['Programa'] == prog_e]
+
+        cols_show = ['Programa', 'Semestre', 'Nombre asignatura o modulo',
+                     'Resultado de aprendizaje', 'Dominio', 'Subcategoria']
+        cols_show = [c for c in cols_show if c in df_e.columns]
+        df_e_show = df_e[cols_show].drop_duplicates().sort_values(['Programa', 'Semestre'])
+        st.markdown(f"**{len(df_e_show)} RAs** coinciden con los filtros seleccionados.")
+        st.dataframe(df_e_show, use_container_width=True, hide_index=True)
+
+    # ─────────────────────────────────────────────────────────────────────────
     # ─────────────────────────────────────────────────────────────────────────
     with tab_mapa:
         st.subheader("Mapa de Integración entre Asignaturas")
