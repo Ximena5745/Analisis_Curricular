@@ -1143,7 +1143,10 @@ def leer_totales_programa(uploaded_files) -> Dict[str, Dict[str, int]]:
                     # Leer el crédito de la misma fila en la columna de Créditos
                     raw_val = (raw.iloc[r, cred_col_idx]
                                if cred_col_idx < ncols else None)
-                    val = int(float(raw_val)) if pd.notna(raw_val) else 0
+                    try:
+                        val = int(float(raw_val)) if pd.notna(raw_val) else 0
+                    except (ValueError, TypeError):
+                        val = 0
 
                     if 'total creditos programa' in cn or 'total creditos del programa' in cn:
                         pt['total'] = val
