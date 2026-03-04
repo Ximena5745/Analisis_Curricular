@@ -41,256 +41,6 @@ st.set_page_config(
 )
 
 # ============================================================================
-# ESTILOS VISUALES — POLITECNICO GRANCOLOMBIANO
-# Paleta: Azul institucional #003F8A / Azul medio #0077C8 / Naranja acento #F7941D
-# ============================================================================
-
-st.markdown("""
-<style>
-/* ── Fuente base ─────────────────────────────────────────────────────────── */
-html, body, [class*="css"] {
-    font-family: 'Segoe UI', 'Inter', sans-serif;
-}
-
-/* ── Barra lateral ──────────────────────────────────────────────────────── */
-[data-testid="stSidebar"] {
-    background: linear-gradient(180deg, #003F8A 0%, #00285A 100%);
-}
-[data-testid="stSidebar"] * {
-    color: #FFFFFF !important;
-}
-[data-testid="stSidebar"] .stRadio label {
-    background: rgba(255,255,255,0.08);
-    border-radius: 8px;
-    padding: 6px 10px;
-    margin: 3px 0;
-    display: block;
-    transition: background 0.2s;
-}
-[data-testid="stSidebar"] .stRadio label:hover {
-    background: rgba(247,148,29,0.35) !important;
-}
-[data-testid="stSidebar"] .stRadio [aria-checked="true"] + div label,
-[data-testid="stSidebar"] input[type="radio"]:checked ~ label {
-    background: rgba(247,148,29,0.5) !important;
-    border-left: 3px solid #F7941D;
-}
-[data-testid="stSidebar"] hr {
-    border-color: rgba(255,255,255,0.2) !important;
-}
-[data-testid="stSidebar"] .stFileUploader {
-    background: rgba(255,255,255,0.08);
-    border-radius: 8px;
-    padding: 8px;
-}
-
-/* ── Encabezados principales ─────────────────────────────────────────────── */
-h1 {
-    color: #003F8A !important;
-    border-bottom: 3px solid #F7941D;
-    padding-bottom: 8px;
-}
-h2 {
-    color: #0077C8 !important;
-    border-left: 4px solid #F7941D;
-    padding-left: 10px;
-}
-h3 {
-    color: #003F8A !important;
-}
-
-/* ── Tarjetas de métricas ─────────────────────────────────────────────────── */
-[data-testid="stMetric"] {
-    background: linear-gradient(135deg, #EAF4FF 0%, #F0F8FF 100%);
-    border: 1px solid #B8D9F5;
-    border-left: 4px solid #0077C8;
-    border-radius: 10px;
-    padding: 14px 16px !important;
-    box-shadow: 0 2px 6px rgba(0,63,138,0.08);
-}
-[data-testid="stMetricValue"] {
-    color: #003F8A !important;
-    font-weight: 700 !important;
-}
-[data-testid="stMetricLabel"] {
-    color: #005A9E !important;
-    font-size: 0.85em !important;
-}
-
-/* ── Cuadros info / warning / success / error ────────────────────────────── */
-[data-testid="stAlert"][data-baseweb="notification"] {
-    border-radius: 10px !important;
-    border-left-width: 5px !important;
-}
-div[data-testid="stAlert"] > div[role="alert"] {
-    border-radius: 10px;
-}
-
-/* Info → azul Politécnico */
-div[data-baseweb="notification"][kind="info"],
-div[class*="stInfo"] {
-    background-color: #E8F2FC !important;
-    border-left: 5px solid #0077C8 !important;
-    color: #003F8A !important;
-}
-
-/* Success → verde */
-div[data-baseweb="notification"][kind="positive"] {
-    background-color: #EAFAF1 !important;
-    border-left: 5px solid #27AE60 !important;
-}
-
-/* Warning → naranja Politécnico */
-div[data-baseweb="notification"][kind="warning"] {
-    background-color: #FEF5E7 !important;
-    border-left: 5px solid #F7941D !important;
-    color: #7D4A00 !important;
-}
-
-/* Error → rojo */
-div[data-baseweb="notification"][kind="negative"] {
-    background-color: #FDEDEC !important;
-    border-left: 5px solid #E74C3C !important;
-}
-
-/* ── Tabs ────────────────────────────────────────────────────────────────── */
-[data-testid="stTabs"] [role="tablist"] {
-    border-bottom: 2px solid #0077C8;
-    gap: 4px;
-}
-[data-testid="stTabs"] [role="tab"] {
-    background: #EAF4FF;
-    border-radius: 8px 8px 0 0;
-    color: #003F8A;
-    font-weight: 500;
-    padding: 8px 18px;
-    border: 1px solid #B8D9F5;
-    border-bottom: none;
-    transition: background 0.2s;
-}
-[data-testid="stTabs"] [role="tab"]:hover {
-    background: #D0EAFF;
-}
-[data-testid="stTabs"] [role="tab"][aria-selected="true"] {
-    background: #0077C8 !important;
-    color: #FFFFFF !important;
-    border-color: #0077C8;
-}
-
-/* ── Botones ─────────────────────────────────────────────────────────────── */
-.stButton > button, .stDownloadButton > button {
-    background: linear-gradient(135deg, #0077C8, #003F8A) !important;
-    color: white !important;
-    border: none !important;
-    border-radius: 8px !important;
-    padding: 8px 22px !important;
-    font-weight: 600 !important;
-    box-shadow: 0 3px 8px rgba(0,63,138,0.25) !important;
-    transition: transform 0.15s, box-shadow 0.15s !important;
-}
-.stButton > button:hover, .stDownloadButton > button:hover {
-    transform: translateY(-1px) !important;
-    box-shadow: 0 5px 14px rgba(0,63,138,0.35) !important;
-    background: linear-gradient(135deg, #F7941D, #D4770A) !important;
-}
-
-/* ── Expanders ───────────────────────────────────────────────────────────── */
-details {
-    border: 1px solid #B8D9F5 !important;
-    border-radius: 8px !important;
-    margin-bottom: 6px !important;
-}
-details summary {
-    background: linear-gradient(90deg, #EAF4FF, #F8FCFF) !important;
-    color: #003F8A !important;
-    font-weight: 500;
-    border-radius: 8px;
-    padding: 8px 14px;
-}
-details[open] summary {
-    border-bottom: 2px solid #0077C8;
-    border-radius: 8px 8px 0 0;
-}
-
-/* ── Selectbox / Multiselect ─────────────────────────────────────────────── */
-[data-testid="stMultiSelect"] [data-baseweb="tag"] {
-    background: #0077C8 !important;
-    color: white !important;
-    border-radius: 5px;
-}
-
-/* ── Tabla dataframe ─────────────────────────────────────────────────────── */
-[data-testid="stDataFrame"] {
-    border: 1px solid #B8D9F5 !important;
-    border-radius: 8px !important;
-    overflow: hidden;
-}
-
-/* ── Divisor horizontal ─────────────────────────────────────────────────── */
-hr {
-    border: none;
-    border-top: 2px solid #E0EEF8;
-    margin: 20px 0;
-}
-
-/* ── Caption / pequeño texto ─────────────────────────────────────────────── */
-[data-testid="stCaptionContainer"] p,
-small, .caption {
-    color: #5A7FA8 !important;
-}
-
-/* ── Spinner ─────────────────────────────────────────────────────────────── */
-[data-testid="stSpinner"] > div {
-    border-top-color: #0077C8 !important;
-}
-
-/* ── Header institucional (banner) ──────────────────────────────────────── */
-.poligran-header {
-    background: linear-gradient(135deg, #003F8A 0%, #0077C8 60%, #005A9E 100%);
-    padding: 18px 28px;
-    border-radius: 12px;
-    margin-bottom: 18px;
-    box-shadow: 0 4px 15px rgba(0,63,138,0.25);
-    display: flex;
-    align-items: center;
-    gap: 16px;
-}
-.poligran-header h2 {
-    color: white !important;
-    border: none !important;
-    padding: 0 !important;
-    margin: 0;
-    font-size: 1.4em;
-}
-.poligran-header p {
-    color: rgba(255,255,255,0.85) !important;
-    margin: 4px 0 0 0;
-    font-size: 0.95em;
-}
-.poligran-badge {
-    background: #F7941D;
-    color: white;
-    font-size: 0.72em;
-    font-weight: 700;
-    padding: 3px 10px;
-    border-radius: 20px;
-    letter-spacing: 0.5px;
-    display: inline-block;
-    margin-top: 6px;
-}
-
-/* ── Sección con fondo suave ─────────────────────────────────────────────── */
-.section-card {
-    background: #F5FAFF;
-    border: 1px solid #D0E8F8;
-    border-radius: 10px;
-    padding: 16px 20px;
-    margin: 10px 0;
-}
-</style>
-""", unsafe_allow_html=True)
-
-# ============================================================================
 # TENDENCIAS GLOBALES POR DEFECTO
 # ============================================================================
 
@@ -2383,119 +2133,42 @@ def main():
     )
 
     if not uploaded_files:
-        # ── Banner institucional ───────────────────────────────────────────
-        st.markdown("""
-        <div class="poligran-header">
-            <div>
-                <h2>📊 Sistema de Análisis Microcurricular</h2>
-                <p>Herramienta para el análisis temático, cognitivo e integrador del plan de estudios</p>
-                <span class="poligran-badge">POLITÉCNICO GRANCOLOMBIANO</span>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-
-        # ── Descripción de módulos ─────────────────────────────────────────
-        st.markdown("### ¿Qué puedes analizar con esta herramienta?")
-
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.markdown("""
-            <div class="section-card">
-                <h3 style="color:#003F8A;margin-top:0">📋 Resumen Ejecutivo</h3>
-                <p style="font-size:0.88em;color:#444">Alertas automáticas, fortalezas detectadas y
-                recomendaciones priorizadas para comités académicos y procesos de autoevaluación.</p>
-            </div>
-            <div class="section-card" style="margin-top:10px">
-                <h3 style="color:#003F8A;margin-top:0">📊 Tipo de Saber</h3>
-                <p style="font-size:0.88em;color:#444">Distribución de <b>Saber</b>, <b>SaberHacer</b>
-                y <b>SaberSer</b> por semestre, programa y asignatura. Diagnóstico de balance.</p>
-            </div>
-            <div class="section-card" style="margin-top:10px">
-                <h3 style="color:#003F8A;margin-top:0">🗂️ Cobertura Temática</h3>
-                <p style="font-size:0.88em;color:#444">Núcleos temáticos: diversidad,
-                densidad y solapamiento entre programas. Matriz de núcleos.</p>
-            </div>
-            """, unsafe_allow_html=True)
-
-        with col2:
-            st.markdown("""
-            <div class="section-card">
-                <h3 style="color:#0077C8;margin-top:0">🌍 Tendencias Globales</h3>
-                <p style="font-size:0.88em;color:#444">Alineación del currículo con tendencias como
-                Sostenibilidad, IA, Transformación Digital, Innovación y Ética.</p>
-            </div>
-            <div class="section-card" style="margin-top:10px">
-                <h3 style="color:#0077C8;margin-top:0">🔍 Minería de Texto</h3>
-                <p style="font-size:0.88em;color:#444">Análisis TF-IDF de términos relevantes,
-                n-gramas frecuentes y similitud entre asignaturas para detectar redundancias.</p>
-            </div>
-            <div class="section-card" style="margin-top:10px">
-                <h3 style="color:#0077C8;margin-top:0">📄 Explorar Datos</h3>
-                <p style="font-size:0.88em;color:#444">Filtrar y explorar todos los registros
-                cargados por programa, tipo de saber y semestre. Exportar a CSV.</p>
-            </div>
-            """, unsafe_allow_html=True)
-
-        with col3:
-            st.markdown("""
-            <div class="section-card" style="border-left:4px solid #F7941D">
-                <h3 style="color:#003F8A;margin-top:0">🎓 Bloom & Integración</h3>
-                <p style="font-size:0.88em;color:#444"><b>Taxonomía de Bloom:</b> clasificación cognitiva
-                de RAs (Recordar→Crear) y progresión por semestre.<br>
-                <b>Mapa de integración:</b> red que muestra qué asignaturas comparten núcleos temáticos.</p>
-            </div>
-            <div class="section-card" style="margin-top:10px;border-left:4px solid #F7941D">
-                <h3 style="color:#003F8A;margin-top:0">⚙️ Configurar Tendencias</h3>
-                <p style="font-size:0.88em;color:#444">Personaliza las tendencias globales a detectar:
-                agrega, edita o elimina tendencias con sus palabras clave. Exporta/importa en JSON.</p>
-            </div>
-            """, unsafe_allow_html=True)
-
+        # Pantalla de bienvenida
+        st.title("Analisis Tematico Microcurricular")
         st.markdown("---")
+        st.markdown("""
+        ### Bienvenido al sistema de analisis tematico avanzado
 
-        # ── Cómo empezar ──────────────────────────────────────────────────
-        col_how, col_struct = st.columns([1, 1])
-        with col_how:
-            st.markdown("""
-            <div class="section-card">
-            <h3 style="color:#003F8A;margin-top:0">🚀 Cómo empezar</h3>
+        Este dashboard analiza los programas academicos en 3 dimensiones:
 
-            1. Sube uno o más archivos **Excel (.xlsx)** en el panel lateral izquierdo
-            2. Los archivos deben contener la hoja **'Paso 5 Estrategias micro'** con encabezados en la **fila 2**
-            3. El análisis se ejecuta automáticamente al cargar los archivos
-            4. Navega por las secciones usando el menú lateral
+        1. **Cobertura y Densidad Tematica** - Nucleos tematicos, diversidad, solapamiento
+        2. **Alineacion con Tendencias Globales** - Sostenibilidad, IA, Innovacion, etc.
+        3. **Mineria de Texto (NLP)** - TF-IDF, n-gramas, similitud entre asignaturas
 
-            > **Puedes cargar varios programas a la vez** para análisis comparativos.
-            </div>
-            """, unsafe_allow_html=True)
+        ---
 
-        with col_struct:
-            st.markdown("""
-            <div class="section-card">
-            <h3 style="color:#003F8A;margin-top:0">📋 Estructura esperada del Excel</h3>
-            </div>
-            """, unsafe_allow_html=True)
-            st.table(pd.DataFrame({
-                "Columna": [
-                    "Tipo de Saber",
-                    "Resultado de aprendizaje",
-                    "Nombre asignatura o modulo",
-                    "Indicadores de logro",
-                    "Nucleos tematicos",
-                    "Semestre",
-                    "Creditos"
-                ],
-                "Descripción": [
-                    "Saber / SaberHacer / SaberSer",
-                    "Texto del resultado de aprendizaje (verbo de acción)",
-                    "Nombre de la asignatura o módulo",
-                    "Indicadores de evaluación del RA",
-                    "Temas separados por coma o punto y coma",
-                    "Número de semestre (1, 2, 3…)",
-                    "Créditos académicos de la asignatura"
-                ]
-            }))
+        ### Como empezar
 
+        1. Sube tus archivos Excel (.xlsx) en el panel lateral izquierdo
+        2. Los archivos deben tener la hoja **'Paso 5 Estrategias micro'** con encabezados en la fila 2
+        3. El analisis se ejecutara automaticamente al cargar los archivos
+
+        ---
+
+        ### Estructura esperada del Excel
+
+        | Columna | Descripcion |
+        |---------|-------------|
+        | Tipo de Saber | Saber, SaberHacer, SaberSer |
+        | Resultado de aprendizaje | Texto del RA |
+        | Nombre asignatura o modulo | Nombre de la asignatura |
+        | Indicadores de logro | Texto de indicadores |
+        | Nucleos tematicos | Temas separados por coma o punto y coma |
+
+        ---
+
+        > Puedes configurar las **tendencias globales** a detectar en la pagina "Configurar Tendencias"
+        """)
         st.stop()
 
     # Procesar archivos
@@ -2509,19 +2182,12 @@ def main():
         st.stop()
 
     # Info sidebar
+    st.sidebar.success(f"{len(uploaded_files)} archivos cargados")
     st.sidebar.markdown(
-        f"""
-        <div style='background:rgba(247,148,29,0.15);border:1px solid rgba(247,148,29,0.4);
-        border-radius:8px;padding:10px 14px;margin-bottom:8px'>
-        <div style='font-size:0.78em;color:rgba(255,255,255,0.7);margin-bottom:4px'>
-        ✅ {len(uploaded_files)} archivo(s) cargado(s)</div>
-        <div style='font-size:0.82em;color:#fff'>
-        <b>{df['Programa'].nunique()}</b> programas &nbsp;|&nbsp;
-        <b>{df['Nombre asignatura o modulo'].nunique()}</b> asignaturas<br>
-        <b>{len(df):,}</b> registros procesados
-        </div></div>
-        """,
-        unsafe_allow_html=True
+        f"**Datos procesados:**\n"
+        f"- {len(df)} registros\n"
+        f"- {df['Programa'].nunique()} programas\n"
+        f"- {df['Nombre asignatura o modulo'].nunique()} asignaturas"
     )
 
     st.sidebar.markdown("---")
@@ -2551,16 +2217,6 @@ def main():
     # Mostrar descripcion de la pagina seleccionada
     st.sidebar.caption(f"_{PAGINAS[pagina]}_")
     st.sidebar.markdown("---")
-    st.sidebar.markdown(
-        """
-        <div style='text-align:center;padding:10px 0;opacity:0.7'>
-        <div style='font-size:0.7em;color:rgba(255,255,255,0.6)'>
-        Politécnico Grancolombiano<br>
-        Análisis Microcurricular v2.0
-        </div></div>
-        """,
-        unsafe_allow_html=True
-    )
 
     # Obtener tendencias
     tendencias = obtener_tendencias()
