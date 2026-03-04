@@ -795,15 +795,26 @@ def obtener_tendencias() -> Dict:
 # FUNCIONES DE ANALISIS
 # ============================================================================
 
+def _split_nucleos(texto: str) -> list:
+    """Separa núcleos temáticos. NO divide por coma porque las comas son
+    parte de la descripción del núcleo (ej: 'Ciudadanía: relaciones, dinámicas...')."""
+    partes = re.split(r'[;\n\|]+', texto)
+    # También dividir en ítems numerados tipo "1. Núcleo" o "2) Núcleo"
+    resultado = []
+    for p in partes:
+        sub = re.split(r'(?<!\d)(?=\d+[\.\)]\s+\w)', p)
+        resultado.extend(sub)
+    return resultado
+
+
 def analizar_cobertura(df: pd.DataFrame) -> Dict:
     """Analisis de cobertura y densidad tematica."""
     nucleos_list = []
     for _, row in df.iterrows():
         nucleos_raw = str(row.get('Nucleos tematicos', ''))
         if nucleos_raw and nucleos_raw != 'nan':
-            nucleos = re.split(r'[,;\n\|]+', nucleos_raw)
             nucleos = [
-                _limpiar_nucleo(n.strip()) for n in nucleos
+                _limpiar_nucleo(n.strip()) for n in _split_nucleos(nucleos_raw)
                 if _es_nucleo_valido(n.strip())
             ]
             nucleos_list.extend(nucleos)
@@ -812,7 +823,7 @@ def analizar_cobertura(df: pd.DataFrame) -> Dict:
 
     # Densidad por asignatura
     densidad = df.groupby('Nombre asignatura o modulo')['Nucleos tematicos'].apply(
-        lambda x: len(re.split(r'[,;\n]+', ' '.join(x.fillna('').astype(str))))
+        lambda x: len(_split_nucleos(' '.join(x.fillna('').astype(str))))
     ).sort_values(ascending=False)
 
     # Shannon entropy
@@ -833,8 +844,7 @@ def analizar_cobertura(df: pd.DataFrame) -> Dict:
         programa = row['Programa']
         nucleos_raw = str(row.get('Nucleos tematicos', ''))
         if nucleos_raw and nucleos_raw != 'nan':
-            nucleos = re.split(r'[,;\n\|]+', nucleos_raw)
-            for nucleo in [_limpiar_nucleo(n.strip()) for n in nucleos if _es_nucleo_valido(n.strip())]:
+            for nucleo in [_limpiar_nucleo(n.strip()) for n in _split_nucleos(nucleos_raw) if _es_nucleo_valido(n.strip())]:
                 if nucleo in top_20:
                     matriz.loc[programa, nucleo] += 1
 
@@ -1263,11 +1273,10 @@ def pagina_cobertura(df: pd.DataFrame, resultados: Dict):
     for _, row in df_prog.iterrows():
         nucleos_raw = str(row.get('Nucleos tematicos', ''))
         if nucleos_raw and nucleos_raw != 'nan':
-            nucleos = re.split(r'[,;\n]+', nucleos_raw)
             nucleos_prog.extend([
                 _limpiar_nucleo(n.strip())
-                for n in nucleos
-                if n.strip() and len(n.strip()) > 3
+                for n in _split_nucleos(nucleos_raw)
+                if _es_nucleo_valido(n.strip())
             ])
 
     if nucleos_prog:
@@ -2159,7 +2168,7 @@ def pagina_resumen_ejecutivo(df: pd.DataFrame, tendencias: Dict) -> None:
     for _, row in df.iterrows():
         raw = str(row.get('Nucleos tematicos', ''))
         if raw and raw not in ('nan', ''):
-            nucleos_list.extend([n.strip() for n in re.split(r'[,;\n]+', raw) if n.strip() and len(n.strip()) > 3])
+            nucleos_list.extend([_limpiar_nucleo(n.strip()) for n in _split_nucleos(raw) if _es_nucleo_valido(n.strip())])
     n_unicos = len(set(nucleos_list))
     if n_unicos > total_asigs * 2:
         fortalezas.append(f"Alta diversidad temática: **{n_unicos}** núcleos únicos para {total_asigs} asignaturas")
@@ -2562,7 +2571,7 @@ def pagina_bloom_integracion(df: pd.DataFrame, taxonomias_externas: Dict | None 
             if raw_nuc and raw_nuc not in ('nan', ''):
                 nset = {
                     unicodedata.normalize('NFKD', _limpiar_nucleo(n.strip()).lower()).encode('ascii', 'ignore').decode('ascii')
-                    for n in re.split(r'[,;\n]+', raw_nuc)
+                    for n in _split_nucleos(raw_nuc)
                     if _es_nucleo_valido(n.strip())
                 }
             else:
