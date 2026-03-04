@@ -68,7 +68,7 @@ def load_all_programs():
             tematicas = detector.analyze_programa(data)
             
             # Calcular creditos totales del programa
-            creditos_total = 0
+            creditos_total = 0.0
             estrategias = data.get('estrategias_micro')
             if estrategias is not None and len(estrategias) > 0:
                 # Buscar columnas
@@ -83,16 +83,20 @@ def load_all_programs():
                     if 'Nombre' in col and 'asignatura' in col.lower():
                         nombre_col = col
                 
-                #优先: buscar fila con "Total" en Semestre
+                # Primero: buscar fila con "Total" en Semestre
                 if semestre_col and creditos_col:
-                    filas_total = estrategias[estrategias[semestre_col].astype(str).str.contains('Total', na=False)]
-                    if len(filas_total) > 0:
-                        creditos_total = pd.to_numeric(filas_total[creditos_col].iloc[0], errors='coerce')
-                    # Si no hay fila Total, calcular suma de creditos por asignatura
-                    elif nombre_col:
-                        creditos_unicos = estrategias.groupby(nombre_col)[creditos_col].first()
-                        creditos_validos = creditos_unicos[pd.to_numeric(creditos_unicos, errors='coerce') <= 30]
-                        creditos_total = float(pd.to_numeric(creditos_validos, errors='coerce').sum())
+                    try:
+                        filas_total = estrategias[estrategias[semestre_col].astype(str).str.contains('Total', na=False)]
+                        if len(filas_total) > 0:
+                            creditos_total = float(pd.to_numeric(filas_total[creditos_col].iloc[0], errors='coerce') or 0)
+                        # Si no hay fila Total, calcular suma de creditos por asignatura
+                        elif nombre_col:
+                            creditos_unicos = estrategias.groupby(nombre_col)[creditos_col].first()
+                            creditos_validos = pd.to_numeric(creditos_unicos, errors='coerce')
+                            creditos_validos = creditos_validos[creditos_validos <= 30]
+                            creditos_total = float(creditos_validos.sum() or 0)
+                    except Exception:
+                        creditos_total = 0.0
             
             programs.append({
                 'nombre': data['metadata']['programa'],
