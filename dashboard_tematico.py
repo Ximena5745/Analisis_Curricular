@@ -2002,50 +2002,14 @@ def pagina_tipo_saber(df: pd.DataFrame):
         [a for a in orden_completo if a in tabla_wide['Nombre asignatura o modulo'].values]
     ].reset_index()
 
-    # Estado de balance por asignatura
-    def _estado(row):
-        fuera = []
-        for tipo, (rmin, rmax) in REFS_SABER.items():
-            v = row.get(tipo, 0)
-            if v < rmin or v > rmax:
-                fuera.append(tipo)
-        if not fuera:
-            return '✅ En rango'
-        if len(fuera) == 1:
-            return f'⚠️ Revisar {fuera[0]}'
-        return f'🔴 {len(fuera)} tipos fuera'
+    st.caption("Distribución porcentual de cada tipo de saber por asignatura, ordenadas de mayor a menor SaberHacer.")
 
-    tabla_wide['Balance'] = tabla_wide.apply(_estado, axis=1)
-
-    # Función de color para celda de cada tipo
-    def _color_celda(val, tipo):
-        rmin, rmax = REFS_SABER.get(tipo, (0, 100))
-        if val < rmin:
-            return 'background-color:#FDECEA;color:#C62828'   # rojo suave
-        if val > rmax:
-            return 'background-color:#FFF8E1;color:#E65100'   # naranja suave
-        return 'background-color:#E8F5E9;color:#2E7D32'       # verde suave
-
-    def _estilo_tabla(df):
-        estilos = pd.DataFrame('', index=df.index, columns=df.columns)
-        for tipo in ['Saber', 'SaberHacer', 'SaberSer']:
-            if tipo in df.columns:
-                estilos[tipo] = df[tipo].apply(lambda v: _color_celda(v, tipo))
-        return estilos
-
-    st.caption(
-        f"🟢 En rango ideal &nbsp;|&nbsp; 🟡 Ligeramente fuera &nbsp;|&nbsp; 🔴 Fuera del rango  &nbsp;&nbsp;"
-        f"Referencia: Saber {REFS_SABER['Saber'][0]}–{REFS_SABER['Saber'][1]}% &nbsp;·&nbsp; "
-        f"SaberHacer {REFS_SABER['SaberHacer'][0]}–{REFS_SABER['SaberHacer'][1]}% &nbsp;·&nbsp; "
-        f"SaberSer {REFS_SABER['SaberSer'][0]}–{REFS_SABER['SaberSer'][1]}%"
-    )
-
-    cols_mostrar = ['Nombre asignatura o modulo', 'Saber', 'SaberHacer', 'SaberSer', 'Balance']
+    cols_mostrar = ['Nombre asignatura o modulo', 'Saber', 'SaberHacer', 'SaberSer']
     tabla_display = tabla_wide[[c for c in cols_mostrar if c in tabla_wide.columns]].rename(
         columns={'Nombre asignatura o modulo': 'Asignatura'}
     )
     st.dataframe(
-        tabla_display.style.apply(_estilo_tabla, axis=None).format(
+        tabla_display.style.format(
             {c: '{:.1f}%' for c in ['Saber', 'SaberHacer', 'SaberSer'] if c in tabla_display.columns}
         ),
         use_container_width=True,
