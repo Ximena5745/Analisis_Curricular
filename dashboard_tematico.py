@@ -17,7 +17,7 @@ from collections import Counter
 import re
 import json
 import unicodedata
-from typing import Dict
+from typing import Dict, Optional
 from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.cluster import AgglomerativeClustering
@@ -1096,7 +1096,72 @@ def _creditos_por_bloque(grupo: pd.DataFrame) -> Dict[str, int]:
     return {'Institucional': inst, 'Disciplinar': disc, 'Electivo': elec, 'Total': total}
 
 
-def pagina_inicio(df: pd.DataFrame):
+def leer_totales_programa(uploaded_files) -> Dict[str, Dict[str, int]]:
+    """
+    Lee los totales OFICIALES de créditos desde las filas de resumen declaradas
+    al final de cada Excel (ej: 'Total créditos programa', 'Total créditos bloque
+    institucional', etc.).
+
+    Estrategia: escanea TODAS las celdas buscando las etiquetas de totales;
+    el valor oficial se lee de la columna de Créditos en la misma fila.
+    El número de filas varía por programa, por lo que NO se usa posición fija.
+    """
+    def _norm(s: str) -> str:
+        return unicodedata.normalize('NFKD', str(s).strip().lower()).encode('ascii', 'ignore').decode('ascii')
+
+    totales: Dict[str, Dict[str, int]] = {}
+
+    for f in uploaded_files:
+        nombre = f.name
+        prog = (nombre
+                .replace("FormatoRA_", "").replace("_PBOG", "")
+                .replace("_VNAL", "").replace("_PMED", "")
+                .replace(".xlsx", "").replace(".xls", ""))
+        try:
+            f.seek(0)
+            raw = pd.read_excel(
+                f, sheet_name='Paso 5 Estrategias micro',
+                header=None, engine='openpyxl'
+            )
+
+            # Encontrar columna de Créditos por encabezado (fila 1 = Excel fila 2)
+            cred_col_idx = next(
+                (i for i, v in enumerate(raw.iloc[1])
+                 if pd.notna(v) and 'dito' in _norm(str(v))),
+                9  # fallback: columna J (índice 9)
+            )
+
+            pt: Dict[str, int] = {}
+            nrows, ncols = raw.shape
+
+            for r in range(nrows):
+                for c in range(ncols):
+                    cell = raw.iloc[r, c]
+                    if not pd.notna(cell):
+                        continue
+                    cn = _norm(str(cell))
+                    # Leer el crédito de la misma fila en la columna de Créditos
+                    raw_val = (raw.iloc[r, cred_col_idx]
+                               if cred_col_idx < ncols else None)
+                    val = int(float(raw_val)) if pd.notna(raw_val) else 0
+
+                    if 'total creditos programa' in cn or 'total creditos del programa' in cn:
+                        pt['total'] = val
+                    elif 'bloque inst' in cn:
+                        pt['institucional'] = val
+                    elif 'bloque disc' in cn:
+                        pt['disciplinar'] = val
+                    elif 'bloque elec' in cn:
+                        pt['electivo'] = val
+
+            totales[prog] = pt
+        except Exception:
+            totales[prog] = {}
+
+    return totales
+
+
+def pagina_inicio(df: pd.DataFrame, totales_oficiales: Optional[Dict] = None):
     """Pagina de inicio con metricas generales."""
     st.title("Análisis Temático Microcurricular")
     st.markdown("---")
@@ -1171,47 +1236,61 @@ def pagina_inicio(df: pd.DataFrame):
     st.markdown("---")
     st.subheader("Resumen por Programa")
     st.caption(
-        "**Créditos**: suma de créditos únicos por asignatura (sin duplicar por número de RAs). "
-        "**Registros**: total de filas de estrategia. "
-        "**Asignaturas**: materias únicas. "
-        "**Semestres**: semestres distintos presentes."
+        "Los créditos oficiales se leen directamente desde las filas de totales declaradas "
+        "al final de cada Excel ('Total créditos programa', 'Total créditos bloque...'). "
+        "La columna **⚠ Dif.** compara el total oficial con la suma de los tres bloques."
     )
 
     resumen_rows = []
     for prog in df['Programa'].unique():
         g = df[df['Programa'] == prog]
-        bloques = _creditos_por_bloque(g)
-        total_calc = bloques['Institucional'] + bloques['Disciplinar'] + bloques['Electivo']
-        total_real = bloques['Total']
-        diferencia = total_real - total_calc
+
+        # Totales oficiales del Excel (footer rows)
+        of = (totales_oficiales or {}).get(prog, {})
+        cr_total   = of.get('total',         0)
+        cr_inst    = of.get('institucional',  0)
+        cr_disc    = of.get('disciplinar',    0)
+        cr_elec    = of.get('electivo',       0)
+
+        # Si no hay totales oficiales, caer al cálculo propio
+        if cr_total == 0:
+            bl = _creditos_por_bloque(g)
+            cr_total = bl['Total']
+            cr_inst  = bl['Institucional']
+            cr_disc  = bl['Disciplinar']
+            cr_elec  = bl['Electivo']
+
+        suma_bloques = cr_inst + cr_disc + cr_elec
+        diferencia   = cr_total - suma_bloques
+
         resumen_rows.append({
-            'Programa':               prog,
-            'Registros':              len(g),
-            'Asignaturas':            g['Nombre asignatura o modulo'].nunique(),
-            'Semestres':              g['Semestre'].nunique(),
-            'Cr. Total':              total_real,
-            'Cr. Institucional':      bloques['Institucional'],
-            'Cr. Disciplinar':        bloques['Disciplinar'],
-            'Cr. Electivo':           bloques['Electivo'],
-            'Suma bloques':           total_calc,
-            '⚠ Diferencia':          diferencia,
+            'Programa':          prog,
+            'Registros':         len(g),
+            'Asignaturas':       g['Nombre asignatura o modulo'].nunique(),
+            'Semestres':         g['Semestre'].nunique(),
+            'Cr. Total':         cr_total,
+            'Cr. Institucional': cr_inst,
+            'Cr. Disciplinar':   cr_disc,
+            'Cr. Electivo':      cr_elec,
+            'Suma bloques':      suma_bloques,
+            '⚠ Dif.':           diferencia,
         })
+
     resumen = pd.DataFrame(resumen_rows)
 
-    # Semáforo en columna diferencia
     def _color_dif(val):
         if val == 0:
             return 'background-color:#d4edda;color:#155724'
         return 'background-color:#f8d7da;color:#721c24'
 
     st.dataframe(
-        resumen.style.applymap(_color_dif, subset=['⚠ Diferencia']),
+        resumen.style.map(_color_dif, subset=['⚠ Dif.']),
         use_container_width=True, hide_index=True
     )
     st.caption(
-        "**Cr. Total**: suma de créditos únicos por asignatura (sin duplicar por número de RAs). "
-        "**Suma bloques**: B.Institucional + B.Disciplinar + B.Electivo. "
-        "Si **⚠ Diferencia ≠ 0** alguna asignatura no tiene bloque marcado en el Excel."
+        "**Cr. Total** = declarado en el Excel (fila 'Total créditos programa'). "
+        "**Suma bloques** = Institucional + Disciplinar + Electivo. "
+        "**⚠ Dif. = 0** ✅ coinciden | **≠ 0** 🔴 revisar el Excel."
     )
 
 
@@ -3178,8 +3257,11 @@ def main():
 
         st.stop()
 
-    # Procesar archivos
+    # Procesar archivos y leer totales oficiales del footer de cada Excel
     df = procesar_archivos(uploaded_files)
+    for f in uploaded_files:
+        f.seek(0)
+    totales_oficiales = leer_totales_programa(uploaded_files)
 
     if df.empty:
         st.error(
@@ -3276,7 +3358,7 @@ def main():
 
     # Renderizar pagina
     if pagina == "Inicio":
-        pagina_inicio(df)
+        pagina_inicio(df, totales_oficiales)
 
     elif pagina == "Tipo de Saber":
         pagina_tipo_saber(df)
