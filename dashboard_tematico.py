@@ -15,6 +15,7 @@ from collections import Counter
 import re
 import json
 import unicodedata
+import io
 from typing import Dict
 from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
@@ -23,37 +24,9 @@ import warnings
 warnings.filterwarnings('ignore')
 
 
-# Patrones que NO son núcleos temáticos (encabezados de sección, instrucciones, etc.)
-_PATRON_NO_NUCLEO = re.compile(
-    r'^(construccion\s+y\s+dinamicas?|dinamicas?\s+de|estrategias?\s+de\s+(ensenanza|aprendizaje|evaluacion)|'
-    r'actividades?\s+(de\s+)?(aprendizaje|evaluacion)|metodologia|criterios?\s+de|recursos?\s+(educativos?|didacticos?)|'
-    r'indicadores?\s+de|competencias?\s+(generales?|especificas?)|resultados?\s+de\s+aprendizaje|'
-    r'nucleo\s+tematico|temas?\s+a\s+(desarrollar|tratar)|contenido[s]?\s*(del?\s+)?curso|'
-    r'unidad\s+(tematica\s+)?\d*|modulo\s+\d*|semana\s+\d*|bloque\s+(tematico)?\s*\d*)',
-    re.IGNORECASE
-)
-
-
 def _limpiar_nucleo(texto: str) -> str:
     """Elimina numeracion inicial tipo '1. ', '2. ', etc. de un nucleo tematico."""
-    texto = re.sub(r'^\d+[\.\)]\s*', '', texto.strip())
-    texto = re.sub(r'^[•\-–—*]\s*', '', texto)
-    return texto.strip()
-
-
-def _es_nucleo_valido(texto: str) -> bool:
-    """Verifica que el texto sea un nucleo tematico real y no un encabezado o instruccion."""
-    t = texto.strip()
-    if len(t) < 4 or len(t) > 150:
-        return False
-    # Descartar si es sólo números o caracteres especiales
-    if re.match(r'^[\d\s\.\,\;\:\-]+$', t):
-        return False
-    # Descartar patrones no temáticos
-    t_norm = unicodedata.normalize('NFKD', t.lower()).encode('ascii', 'ignore').decode('ascii')
-    if _PATRON_NO_NUCLEO.match(t_norm):
-        return False
-    return True
+    return re.sub(r'^\d+\.\s*', '', texto)
 
 
 # ============================================================================
@@ -69,8 +42,7 @@ st.set_page_config(
 
 # ============================================================================
 # ESTILOS VISUALES — POLITECNICO GRANCOLOMBIANO
-# Paleta: #0F385A (navy) | #1FB2DE (azul) | #42F2F2 (cyan)
-#         #FBAF17 (dorado) | #EC0677 (magenta) — tema claro
+# Paleta: Azul institucional #003F8A / Azul medio #0077C8 / Naranja acento #F7941D
 # ============================================================================
 
 st.markdown("""
@@ -78,78 +50,71 @@ st.markdown("""
 /* ── Fuente base ─────────────────────────────────────────────────────────── */
 html, body, [class*="css"] {
     font-family: 'Segoe UI', 'Inter', sans-serif;
-    background-color: #FFFFFF;
-    color: #1A1A2E;
 }
 
 /* ── Barra lateral ──────────────────────────────────────────────────────── */
 [data-testid="stSidebar"] {
-    background: linear-gradient(180deg, #0F385A 0%, #071E32 100%);
-    border-right: 3px solid #1FB2DE;
+    background: linear-gradient(180deg, #003F8A 0%, #00285A 100%);
 }
 [data-testid="stSidebar"] * {
     color: #FFFFFF !important;
 }
 [data-testid="stSidebar"] .stRadio label {
-    background: rgba(255,255,255,0.07);
+    background: rgba(255,255,255,0.08);
     border-radius: 8px;
     padding: 6px 10px;
     margin: 3px 0;
     display: block;
     transition: background 0.2s;
-    border-left: 3px solid transparent;
 }
 [data-testid="stSidebar"] .stRadio label:hover {
-    background: rgba(31,178,222,0.2) !important;
-    border-left: 3px solid #42F2F2 !important;
+    background: rgba(247,148,29,0.35) !important;
 }
 [data-testid="stSidebar"] .stRadio [aria-checked="true"] + div label,
 [data-testid="stSidebar"] input[type="radio"]:checked ~ label {
-    background: rgba(31,178,222,0.3) !important;
-    border-left: 3px solid #FBAF17 !important;
+    background: rgba(247,148,29,0.5) !important;
+    border-left: 3px solid #F7941D;
 }
 [data-testid="stSidebar"] hr {
-    border-color: rgba(66,242,242,0.25) !important;
+    border-color: rgba(255,255,255,0.2) !important;
 }
 [data-testid="stSidebar"] .stFileUploader {
-    background: rgba(255,255,255,0.07);
+    background: rgba(255,255,255,0.08);
     border-radius: 8px;
     padding: 8px;
-    border: 1px solid rgba(31,178,222,0.3);
 }
 
 /* ── Encabezados principales ─────────────────────────────────────────────── */
 h1 {
-    color: #0F385A !important;
-    border-bottom: 3px solid #1FB2DE;
+    color: #003F8A !important;
+    border-bottom: 3px solid #F7941D;
     padding-bottom: 8px;
 }
 h2 {
-    color: #0F385A !important;
-    border-left: 4px solid #1FB2DE;
+    color: #0077C8 !important;
+    border-left: 4px solid #F7941D;
     padding-left: 10px;
 }
 h3 {
-    color: #0F385A !important;
+    color: #003F8A !important;
 }
 
 /* ── Tarjetas de métricas ─────────────────────────────────────────────────── */
 [data-testid="stMetric"] {
-    background: linear-gradient(135deg, #EAF9FD 0%, #F5FEFF 100%);
-    border: 1px solid #A8E6F5;
-    border-left: 4px solid #1FB2DE;
+    background: linear-gradient(135deg, #EAF4FF 0%, #F0F8FF 100%);
+    border: 1px solid #B8D9F5;
+    border-left: 4px solid #0077C8;
     border-radius: 10px;
     padding: 14px 16px !important;
-    box-shadow: 0 2px 8px rgba(31,178,222,0.12);
+    box-shadow: 0 2px 6px rgba(0,63,138,0.08);
 }
 [data-testid="stMetricValue"] {
-    color: #0F385A !important;
+    color: #003F8A !important;
     font-weight: 700 !important;
 }
 [data-testid="stMetricLabel"] {
-    color: #1FB2DE !important;
+    color: #005A9E !important;
     font-size: 0.85em !important;
-    font-weight: 600 !important;
 }
 
 /* ── Cuadros info / warning / success / error ────────────────────────────── */
@@ -164,9 +129,9 @@ div[data-testid="stAlert"] > div[role="alert"] {
 /* Info → azul Politécnico */
 div[data-baseweb="notification"][kind="info"],
 div[class*="stInfo"] {
-    background-color: #E8F8FD !important;
-    border-left: 5px solid #1FB2DE !important;
-    color: #0F385A !important;
+    background-color: #E8F2FC !important;
+    border-left: 5px solid #0077C8 !important;
+    color: #003F8A !important;
 }
 
 /* Success → verde */
@@ -175,90 +140,88 @@ div[data-baseweb="notification"][kind="positive"] {
     border-left: 5px solid #27AE60 !important;
 }
 
-/* Warning → dorado Politécnico */
+/* Warning → naranja Politécnico */
 div[data-baseweb="notification"][kind="warning"] {
-    background-color: #FFFBEA !important;
-    border-left: 5px solid #FBAF17 !important;
-    color: #5C3D00 !important;
+    background-color: #FEF5E7 !important;
+    border-left: 5px solid #F7941D !important;
+    color: #7D4A00 !important;
 }
 
-/* Error → magenta Politécnico */
+/* Error → rojo */
 div[data-baseweb="notification"][kind="negative"] {
-    background-color: #FEE5F2 !important;
-    border-left: 5px solid #EC0677 !important;
-    color: #5A0030 !important;
+    background-color: #FDEDEC !important;
+    border-left: 5px solid #E74C3C !important;
 }
 
 /* ── Tabs ────────────────────────────────────────────────────────────────── */
 [data-testid="stTabs"] [role="tablist"] {
-    border-bottom: 2px solid #1FB2DE;
+    border-bottom: 2px solid #0077C8;
     gap: 4px;
 }
 [data-testid="stTabs"] [role="tab"] {
-    background: #EAF9FD;
+    background: #EAF4FF;
     border-radius: 8px 8px 0 0;
-    color: #0F385A;
+    color: #003F8A;
     font-weight: 500;
     padding: 8px 18px;
-    border: 1px solid #A8E6F5;
+    border: 1px solid #B8D9F5;
     border-bottom: none;
     transition: background 0.2s;
 }
 [data-testid="stTabs"] [role="tab"]:hover {
-    background: #C5EEF8;
+    background: #D0EAFF;
 }
 [data-testid="stTabs"] [role="tab"][aria-selected="true"] {
-    background: #1FB2DE !important;
+    background: #0077C8 !important;
     color: #FFFFFF !important;
-    border-color: #1FB2DE;
-    font-weight: 700 !important;
+    border-color: #0077C8;
 }
 
 /* ── Botones ─────────────────────────────────────────────────────────────── */
 .stButton > button, .stDownloadButton > button {
-    background: linear-gradient(135deg, #1FB2DE, #0F385A) !important;
+    background: linear-gradient(135deg, #0077C8, #003F8A) !important;
     color: white !important;
     border: none !important;
     border-radius: 8px !important;
     padding: 8px 22px !important;
     font-weight: 600 !important;
-    box-shadow: 0 3px 8px rgba(15,56,90,0.22) !important;
+    box-shadow: 0 3px 8px rgba(0,63,138,0.25) !important;
     transition: transform 0.15s, box-shadow 0.15s !important;
 }
 .stButton > button:hover, .stDownloadButton > button:hover {
     transform: translateY(-1px) !important;
-    box-shadow: 0 5px 14px rgba(15,56,90,0.32) !important;
-    background: linear-gradient(135deg, #FBAF17, #D48F00) !important;
+    box-shadow: 0 5px 14px rgba(0,63,138,0.35) !important;
+    background: linear-gradient(135deg, #F7941D, #D4770A) !important;
 }
 
 /* ── Expanders ───────────────────────────────────────────────────────────── */
 details {
-    border: 1px solid #A8E6F5 !important;
+    border: 1px solid #B8D9F5 !important;
     border-radius: 8px !important;
     margin-bottom: 6px !important;
 }
 details summary {
-    background: linear-gradient(90deg, #EAF9FD, #F5FEFF) !important;
-    color: #0F385A !important;
+    background: linear-gradient(90deg, #EAF4FF, #F8FCFF) !important;
+    color: #003F8A !important;
     font-weight: 500;
     border-radius: 8px;
     padding: 8px 14px;
 }
 details[open] summary {
-    border-bottom: 2px solid #1FB2DE;
+    border-bottom: 2px solid #0077C8;
     border-radius: 8px 8px 0 0;
 }
 
 /* ── Selectbox / Multiselect ─────────────────────────────────────────────── */
 [data-testid="stMultiSelect"] [data-baseweb="tag"] {
-    background: #1FB2DE !important;
+    background: #0077C8 !important;
     color: white !important;
     border-radius: 5px;
 }
 
 /* ── Tabla dataframe ─────────────────────────────────────────────────────── */
 [data-testid="stDataFrame"] {
-    border: 1px solid #A8E6F5 !important;
+    border: 1px solid #B8D9F5 !important;
     border-radius: 8px !important;
     overflow: hidden;
 }
@@ -266,75 +229,64 @@ details[open] summary {
 /* ── Divisor horizontal ─────────────────────────────────────────────────── */
 hr {
     border: none;
-    border-top: 2px solid #D0F0FA;
+    border-top: 2px solid #E0EEF8;
     margin: 20px 0;
 }
 
 /* ── Caption / pequeño texto ─────────────────────────────────────────────── */
 [data-testid="stCaptionContainer"] p,
 small, .caption {
-    color: #4A7A90 !important;
+    color: #5A7FA8 !important;
 }
 
 /* ── Spinner ─────────────────────────────────────────────────────────────── */
 [data-testid="stSpinner"] > div {
-    border-top-color: #1FB2DE !important;
+    border-top-color: #0077C8 !important;
 }
 
 /* ── Header institucional (banner) ──────────────────────────────────────── */
 .poligran-header {
-    background: linear-gradient(135deg, #0F385A 0%, #1FB2DE 70%, #42F2F2 100%);
-    padding: 20px 28px;
+    background: linear-gradient(135deg, #003F8A 0%, #0077C8 60%, #005A9E 100%);
+    padding: 18px 28px;
     border-radius: 12px;
     margin-bottom: 18px;
-    box-shadow: 0 4px 20px rgba(15,56,90,0.25);
+    box-shadow: 0 4px 15px rgba(0,63,138,0.25);
+    display: flex;
+    align-items: center;
+    gap: 16px;
 }
 .poligran-header h2 {
     color: white !important;
     border: none !important;
     padding: 0 !important;
     margin: 0;
-    font-size: 1.5em;
-    text-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    font-size: 1.4em;
 }
 .poligran-header p {
-    color: rgba(255,255,255,0.9) !important;
-    margin: 5px 0 0 0;
+    color: rgba(255,255,255,0.85) !important;
+    margin: 4px 0 0 0;
     font-size: 0.95em;
 }
 .poligran-badge {
-    background: #FBAF17;
-    color: #0F385A;
+    background: #F7941D;
+    color: white;
     font-size: 0.72em;
     font-weight: 700;
-    padding: 3px 12px;
+    padding: 3px 10px;
     border-radius: 20px;
     letter-spacing: 0.5px;
     display: inline-block;
-    margin-top: 8px;
+    margin-top: 6px;
 }
 
 /* ── Sección con fondo suave ─────────────────────────────────────────────── */
 .section-card {
-    background: #F5FDFF;
-    border: 1px solid #C5EEF8;
+    background: #F5FAFF;
+    border: 1px solid #D0E8F8;
     border-radius: 10px;
     padding: 16px 20px;
     margin: 10px 0;
 }
-.section-card-accent {
-    background: #F5FDFF;
-    border: 1px solid #C5EEF8;
-    border-left: 4px solid #FBAF17;
-    border-radius: 10px;
-    padding: 16px 20px;
-    margin: 10px 0;
-}
-
-/* ── Badge de alerta ────────────────────────────────────────────────────── */
-.badge-alta   { background:#EC0677; color:white; padding:2px 8px; border-radius:12px; font-size:0.78em; font-weight:700; }
-.badge-media  { background:#FBAF17; color:#0F385A; padding:2px 8px; border-radius:12px; font-size:0.78em; font-weight:700; }
-.badge-baja   { background:#42F2F2; color:#0F385A; padding:2px 8px; border-radius:12px; font-size:0.78em; font-weight:700; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -466,69 +418,6 @@ def normalizar_columnas(df: pd.DataFrame) -> pd.DataFrame:
     return df.rename(columns=nuevos_nombres)
 
 
-def leer_taxonomias_bloom(uploaded_files) -> Dict[str, list]:
-    """
-    Intenta leer la hoja 'Taxonomias para RA' de los archivos Excel cargados.
-    Retorna un dict {nivel_bloom: [verbos...]} o dict vacío si no existe la hoja.
-    Esperado: columnas 'Nivel' y 'Verbos' (o similares).
-    """
-    taxonomias: Dict[str, list] = {}
-    for uploaded_file in uploaded_files:
-        try:
-            # Resetear el puntero del archivo antes de leer
-            uploaded_file.seek(0)
-            xl = pd.ExcelFile(uploaded_file, engine='openpyxl')
-            # Buscar hoja con nombre similar a "Taxonomias"
-            hoja_tax = next(
-                (h for h in xl.sheet_names
-                 if 'taxon' in unicodedata.normalize('NFKD', h.lower()).encode('ascii', 'ignore').decode('ascii')),
-                None
-            )
-            if hoja_tax is None:
-                continue
-            df_tax = xl.parse(hoja_tax)
-            df_tax.columns = [str(c).strip() for c in df_tax.columns]
-
-            # Intentar detectar columnas de nivel y verbos
-            col_nivel = next((c for c in df_tax.columns
-                              if any(k in c.lower() for k in ['nivel', 'categor', 'bloom', 'taxon'])), None)
-            col_verbos = next((c for c in df_tax.columns
-                               if any(k in c.lower() for k in ['verb', 'palabra', 'accion', 'ejemplo'])), None)
-
-            if col_nivel is None or col_verbos is None:
-                # Asumir primera columna = nivel, segunda = verbos
-                if len(df_tax.columns) >= 2:
-                    col_nivel, col_verbos = df_tax.columns[0], df_tax.columns[1]
-                else:
-                    continue
-
-            for _, row in df_tax.iterrows():
-                nivel = str(row.get(col_nivel, '')).strip()
-                verbos_raw = str(row.get(col_verbos, '')).strip()
-                if not nivel or nivel in ('nan', '') or not verbos_raw or verbos_raw == 'nan':
-                    continue
-                # Normalizar nivel
-                nivel_n = unicodedata.normalize('NFKD', nivel).encode('ascii', 'ignore').decode('ascii').title()
-                # Parsear verbos (separados por coma, punto y coma, salto de línea o espacio)
-                verbos = [
-                    unicodedata.normalize('NFKD', v.strip().lower()).encode('ascii', 'ignore').decode('ascii')
-                    for v in re.split(r'[,;\n/]+', verbos_raw)
-                    if v.strip() and len(v.strip()) > 2
-                ]
-                if nivel_n not in taxonomias:
-                    taxonomias[nivel_n] = []
-                taxonomias[nivel_n].extend(verbos)
-
-            if taxonomias:
-                # Solo necesitamos leer de un archivo (todos deben tener la misma hoja)
-                break
-        except Exception:
-            continue
-
-    # Dedup verbos
-    return {nivel: list(dict.fromkeys(verbos)) for nivel, verbos in taxonomias.items()}
-
-
 def procesar_archivos(uploaded_files) -> pd.DataFrame:
     """Procesa archivos Excel subidos y consolida datos."""
     all_data = []
@@ -545,7 +434,6 @@ def procesar_archivos(uploaded_files) -> pd.DataFrame:
             .replace(".xls", "")
         )
         try:
-            uploaded_file.seek(0)
             df = pd.read_excel(
                 uploaded_file,
                 sheet_name='Paso 5 Estrategias micro',
@@ -609,11 +497,8 @@ def analizar_cobertura(df: pd.DataFrame) -> Dict:
     for _, row in df.iterrows():
         nucleos_raw = str(row.get('Nucleos tematicos', ''))
         if nucleos_raw and nucleos_raw != 'nan':
-            nucleos = re.split(r'[,;\n\|]+', nucleos_raw)
-            nucleos = [
-                _limpiar_nucleo(n.strip()) for n in nucleos
-                if _es_nucleo_valido(n.strip())
-            ]
+            nucleos = re.split(r'[,;\n]+', nucleos_raw)
+            nucleos = [_limpiar_nucleo(n.strip()) for n in nucleos if n.strip() and len(n.strip()) > 3]
             nucleos_list.extend(nucleos)
 
     nucleos_counter = Counter(nucleos_list)
@@ -641,8 +526,8 @@ def analizar_cobertura(df: pd.DataFrame) -> Dict:
         programa = row['Programa']
         nucleos_raw = str(row.get('Nucleos tematicos', ''))
         if nucleos_raw and nucleos_raw != 'nan':
-            nucleos = re.split(r'[,;\n\|]+', nucleos_raw)
-            for nucleo in [_limpiar_nucleo(n.strip()) for n in nucleos if _es_nucleo_valido(n.strip())]:
+            nucleos = re.split(r'[,;\n]+', nucleos_raw)
+            for nucleo in [_limpiar_nucleo(n.strip()) for n in nucleos if n.strip()]:
                 if nucleo in top_20:
                     matriz.loc[programa, nucleo] += 1
 
@@ -1124,206 +1009,130 @@ def pagina_tendencias(df: pd.DataFrame, tendencias: Dict, resultados: Dict):
 
     st.markdown("---")
 
-    tab_global, tab_programa = st.tabs([
-        "🌍 Vista Global — Todos los Programas",
-        "🏫 Análisis por Programa"
-    ])
+    st.subheader("Intensidad por Programa y Tendencia")
+    st.caption(
+        "Cada celda muestra cuántos registros (filas de estrategia) de ese programa "
+        "mencionan al menos una palabra clave de la tendencia. Mayor valor = mayor énfasis."
+    )
+    matriz = resultados['matriz']
+    col_names = {tid: tendencias[tid]['descripcion'] for tid in matriz.columns if tid in tendencias}
+    matriz_display = matriz.rename(columns=col_names)
 
-    # ── TAB 1: VISTA GLOBAL ───────────────────────────────────────────────────
-    with tab_global:
-        st.subheader("Intensidad por Programa y Tendencia")
+    fig = px.imshow(
+        matriz_display.values,
+        x=matriz_display.columns.tolist(),
+        y=matriz_display.index.tolist(),
+        color_continuous_scale='Viridis',
+        text_auto=True,
+        aspect='auto'
+    )
+    fig.update_layout(height=450, xaxis_tickangle=45)
+    st.plotly_chart(fig, use_container_width=True)
+
+    st.markdown("---")
+
+    col_a, col_b = st.columns(2)
+
+    with col_a:
+        st.subheader("Cobertura por Tendencia (% de asignaturas)")
         st.caption(
-            "Cada celda muestra cuántos registros de cada programa mencionan "
-            "palabras clave de cada tendencia. Mayor valor = mayor énfasis."
+            "Porcentaje de asignaturas únicas que abordan cada tendencia. "
+            "100% significa que TODAS las asignaturas la tocan. "
+            "La línea roja punteada marca el 100%."
         )
-        matriz = resultados['matriz']
-        col_names = {tid: tendencias[tid]['descripcion'] for tid in matriz.columns if tid in tendencias}
-        matriz_display = matriz.rename(columns=col_names)
-        # Truncar nombres largos
-        short_cols = {c: (c[:30] + '…' if len(c) > 30 else c) for c in matriz_display.columns}
-        matriz_display = matriz_display.rename(columns=short_cols)
+        cobertura_data = []
+        for tid, pct in resultados['cobertura'].items():
+            nombre = tendencias[tid]['descripcion'] if tid in tendencias else tid
+            n_asigs = resultados.get('asig_counts', {}).get(tid, 0)
+            cobertura_data.append({
+                'Tendencia': nombre,
+                'Cobertura': round(pct, 1),
+                'Asignaturas': n_asigs
+            })
+        df_cob = pd.DataFrame(cobertura_data).sort_values('Cobertura', ascending=True)
 
-        fig = px.imshow(
-            matriz_display.values,
-            x=matriz_display.columns.tolist(),
-            y=matriz_display.index.tolist(),
-            color_continuous_scale=[[0, '#EAF9FD'], [0.4, '#1FB2DE'], [0.8, '#0F385A'], [1, '#EC0677']],
-            text_auto=True,
-            aspect='auto'
-        )
-        fig.update_layout(height=400, xaxis_tickangle=40,
-                          xaxis=dict(tickfont=dict(size=10)),
-                          yaxis=dict(tickfont=dict(size=11)))
+        fig = px.bar(df_cob, y='Tendencia', x='Cobertura',
+                     orientation='h', color='Cobertura',
+                     color_continuous_scale='RdYlGn',
+                     range_color=[0, 100],
+                     hover_data=['Asignaturas'],
+                     labels={'Cobertura': '% Asignaturas', 'Asignaturas': 'N° Asignaturas'})
+        fig.add_vline(x=100, line_dash="dash", line_color="red", opacity=0.5)
+        fig.update_layout(height=500)
         st.plotly_chart(fig, use_container_width=True)
 
-        st.markdown("---")
-
-        col_a, col_b = st.columns(2)
-        with col_a:
-            st.subheader("Cobertura por Tendencia (% de asignaturas)")
-            st.caption("Porcentaje de asignaturas únicas que abordan cada tendencia.")
-            cobertura_data = []
-            for tid, pct in resultados['cobertura'].items():
-                nombre = tendencias[tid]['descripcion'] if tid in tendencias else tid
-                n_asigs = resultados.get('asig_counts', {}).get(tid, 0)
-                cobertura_data.append({'Tendencia': nombre[:35], 'Cobertura': round(pct, 1), 'Asignaturas': n_asigs})
-            df_cob = pd.DataFrame(cobertura_data).sort_values('Cobertura', ascending=True)
-            fig = px.bar(df_cob, y='Tendencia', x='Cobertura', orientation='h',
-                         color='Cobertura', color_continuous_scale='RdYlGn', range_color=[0, 100],
-                         hover_data=['Asignaturas'],
-                         labels={'Cobertura': '% Asignaturas'})
-            fig.add_vline(x=50, line_dash="dash", line_color="#FBAF17", opacity=0.7)
-            fig.update_layout(height=480)
-            st.plotly_chart(fig, use_container_width=True)
-
-        with col_b:
-            st.subheader("N° de Asignaturas por Tendencia")
-            st.caption("Número absoluto de asignaturas que mencionan cada tendencia.")
-            menciones_data = []
-            for tid in tendencias:
-                nombre = tendencias[tid]['descripcion']
-                n_asigs = resultados.get('asig_counts', {}).get(tid, 0)
-                menciones_data.append({'Tendencia': nombre[:35], 'Asignaturas': n_asigs})
-            df_menciones = pd.DataFrame(menciones_data).sort_values('Asignaturas', ascending=True)
-            fig = px.bar(df_menciones, y='Tendencia', x='Asignaturas', orientation='h',
-                         color='Asignaturas',
-                         color_continuous_scale=[[0, '#EAF9FD'], [0.5, '#1FB2DE'], [1, '#0F385A']],
-                         labels={'Asignaturas': 'N° Asignaturas únicas'})
-            fig.update_layout(height=480)
-            st.plotly_chart(fig, use_container_width=True)
-
-        if resultados['ausentes']:
-            st.markdown("---")
-            st.subheader("⚠️ Brechas Curriculares Detectadas")
-            st.warning(
-                "Las siguientes tendencias **no fueron detectadas en ninguna asignatura**. "
-                "Considere si los programas deberían incorporarlas:"
-            )
-            for tid in resultados['ausentes']:
-                if tid in tendencias:
-                    st.markdown(f"- **{tendencias[tid]['descripcion']}**")
-
-        st.markdown("---")
-        st.subheader("Detalle por Tendencia (todos los programas)")
-        st.caption("Expande cada programa para ver qué asignaturas abordan la tendencia seleccionada.")
-        tend_sel = st.selectbox(
-            "Seleccionar tendencia:",
-            list(tendencias.keys()),
-            format_func=lambda x: tendencias[x]['descripcion'],
-            key="tend_sel_global"
-        )
-        if tend_sel in resultados['detalle']:
-            n_asigs_tend = resultados.get('asig_counts', {}).get(tend_sel, 0)
-            total_asigs = resultados.get('total_asigs', 1)
-            st.markdown(
-                f"**{tendencias[tend_sel]['descripcion']}** — presente en "
-                f"**{n_asigs_tend} de {total_asigs}** asignaturas "
-                f"({n_asigs_tend/total_asigs*100:.1f}% de cobertura)"
-            )
-            tiene_hallazgos = False
-            for programa, hallazgos in resultados['detalle'][tend_sel].items():
-                if hallazgos:
-                    tiene_hallazgos = True
-                    asig_set = set()
-                    for h in hallazgos:
-                        asig = h.get('asignatura', '')
-                        if asig and asig not in ('Sin nombre', 'nan', ''):
-                            asig_set.add(asig)
-                    with st.expander(f"📚 {programa} — {len(asig_set)} asignatura(s)"):
-                        for asig in sorted(asig_set):
-                            campos_asig = []
-                            for h in hallazgos:
-                                if h.get('asignatura') == asig:
-                                    campos_asig.extend(h.get('campos', []))
-                            campos_txt = ', '.join(dict.fromkeys(campos_asig)) or 'Texto general'
-                            st.markdown(f"- **{asig}** _(detectada en: {campos_txt})_")
-            if not tiene_hallazgos:
-                st.info("Esta tendencia no fue detectada en ningún programa.")
-
-    # ── TAB 2: POR PROGRAMA ───────────────────────────────────────────────────
-    with tab_programa:
-        st.subheader("Análisis de Tendencias por Programa")
+    with col_b:
+        st.subheader("N° de Asignaturas por Tendencia")
         st.caption(
-            "Selecciona un programa para ver en detalle cuántas asignaturas cubren cada tendencia "
-            "y cuáles son las asignaturas que las abordan."
+            "Número absoluto de asignaturas únicas que mencionan cada tendencia. "
+            "Útil para comparar el peso real de cada tendencia."
         )
+        menciones_data = []
+        for tid in tendencias:
+            nombre = tendencias[tid]['descripcion']
+            n_asigs = resultados.get('asig_counts', {}).get(tid, 0)
+            menciones_data.append({'Tendencia': nombre, 'Asignaturas': n_asigs})
+        df_menciones = pd.DataFrame(menciones_data).sort_values('Asignaturas', ascending=True)
 
-        programas_disp = sorted(df['Programa'].unique().tolist())
-        prog_sel = st.selectbox("Seleccionar programa:", programas_disp, key="tend_prog_sel")
+        fig = px.bar(df_menciones, y='Tendencia', x='Asignaturas',
+                     orientation='h', color='Asignaturas',
+                     color_continuous_scale='Blues',
+                     labels={'Asignaturas': 'N° Asignaturas únicas'})
+        fig.update_layout(height=500)
+        st.plotly_chart(fig, use_container_width=True)
 
-        df_prog = df[df['Programa'] == prog_sel]
-        asig_col_t = 'Nombre asignatura o modulo'
-        total_asigs_prog = df_prog[asig_col_t].nunique()
-
-        # Calcular cobertura específica para este programa
-        cob_prog = []
-        for tid, tinfo in tendencias.items():
-            kws = [unicodedata.normalize('NFKD', k.lower()).encode('ascii', 'ignore').decode('ascii')
-                   for k in tinfo['keywords']]
-            asigs_con_tend = set()
-            for _, row in df_prog.iterrows():
-                texto = str(row.get('Texto_Completo', '')).lower()
-                texto_n = unicodedata.normalize('NFKD', texto).encode('ascii', 'ignore').decode('ascii')
-                asig = str(row.get(asig_col_t, '')).strip()
-                if asig and asig not in ('nan', '') and any(k in texto_n for k in kws):
-                    asigs_con_tend.add(asig)
-            pct = len(asigs_con_tend) / total_asigs_prog * 100 if total_asigs_prog > 0 else 0
-            cob_prog.append({
-                'Tendencia': tinfo['descripcion'][:40],
-                'ID': tid,
-                'Asignaturas': len(asigs_con_tend),
-                'Cobertura': round(pct, 1),
-                'Lista': sorted(asigs_con_tend)
-            })
-
-        df_cob_prog = pd.DataFrame(cob_prog).sort_values('Cobertura', ascending=False)
-
-        # Métricas del programa
-        n_con_tend = (df_cob_prog['Asignaturas'] > 0).sum()
-        col_p1, col_p2, col_p3 = st.columns(3)
-        col_p1.metric("Asignaturas del programa", total_asigs_prog)
-        col_p2.metric("Tendencias detectadas", f"{n_con_tend}/{len(tendencias)}")
-        col_p3.metric("Cobertura promedio", f"{df_cob_prog['Cobertura'].mean():.1f}%")
-
+    if resultados['ausentes']:
         st.markdown("---")
-
-        # Gráfico horizontal de cobertura para el programa
-        fig_prog = px.bar(
-            df_cob_prog.sort_values('Cobertura', ascending=True),
-            y='Tendencia', x='Cobertura', orientation='h',
-            color='Cobertura',
-            color_continuous_scale=[[0, '#EC0677'], [0.3, '#FBAF17'], [0.6, '#1FB2DE'], [1, '#0F385A']],
-            range_color=[0, 100],
-            hover_data=['Asignaturas'],
-            title=f"Cobertura de tendencias en {prog_sel}",
-            labels={'Cobertura': '% Asignaturas', 'Tendencia': ''}
+        st.subheader("⚠️ Brechas Curriculares Detectadas")
+        st.warning(
+            "Las siguientes tendencias **NO fueron detectadas en ninguna asignatura**. "
+            "Se recomienda revisar si los programas deberían incorporarlas:"
         )
-        fig_prog.add_vline(x=50, line_dash="dot", line_color="#FBAF17", opacity=0.8,
-                           annotation_text="50%", annotation_position="top right")
-        fig_prog.update_layout(height=480, showlegend=False)
-        st.plotly_chart(fig_prog, use_container_width=True)
+        for tid in resultados['ausentes']:
+            if tid in tendencias:
+                st.markdown(f"- **{tendencias[tid]['descripcion']}**")
 
-        # Detalle: asignaturas por tendencia del programa
-        st.markdown("---")
-        st.subheader(f"Asignaturas de **{prog_sel}** por Tendencia")
-        tend_sel_prog = st.selectbox(
-            "Seleccionar tendencia:",
-            df_cob_prog['ID'].tolist(),
-            format_func=lambda x: tendencias[x]['descripcion'] if x in tendencias else x,
-            key="tend_sel_prog"
+    st.markdown("---")
+    st.subheader("Detalle por Tendencia")
+    st.caption(
+        "Expande cada programa para ver qué asignaturas abordan la tendencia seleccionada "
+        "y en qué campos fue detectada (RA = Resultado de Aprendizaje, Nucleos = Núcleos Temáticos)."
+    )
+    tend_sel = st.selectbox(
+        "Seleccionar tendencia a explorar:",
+        list(tendencias.keys()),
+        format_func=lambda x: tendencias[x]['descripcion']
+    )
+
+    if tend_sel in resultados['detalle']:
+        n_asigs_tend = resultados.get('asig_counts', {}).get(tend_sel, 0)
+        total_asigs = resultados.get('total_asigs', 1)
+        st.markdown(
+            f"**{tendencias[tend_sel]['descripcion']}** — presente en "
+            f"**{n_asigs_tend} de {total_asigs}** asignaturas "
+            f"({n_asigs_tend/total_asigs*100:.1f}% de cobertura)"
         )
-        row_sel = df_cob_prog[df_cob_prog['ID'] == tend_sel_prog].iloc[0] if not df_cob_prog.empty else None
-        if row_sel is not None:
-            asigs_lista = row_sel['Lista']
-            if asigs_lista:
-                st.markdown(
-                    f"**{len(asigs_lista)} asignatura(s)** de {prog_sel} abordan "
-                    f"**{tendencias[tend_sel_prog]['descripcion']}** ({row_sel['Cobertura']:.1f}%):"
-                )
-                for a in asigs_lista:
-                    st.markdown(f"- {a}")
-            else:
-                st.info(f"Ninguna asignatura de **{prog_sel}** aborda esta tendencia.")
+        tiene_hallazgos = False
+        for programa, hallazgos in resultados['detalle'][tend_sel].items():
+            if hallazgos:
+                tiene_hallazgos = True
+                asig_set = set()
+                for h in hallazgos:
+                    asig = h.get('asignatura', '')
+                    if asig and asig not in ('Sin nombre', 'nan', ''):
+                        asig_set.add(asig)
+                with st.expander(f"📚 {programa} — {len(asig_set)} asignatura(s)"):
+                    for asig in sorted(asig_set):
+                        # Mostrar campos donde fue detectada
+                        campos_asig = []
+                        for h in hallazgos:
+                            if h.get('asignatura') == asig:
+                                campos_asig.extend(h.get('campos', []))
+                        campos_unicos = list(dict.fromkeys(campos_asig))
+                        campos_txt = ', '.join(campos_unicos) if campos_unicos else 'Texto general'
+                        st.markdown(f"- **{asig}** _(detectada en: {campos_txt})_")
+        if not tiene_hallazgos:
+            st.info("Esta tendencia no fue detectada en ningún programa con los archivos cargados.")
 
 
 def pagina_nlp(df: pd.DataFrame, resultados: Dict):
@@ -1404,20 +1213,12 @@ def pagina_nlp(df: pd.DataFrame, resultados: Dict):
     )
 
     programas_disponibles = sorted(df['Programa'].unique().tolist())
-    col_prog_sim, col_top_sim = st.columns([3, 1])
-    with col_prog_sim:
-        programas_sel = st.multiselect(
-            "Seleccionar programas a comparar (2 o más):",
-            programas_disponibles,
-            default=programas_disponibles,
-            help="Elige qué programas incluir en el análisis de similitud"
-        )
-    with col_top_sim:
-        max_asigs_heat = st.number_input(
-            "Máx. asignaturas en heatmap:",
-            min_value=5, max_value=80, value=40, step=5,
-            help="Limita el heatmap a las N asignaturas con mayor similitud promedio"
-        )
+    programas_sel = st.multiselect(
+        "Seleccionar programas a comparar (2 o más):",
+        programas_disponibles,
+        default=programas_disponibles,
+        help="Elige qué programas incluir en el análisis de similitud"
+    )
 
     if len(programas_sel) < 2:
         st.warning("Selecciona al menos 2 programas para el análisis de similitud.")
@@ -1438,54 +1239,20 @@ def pagina_nlp(df: pd.DataFrame, resultados: Dict):
 
             sim_df = res_sim['similitud_df']
             if not sim_df.empty:
-                # Reducir a top-N asignaturas por similitud promedio (excl. diagonal)
-                if len(sim_df) > max_asigs_heat:
-                    sim_vals_full = sim_df.values.copy()
-                    np.fill_diagonal(sim_vals_full, 0)
-                    avg_sim = sim_vals_full.mean(axis=1)
-                    top_idx = np.argsort(avg_sim)[::-1][:int(max_asigs_heat)]
-                    top_names = [sim_df.index[i] for i in sorted(top_idx)]
-                    sim_df_heat = sim_df.loc[top_names, top_names]
-                    st.caption(
-                        f"📊 Mostrando las **{int(max_asigs_heat)} asignaturas** con mayor similitud promedio "
-                        f"(de {res_sim['n_asignaturas']} totales). Ajusta el límite en el campo superior."
-                    )
-                else:
-                    sim_df_heat = sim_df
-
-                tab_heat, tab_pares = st.tabs(["🗺️ Mapa de Calor", "📋 Pares Más Similares"])
-
-                with tab_heat:
-                    font_size = max(7, min(11, int(320 / len(sim_df_heat))))
+                if len(sim_df) <= 30:
                     fig = px.imshow(
-                        sim_df_heat.values,
-                        x=sim_df_heat.columns.tolist(),
-                        y=sim_df_heat.index.tolist(),
-                        color_continuous_scale=[
-                            [0, '#EAF9FD'], [0.5, '#1FB2DE'], [0.8, '#FBAF17'], [1, '#EC0677']
-                        ],
-                        zmin=0, zmax=1,
+                        sim_df.values,
+                        x=sim_df.columns.tolist(),
+                        y=sim_df.index.tolist(),
+                        color_continuous_scale='RdBu_r',
+                        text_auto='.2f',
                         aspect='auto',
-                        title="Mapa de calor de similitud entre asignaturas"
+                        title="Mapa de calor de similitud (1.0 = idénticas, 0.0 = completamente distintas)"
                     )
-                    fig.update_layout(
-                        height=max(450, len(sim_df_heat) * 18),
-                        xaxis_tickangle=45,
-                        xaxis=dict(tickfont=dict(size=font_size)),
-                        yaxis=dict(tickfont=dict(size=font_size)),
-                        coloraxis_colorbar=dict(
-                            title="Similitud",
-                            tickvals=[0, 0.5, 0.8, 1.0],
-                            ticktext=["0%", "50%", "80%", "100%"]
-                        )
-                    )
+                    fig.update_layout(height=700, xaxis_tickangle=45)
                     st.plotly_chart(fig, use_container_width=True)
-                    st.caption(
-                        "🟡 Similitud ≥ 0.80 (naranja→magenta) puede indicar **redundancia curricular**. "
-                        "Las celdas más oscuras requieren revisión."
-                    )
-
-                with tab_pares:
+                else:
+                    st.caption("Demasiadas asignaturas para mapa de calor. Se muestran los pares más similares:")
                     sim_vals = sim_df.values.copy()
                     np.fill_diagonal(sim_vals, 0)
                     pares = []
@@ -1499,21 +1266,19 @@ def pagina_nlp(df: pd.DataFrame, resultados: Dict):
                     df_pares = (
                         pd.DataFrame(pares)
                         .sort_values('Similitud', ascending=False)
-                        .head(40)
+                        .head(30)
                     )
+                    # Marcar pares con alta similitud
                     def highlight_similar(val):
-                        if isinstance(val, float):
-                            if val >= 0.8:
-                                return 'background-color: #FEE5F2; color: #EC0677; font-weight:bold'
-                            if val >= 0.6:
-                                return 'background-color: #FFFBEA; color: #8C6000'
+                        if isinstance(val, float) and val >= 0.8:
+                            return 'background-color: #ffcccc'
                         return ''
                     st.dataframe(
                         df_pares.style.applymap(highlight_similar, subset=['Similitud']),
                         use_container_width=True,
                         hide_index=True
                     )
-                    st.caption("🔴 ≥ 0.80 = posible redundancia · 🟡 0.60–0.79 = revisar diferenciación")
+                    st.caption("🔴 Similitud ≥ 0.80 puede indicar redundancia curricular.")
 
     st.markdown("---")
     st.subheader("Buscar Términos en los Datos")
@@ -1545,73 +1310,62 @@ def pagina_tipo_saber(df: pd.DataFrame):
     )
 
     COLORES_SABER = {
-        'Saber': '#1FB2DE',
-        'SaberHacer': '#0F385A',
-        'SaberSer': '#42F2F2'
-    }
-    REFS_SABER = {
-        'Saber':     (25, 45),
-        'SaberHacer': (35, 60),
-        'SaberSer':  (10, 30)
+        'Saber': '#3498DB',
+        'SaberHacer': '#E67E22',
+        'SaberSer': '#8E44AD'
     }
 
-    # ── Distribución global + Diagnóstico ───────────────────────────────────
+    # ── Distribución global ─────────────────────────────────────────────────
     st.markdown("---")
     st.subheader("Distribución Global de Tipo de Saber")
 
-    totales = df['Tipo de Saber'].value_counts()
-    total = totales.sum()
-
-    col_donut, col_diag = st.columns([1, 1])
-    with col_donut:
+    col_a, col_b = st.columns(2)
+    with col_a:
         total_tipo = df['Tipo de Saber'].value_counts().reset_index()
         total_tipo.columns = ['Tipo', 'Registros']
-        fig_donut = px.pie(
+        total_tipo['Porcentaje'] = (total_tipo['Registros'] / total_tipo['Registros'].sum() * 100).round(1)
+        fig = px.pie(
             total_tipo, values='Registros', names='Tipo',
-            color='Tipo', color_discrete_map=COLORES_SABER,
-            hole=0.45,
-            title='Composición global (todos los programas)'
+            color='Tipo',
+            color_discrete_map=COLORES_SABER,
+            title='Todos los programas consolidados'
         )
-        fig_donut.update_traces(
-            texttemplate='%{label}<br><b>%{percent:.1%}</b>',
-            textfont_size=12
-        )
-        fig_donut.update_layout(height=380, showlegend=False,
-                                margin=dict(t=50, b=10, l=10, r=10))
-        st.plotly_chart(fig_donut, use_container_width=True)
+        fig.update_traces(texttemplate='%{label}<br>%{percent:.1%}')
+        fig.update_layout(height=400)
+        st.plotly_chart(fig, use_container_width=True)
 
-    with col_diag:
-        st.markdown("**Diagnóstico de Equilibrio**")
-        st.caption("Referencia recomendada para currículos por competencias")
-        for tipo, (ref_min, ref_max) in REFS_SABER.items():
+    with col_b:
+        # Semáforo de equilibrio
+        st.subheader("Diagnóstico de Equilibrio")
+        totales = df['Tipo de Saber'].value_counts()
+        total = totales.sum()
+        for tipo in COLORES_SABER:
             n = int(totales.get(tipo, 0))
             pct = n / total * 100 if total > 0 else 0
-            if ref_min <= pct <= ref_max:
-                icono, color = "✅", "#27AE60"
-            elif pct > ref_max:
-                icono, color = "⬆️", "#FBAF17"
+            # Referencia
+            if tipo == 'Saber':
+                ref_min, ref_max = 25, 45
+            elif tipo == 'SaberHacer':
+                ref_min, ref_max = 35, 60
             else:
-                icono, color = "⬇️", "#EC0677"
-            bar_pct = int(pct * 2)
-            st.markdown(
-                f"<div style='margin:10px 0;padding:10px 14px;border-radius:8px;"
-                f"border-left:4px solid {COLORES_SABER[tipo]};background:#F5FDFF'>"
-                f"<b style='color:{COLORES_SABER[tipo]}'>{tipo}</b> "
-                f"<span style='float:right;color:{color};font-weight:700'>{icono} {pct:.1f}%</span><br>"
-                f"<div style='background:#E0F0F8;border-radius:4px;height:8px;margin:6px 0'>"
-                f"<div style='background:{COLORES_SABER[tipo]};width:{min(bar_pct,100)}%;height:8px;border-radius:4px'></div></div>"
-                f"<small style='color:#666'>Referencia: {ref_min}–{ref_max}% &nbsp;|&nbsp; {n} registros</small>"
-                f"</div>",
-                unsafe_allow_html=True
+                ref_min, ref_max = 10, 30
+
+            estado = "✅ En rango" if ref_min <= pct <= ref_max else (
+                "⬆️ Por encima" if pct > ref_max else "⬇️ Por debajo"
+            )
+            st.metric(
+                f"{tipo}",
+                f"{pct:.1f}% ({n} registros)",
+                delta=f"{estado} (ref: {ref_min}–{ref_max}%)",
+                delta_color="off"
             )
 
-    # ── Radar + Scatter de balance por programa ─────────────────────────────
+    # ── Por programa ────────────────────────────────────────────────────────
     st.markdown("---")
-    st.subheader("Perfil de Competencias por Programa")
+    st.subheader("Comparación de Tipo de Saber por Programa")
     st.caption(
-        "**Radar:** compara simultáneamente los 3 tipos de saber entre programas — "
-        "el área ideal es amplia y equilibrada. "
-        "**Mapa de balance:** posición óptima = SaberHacer alto (eje X) y SaberSer alto (eje Y)."
+        "Barras apiladas al 100%. Permite comparar el perfil de cada programa: "
+        "¿predomina lo teórico (Saber), lo práctico (SaberHacer) o lo actitudinal (SaberSer)?"
     )
 
     pivot = (
@@ -1621,101 +1375,21 @@ def pagina_tipo_saber(df: pd.DataFrame):
     )
     total_prog = pivot.groupby('Programa')['Registros'].transform('sum')
     pivot['Porcentaje'] = (pivot['Registros'] / total_prog * 100).round(1)
-    pivot_wide = pivot.pivot_table(index='Programa', columns='Tipo de Saber',
-                                   values='Porcentaje', fill_value=0).reset_index()
 
-    tab_radar, tab_scatter, tab_barra = st.tabs([
-        "🕸️ Radar de Competencias",
-        "⚖️ Mapa de Balance",
-        "📊 Comparativo Detallado"
-    ])
-
-    with tab_radar:
-        tipos_disp = [t for t in ['Saber', 'SaberHacer', 'SaberSer'] if t in pivot_wide.columns]
-        fig_radar = go.Figure()
-        palette_radar = ['#0F385A', '#1FB2DE', '#42F2F2', '#FBAF17', '#EC0677']
-        for i, row in pivot_wide.iterrows():
-            vals = [row.get(t, 0) for t in tipos_disp]
-            vals_closed = vals + [vals[0]]
-            cats_closed = tipos_disp + [tipos_disp[0]]
-            fig_radar.add_trace(go.Scatterpolar(
-                r=vals_closed,
-                theta=cats_closed,
-                fill='toself',
-                fillcolor=f"rgba({int(palette_radar[i % len(palette_radar)].lstrip('#')[0:2], 16)},"
-                          f"{int(palette_radar[i % len(palette_radar)].lstrip('#')[2:4], 16)},"
-                          f"{int(palette_radar[i % len(palette_radar)].lstrip('#')[4:6], 16)},0.15)",
-                line=dict(color=palette_radar[i % len(palette_radar)], width=2),
-                name=str(row['Programa'])
-            ))
-        # Zona de referencia
-        ref_vals = [35, 47.5, 20]
-        fig_radar.add_trace(go.Scatterpolar(
-            r=ref_vals + [ref_vals[0]],
-            theta=tipos_disp + [tipos_disp[0]],
-            fill='toself',
-            fillcolor='rgba(251,175,23,0.07)',
-            line=dict(color='#FBAF17', width=1, dash='dot'),
-            name='Zona referencia'
-        ))
-        fig_radar.update_layout(
-            polar=dict(radialaxis=dict(visible=True, range=[0, 100],
-                                       tickfont=dict(size=10), ticksuffix='%')),
-            height=450,
-            showlegend=True,
-            legend=dict(orientation='h', y=-0.15),
-            title="Radar de tipos de saber por programa (zona dorada = rango ideal)"
-        )
-        st.plotly_chart(fig_radar, use_container_width=True)
-        st.caption("La zona dorada punteada representa el rango de referencia ideal.")
-
-    with tab_scatter:
-        if 'SaberHacer' in pivot_wide.columns and 'SaberSer' in pivot_wide.columns:
-            pivot_wide['Saber_val'] = pivot_wide.get('Saber', 0)
-            fig_scatter = px.scatter(
-                pivot_wide,
-                x='SaberHacer', y='SaberSer',
-                size='Saber_val', color='Programa',
-                text='Programa',
-                color_discrete_sequence=['#0F385A', '#1FB2DE', '#42F2F2', '#FBAF17', '#EC0677'],
-                title="Mapa de balance: SaberHacer vs SaberSer (tamaño = % Saber)",
-                labels={'SaberHacer': '% SaberHacer (habilidades prácticas)',
-                        'SaberSer': '% SaberSer (valores/actitudes)'}
-            )
-            fig_scatter.add_shape(type='rect', x0=35, x1=60, y0=10, y1=30,
-                                  fillcolor='rgba(251,175,23,0.1)',
-                                  line=dict(color='#FBAF17', dash='dot'))
-            fig_scatter.add_annotation(x=47.5, y=20, text="Zona ideal", showarrow=False,
-                                       font=dict(color='#FBAF17', size=11))
-            fig_scatter.update_traces(textposition='top center', marker=dict(sizemin=10))
-            fig_scatter.update_layout(height=420, showlegend=False,
-                                      xaxis=dict(range=[0, 100]),
-                                      yaxis=dict(range=[0, 100]))
-            st.plotly_chart(fig_scatter, use_container_width=True)
-            st.caption(
-                "**Lectura:** Programas dentro del rectángulo dorado tienen un balance ideal. "
-                "Programas a la izquierda tienen bajo SaberHacer; hacia abajo, bajo SaberSer."
-            )
-
-    with tab_barra:
-        fig_bar = px.bar(
-            pivot.sort_values('Tipo de Saber'),
-            x='Porcentaje', y='Programa', color='Tipo de Saber',
-            barmode='group', orientation='h',
-            color_discrete_map=COLORES_SABER,
-            text='Porcentaje',
-            title='Comparativo detallado por programa y tipo de saber',
-            labels={'Porcentaje': '%', 'Tipo de Saber': 'Tipo'}
-        )
-        fig_bar.update_traces(texttemplate='%{text:.0f}%', textposition='outside')
-        for tipo, (ref_min, ref_max) in REFS_SABER.items():
-            fig_bar.add_vline(x=ref_min, line_dash='dot',
-                              line_color=COLORES_SABER.get(tipo, 'gray'), opacity=0.4)
-        fig_bar.update_layout(height=max(300, len(pivot_wide) * 80),
-                              xaxis=dict(range=[0, 100], title='% de registros'),
-                              yaxis_title='')
-        st.plotly_chart(fig_bar, use_container_width=True)
-        st.caption("Las líneas punteadas verticales marcan el límite mínimo de referencia para cada tipo.")
+    fig = px.bar(
+        pivot, x='Programa', y='Porcentaje', color='Tipo de Saber',
+        barmode='stack',
+        color_discrete_map=COLORES_SABER,
+        text='Porcentaje',
+        title='Distribución porcentual por programa',
+        labels={'Porcentaje': '%', 'Tipo de Saber': 'Tipo'}
+    )
+    fig.update_traces(texttemplate='%{text:.0f}%', textposition='inside')
+    fig.update_layout(height=450, yaxis_title='Porcentaje (%)')
+    # Líneas de referencia
+    fig.add_hline(y=40, line_dash='dot', line_color='gray', opacity=0.4,
+                  annotation_text='Ref. 40%', annotation_position='right')
+    st.plotly_chart(fig, use_container_width=True)
 
     # ── Por semestre ────────────────────────────────────────────────────────
     st.markdown("---")
@@ -2037,7 +1711,7 @@ def pagina_resumen_ejecutivo(df: pd.DataFrame, tendencias: Dict) -> None:
             )
 
 
-def pagina_bloom_integracion(df: pd.DataFrame, taxonomias_externas: Dict | None = None):
+def pagina_bloom_integracion(df: pd.DataFrame):
     """Pagina de Taxonomia de Bloom por semestre y Mapa de Integracion entre asignaturas."""
     import math as _math
 
@@ -2112,32 +1786,6 @@ def pagina_bloom_integracion(df: pd.DataFrame, taxonomias_externas: Dict | None 
                 "desc": "Reunir elementos para producir algo nuevo"
             },
         }
-
-        # Enriquecer BLOOM con verbos de la hoja "Taxonomias para RA" (si existe)
-        fuente_bloom = "diccionario por defecto"
-        if taxonomias_externas:
-            for nivel_ext, verbos_ext in taxonomias_externas.items():
-                # Buscar nivel equivalente en BLOOM (por nombre aproximado)
-                match = next(
-                    (k for k in BLOOM
-                     if unicodedata.normalize('NFKD', k.lower()).encode('ascii', 'ignore').decode('ascii')
-                     in unicodedata.normalize('NFKD', nivel_ext.lower()).encode('ascii', 'ignore').decode('ascii')
-                     or unicodedata.normalize('NFKD', nivel_ext.lower()).encode('ascii', 'ignore').decode('ascii')
-                     in unicodedata.normalize('NFKD', k.lower()).encode('ascii', 'ignore').decode('ascii')),
-                    None
-                )
-                if match:
-                    BLOOM[match]["verbos"] = list(dict.fromkeys(BLOOM[match]["verbos"] + verbos_ext))
-                else:
-                    # Nivel nuevo no reconocido — agregar como Analizar (orden 4) si no existe
-                    if nivel_ext not in BLOOM:
-                        BLOOM[nivel_ext] = {"verbos": verbos_ext, "color": "#42F2F2", "orden": 4,
-                                            "desc": f"Nivel personalizado: {nivel_ext}"}
-            fuente_bloom = "hoja **Taxonomias para RA** del Excel (enriquecida con verbos locales)"
-            st.success(
-                f"✅ Verbos de Bloom cargados desde la {fuente_bloom}. "
-                f"Total niveles detectados: {len(BLOOM)}."
-            )
 
         # Build normalized verb lookup — higher order wins for ambiguous verbs
         verb_lookup: Dict[str, tuple] = {}
@@ -2944,8 +2592,7 @@ def main():
         pagina_nlp(df, resultados_nlp)
 
     elif pagina == "🎓 Bloom & Integración":
-        taxonomias_bloom = leer_taxonomias_bloom(uploaded_files)
-        pagina_bloom_integracion(df, taxonomias_bloom)
+        pagina_bloom_integracion(df)
 
     elif pagina == "⚙️ Configurar Tendencias":
         pagina_config_tendencias()
