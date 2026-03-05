@@ -36,6 +36,16 @@ _PATRON_NO_NUCLEO = re.compile(
     re.IGNORECASE
 )
 
+# Fragmentos que empiezan con conjunción o preposición: indican que el texto
+# es la segunda parte de una expresión compuesta (ej. "o su versión actualizada")
+_INICIO_INVALIDO = re.compile(
+    r'^(o |y |e |u |ni |pero |sino |aunque |mas |porque |pues |'
+    r'de |del |al |a |en |con |sin |por |para |'
+    r'lo |la |el |los |las |un |una |'
+    r'que |si |su |sus |se |le |les )',
+    re.IGNORECASE
+)
+
 
 def _limpiar_nucleo(texto: str) -> str:
     """Elimina numeracion inicial tipo '1. ', '2. ', etc. de un nucleo tematico."""
@@ -55,9 +65,13 @@ def _es_nucleo_valido(texto: str) -> bool:
     # Requerir mínimo 2 palabras (filtra términos sueltos como "construcción", "dinámicas")
     if len(t.split()) < 2:
         return False
-    # Descartar patrones no temáticos
     t_norm = unicodedata.normalize('NFKD', t.lower()).encode('ascii', 'ignore').decode('ascii')
+    # Descartar patrones no temáticos
     if _PATRON_NO_NUCLEO.match(t_norm):
+        return False
+    # Descartar fragmentos que son la segunda parte de una expresión compuesta
+    # (ej. "o su versión actualizada", "y sus aplicaciones")
+    if _INICIO_INVALIDO.match(t_norm):
         return False
     return True
 
@@ -1308,13 +1322,69 @@ def pagina_cobertura(df: pd.DataFrame, resultados: Dict):
         "áreas del conocimiento."
     )
 
+    # ── Revisión y depuración de núcleos ─────────────────────────────────────
+    todos_nucleos_ord = resultados['nucleos_counter'].most_common()
+    if 'nucleos_excluidos' not in st.session_state:
+        st.session_state['nucleos_excluidos'] = []
+
+    with st.expander("🔍 Revisar y depurar núcleos detectados", expanded=False):
+        st.caption(
+            "Revisa los núcleos identificados automáticamente. Si alguno no es un núcleo "
+            "temático válido (fragmentos, errores de formato, etc.), exclúyelo del análisis. "
+            "Los cambios se aplican inmediatamente a todos los gráficos de esta página."
+        )
+        df_revision = pd.DataFrame(
+            [{'Núcleo': n, 'Menciones': c} for n, c in todos_nucleos_ord]
+        )
+        st.dataframe(df_revision, use_container_width=True, hide_index=True, height=250)
+
+        opciones = [n for n, _ in todos_nucleos_ord]
+        excluidos_sel = st.multiselect(
+            "Seleccionar núcleos a excluir:",
+            options=opciones,
+            default=[x for x in st.session_state['nucleos_excluidos'] if x in opciones],
+            placeholder="Escribe para buscar un núcleo…",
+            key='ms_nucleos_excluidos'
+        )
+        st.session_state['nucleos_excluidos'] = excluidos_sel
+        if excluidos_sel:
+            st.warning(f"**{len(excluidos_sel)}** núcleo(s) excluido(s) del análisis.")
+        else:
+            st.success("Todos los núcleos detectados están incluidos en el análisis.")
+
+    # Aplicar exclusiones al counter y recalcular métricas derivadas
+    excluidos = set(st.session_state.get('nucleos_excluidos', []))
+    nucleos_counter = Counter({k: v for k, v in resultados['nucleos_counter'].items()
+                               if k not in excluidos})
+    nucleos_unicos   = len(nucleos_counter)
+    total_menciones  = sum(nucleos_counter.values())
+    if nucleos_unicos > 1:
+        _frec = np.array(list(nucleos_counter.values()), dtype=float)
+        _prob = _frec / _frec.sum()
+        _h    = entropy(_prob, base=2)
+        diversidad = (_h / np.log2(nucleos_unicos)) * 100
+    else:
+        diversidad = 0.0
+    # Reconstruir matriz filtrada (top 20)
+    top_20_fil = [n for n, _ in nucleos_counter.most_common(20)]
+    matriz = pd.DataFrame(0, index=df['Programa'].unique(), columns=top_20_fil)
+    for _, row in df.iterrows():
+        programa = row['Programa']
+        nucleos_raw = str(row.get('Nucleos tematicos', ''))
+        if nucleos_raw and nucleos_raw != 'nan':
+            for nuc in [_limpiar_nucleo(n.strip()) for n in _split_nucleos(nucleos_raw)
+                        if _es_nucleo_valido(n.strip())]:
+                if nuc in top_20_fil and nuc not in excluidos:
+                    matriz.loc[programa, nuc] += 1
+
+    st.markdown("---")
     col1, col2, col3, col4 = st.columns(4)
     col1.metric(
-        "Núcleos Únicos", resultados['nucleos_unicos'],
+        "Núcleos Únicos", nucleos_unicos,
         help="Número de temas o núcleos temáticos diferentes identificados en todos los programas"
     )
     col2.metric(
-        "Total Menciones", f"{resultados['total_menciones']:,}",
+        "Total Menciones", f"{total_menciones:,}",
         help="Cuántas veces en total aparecen núcleos temáticos (pueden repetirse entre asignaturas)"
     )
     col3.metric(
@@ -1322,7 +1392,7 @@ def pagina_cobertura(df: pd.DataFrame, resultados: Dict):
         help="Promedio de núcleos temáticos declarados por asignatura"
     )
     col4.metric(
-        "Diversidad Temática", f"{resultados['diversidad']:.1f}/100",
+        "Diversidad Temática", f"{diversidad:.1f}/100",
         help=(
             "Índice de diversidad (Entropía de Shannon normalizada). "
             "100 = máxima diversidad (todos los temas con igual peso). "
@@ -1340,7 +1410,6 @@ def pagina_cobertura(df: pd.DataFrame, resultados: Dict):
         "por coma o punto y coma. Los más frecuentes (como términos cortos) pueden provenir "
         "de asignaturas del bloque institucional compartido entre programas."
     )
-    matriz = resultados['matriz_cobertura']
     if not matriz.empty:
         # Truncar nombres de nucleos para mejor legibilidad
         max_len = 35
@@ -1389,7 +1458,7 @@ def pagina_cobertura(df: pd.DataFrame, resultados: Dict):
             "Frecuencia = cuántas veces aparece ese núcleo en todos los registros. "
             "Los núcleos muy cortos (1-2 palabras) suelen ser temas generales del bloque institucional."
         )
-        top_nucleos = resultados['nucleos_counter'].most_common(20)
+        top_nucleos = nucleos_counter.most_common(20)
         df_nucleos = pd.DataFrame(top_nucleos, columns=['Nucleo', 'Frecuencia'])
         # Truncar para visualización
         df_nucleos['Nucleo_display'] = df_nucleos['Nucleo'].apply(
@@ -1439,7 +1508,7 @@ def pagina_cobertura(df: pd.DataFrame, resultados: Dict):
             nucleos_prog.extend([
                 _limpiar_nucleo(n.strip())
                 for n in _split_nucleos(nucleos_raw)
-                if _es_nucleo_valido(n.strip())
+                if _es_nucleo_valido(n.strip()) and _limpiar_nucleo(n.strip()) not in excluidos
             ])
 
     if nucleos_prog:
