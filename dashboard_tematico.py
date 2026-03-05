@@ -69,9 +69,13 @@ def _es_nucleo_valido(texto: str) -> bool:
     # Descartar patrones no temáticos
     if _PATRON_NO_NUCLEO.match(t_norm):
         return False
-    # Descartar fragmentos que son la segunda parte de una expresión compuesta
-    # (ej. "o su versión actualizada", "y sus aplicaciones")
-    if _INICIO_INVALIDO.match(t_norm):
+    # Descartar fragmentos que son la segunda parte de una expresión compuesta.
+    # Se aplica sobre el texto YA LIMPIO (sin numeración "1. " ni viñetas)
+    # para que "3. o su versión actualizada" → "o su versión actualizada" sea rechazado.
+    t_clean_norm = unicodedata.normalize(
+        'NFKD', _limpiar_nucleo(t).lower()
+    ).encode('ascii', 'ignore').decode('ascii')
+    if _INICIO_INVALIDO.match(t_clean_norm):
         return False
     return True
 
@@ -1423,7 +1427,7 @@ def pagina_cobertura(df: pd.DataFrame, resultados: Dict):
             matriz_display.values,
             x=matriz_display.columns.tolist(),
             y=matriz_display.index.tolist(),
-            color_continuous_scale='YlOrRd',
+            color_continuous_scale='Blues',
             text_auto=True,
             aspect='auto',
             labels={'color': 'Menciones'}
@@ -3007,7 +3011,7 @@ def pagina_bloom_integracion(df: pd.DataFrame, taxonomias_externas: Dict | None 
                         mat_disp.values,
                         x=mat_disp.columns.tolist(),
                         y=mat_disp.index.tolist(),
-                        color_continuous_scale='YlOrRd',
+                        color_continuous_scale='Blues',
                         aspect='auto',
                         title="Núcleos temáticos compartidos entre asignaturas",
                         labels=dict(color="Núcleos comunes")
