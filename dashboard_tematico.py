@@ -778,35 +778,32 @@ def procesar_archivos(uploaded_files) -> pd.DataFrame:
         nombre = uploaded_file.name
         metadata = extract_modality_sede(nombre)
         
-        # Extraer nombre del programa de celda A3
-        programa_nombre = None
-        try:
-            uploaded_file.seek(0)
-            df_perfil = pd.read_excel(
-                uploaded_file,
-                sheet_name='Paso1 Analisis perfil egreso',
-                header=None,
-                nrows=5,
-                engine='openpyxl'
-            )
-            if df_perfil is not None and not df_perfil.empty and len(df_perfil) > 2:
-                val = df_perfil.iloc[2, 0]
-                if pd.notna(val):
-                    programa_nombre = str(val).strip()
-        except Exception:
-            pass  # Si falla, usar fallback
+        # Extraer nombre del programa (primero del archivo, luego celda A3 si es vacío)
+        programa_nombre = (
+            nombre
+            .replace("FormatoRA_", "")
+            .replace("_PBOG", "")
+            .replace("_VNAL", "")
+            .replace("_PMED", "")
+            .replace("_HBOG", "")
+            .replace("_HMED", "")
+            .replace("_HVAL", "")
+            .replace(".xlsx", "")
+            .replace(".xls", "")
+        )
         
-        # Si no se pudo extraer del Excel, usar el nombre del archivo
-        if not programa_nombre:
-            programa_nombre = (
-                nombre
-                .replace("FormatoRA_", "")
-                .replace("_PBOG", "")
-                .replace("_VNAL", "")
-                .replace("_PMED", "")
-                .replace(".xlsx", "")
-                .replace(".xls", "")
-            )
+        # Sobrescribir solo si el nombre del archivo está vacío o es muy corto
+        if programa_nombre and len(programa_nombre) > 3:
+            try:
+                uploaded_file.seek(0)
+                df_perfil = pd.read_excel(uploaded_file, sheet_name='Paso1 Analisis perfil egreso', 
+                                     header=None, nrows=10, engine='openpyxl')
+                if df_perfil is not None and len(df_perfil) > 2 and len(df_perfil.columns) > 0:
+                    val = df_perfil.iloc[2, 0]
+                    if val is not None and str(val).strip():
+                        programa_nombre = str(val).strip()
+            except:
+                pass  # Mantener nombre del archivo
         
         try:
             uploaded_file.seek(0)
@@ -816,12 +813,15 @@ def procesar_archivos(uploaded_files) -> pd.DataFrame:
                 header=1,
                 engine='openpyxl'
             )
-            df = normalizar_columnas(df)
-            df['Programa'] = programa_nombre
-            df['Modalidad'] = metadata['modalidad']
-            df['Sede'] = metadata['sede']
-            df['Codigo'] = metadata['codigo']
-            all_data.append(df)
+            if df is not None and not df.empty:
+                df = normalizar_columnas(df)
+                df['Programa'] = programa_nombre
+                df['Modalidad'] = metadata['modalidad']
+                df['Sede'] = metadata['sede']
+                df['Codigo'] = metadata['codigo']
+                all_data.append(df)
+            else:
+                failed_files.append({'nombre': nombre, 'causa': 'Archivo vacío'})
         except Exception as e:
             error_msg = str(e)
             if 'multiple' in error_msg.lower() or 'found' in error_msg.lower():
@@ -875,7 +875,7 @@ def procesar_archivos(uploaded_files) -> pd.DataFrame:
         df_consolidado['Nucleos tematicos'].fillna('')
     ).str.lower().str.strip()
 
-    return df_consolidado
+    return df_consolidado, failed_files
 
 
 def obtener_tendencias() -> Dict:
