@@ -3292,13 +3292,14 @@ def main():
         unsafe_allow_html=True
     )
     
-    # File uploader en expander colapsable
-    uploaded_files = st.sidebar.file_uploader(
-        "Sube archivos Excel (.xlsx):",
-        type=['xlsx'],
-        accept_multiple_files=True,
-        label_visibility="collapsed"
-    )
+    # Mostrar uploader solo si NO hay archivos cargados
+    if not uploaded_files:
+        uploaded_files = st.sidebar.file_uploader(
+            "Sube archivos Excel (.xlsx):",
+            type=['xlsx'],
+            accept_multiple_files=True,
+            label_visibility="collapsed"
+        )
     
     if not uploaded_files:
         # ── Banner institucional ───────────────────────────────────────────
