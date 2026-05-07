@@ -3262,7 +3262,36 @@ def main():
     st.sidebar.title("Configuracion")
     st.sidebar.markdown("---")
 
-# Carga de archivos - inicializar variable primero
+    # Sidebar styling consistente oscuro
+    st.markdown("""
+    <style>
+    section[data-testid="stSidebar"] {
+        background-color: #0F385A !important;
+    }
+    section[data-testid="stSidebar"] * {
+        color: #FFFFFF !important;
+    }
+    section[data-testid="stSidebar"] .stMarkdown h3 {
+        color: #4DA6FF !important;
+    }
+    section[data-testid="stSidebar"] .stExpander summary {
+        background-color: #0F385A !important;
+    }
+    section[data-testid="stSidebar"] div[data-testid="stFileUploader"] {
+        background-color: #1a4a7a;
+        border: 1px dashed #4DA6FF;
+        border-radius: 8px;
+        padding: 12px;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
+    # Carga de archivos - encabezado azul claro
+    st.sidebar.markdown(
+        "<h3 style='color:#4DA6FF; font-weight:700; margin:0.5rem 0;'>📂 Cargar Archivos Excel</h3>",
+        unsafe_allow_html=True
+    )
+    
     uploaded_files = st.sidebar.file_uploader(
         "Selecciona los archivos .xlsx de los programas:",
         type=['xlsx'],
@@ -3270,15 +3299,6 @@ def main():
         help="Sube uno o más archivos Excel con la hoja 'Paso 5 Estrategias micro'",
         label_visibility="collapsed"
     )
-    
-    # Carga de archivos - encabezado azul claro + expander
-    st.sidebar.markdown(
-        "<h3 style='color:#4DA6FF; font-weight:700; margin:0.5rem 0;'>📂 Cargar Archivos Excel</h3>",
-        unsafe_allow_html=True
-    )
-    
-    with st.sidebar.expander("Seleccionar archivos", expanded=bool(uploaded_files)):
-        st.info("Arrastra o selecciona archivos Excel (.xlsx)")
     
     if not uploaded_files:
         # ── Banner institucional ───────────────────────────────────────────
