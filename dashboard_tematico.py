@@ -87,7 +87,8 @@ def render_icon_svg(name: str, color: str = "#0f3460", size: int = 28) -> str:
         'bloom': f'''<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="4" width="16" height="16" rx="4" fill="{color}" fill-opacity="0.12"/><path d="M8 15H16" stroke="{color}" stroke-width="1.8" stroke-linecap="round"/><path d="M8 11H14" stroke="{color}" stroke-width="1.8" stroke-linecap="round"/><path d="M8 7H12" stroke="{color}" stroke-width="1.8" stroke-linecap="round"/></svg>''',
         'search': f'''<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="11" cy="11" r="6" stroke="{color}" stroke-width="1.8"/><path d="M16.5 16.5L20 20" stroke="{color}" stroke-width="1.8" stroke-linecap="round"/></svg>''',
         'grid': f'''<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="4" width="6" height="6" rx="1.5" fill="{color}" fill-opacity="0.16" stroke="{color}" stroke-width="1.8"/><rect x="14" y="4" width="6" height="6" rx="1.5" fill="{color}" fill-opacity="0.08" stroke="{color}" stroke-width="1.8"/><rect x="4" y="14" width="6" height="6" rx="1.5" fill="{color}" fill-opacity="0.08" stroke="{color}" stroke-width="1.8"/><rect x="14" y="14" width="6" height="6" rx="1.5" fill="{color}" fill-opacity="0.16" stroke="{color}" stroke-width="1.8"/></svg>''',
-        'settings': f'''<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="3" stroke="{color}" stroke-width="1.8"/><path d="M19.4 15A1.66 1.66 0 0 0 20 13.7 1.67 1.67 0 0 0 19.4 12.4L21 10.6 19.4 8.8 17.5 9.1A1.67 1.67 0 0 0 16 8 1.67 1.67 0 0 0 14.5 9.1L12.6 8.8 11 10.6 12.6 12.4A1.67 1.67 0 0 0 12 13.7 1.67 1.67 0 0 0 12.5 15L11 16.9 12.6 18.7 14.5 18.4A1.67 1.67 0 0 0 16 20 1.67 1.67 0 0 0 17.5 18.9L19.4 19.2 21 17.4 19.4 15Z" stroke="{color}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>'''
+        'settings': f'''<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="3" stroke="{color}" stroke-width="1.8"/><path d="M19.4 15A1.66 1.66 0 0 0 20 13.7 1.67 1.67 0 0 0 19.4 12.4L21 10.6 19.4 8.8 17.5 9.1A1.67 1.67 0 0 0 16 8 1.67 1.67 0 0 0 14.5 9.1L12.6 8.8 11 10.6 12.6 12.4A1.67 1.67 0 0 0 12 13.7 1.67 1.67 0 0 0 12.5 15L11 16.9 12.6 18.7 14.5 18.4A1.67 1.67 0 0 0 16 20 1.67 1.67 0 0 0 17.5 18.9L19.4 19.2 21 17.4 19.4 15Z" stroke="{color}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>''',
+        'upload': f'''<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7 16C4.239 16 2 13.761 2 11c0-2.596 1.948-4.74 4.4-4.938C7.082 4.524 8.918 3 11 3c2.747 0 5 2.253 5 5v1h2c2.761 0 5 2.239 5 5s-2.239 5-5 5" stroke="{color}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M11 19V10M8 13L11 10L14 13" stroke="{color}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>'''
     }
     return icons.get(name, '')
 
@@ -3388,126 +3389,162 @@ def main():
             max-width: 820px;
         }
         .hero-area {
-            background: #0f3f8a;
-            border-radius: 30px;
-            padding: 32px;
+            background: linear-gradient(135deg, #0f3460 0%, #1a4a7a 100%);
+            border-radius: 28px;
+            padding: 40px 48px;
             color: #ffffff;
             display: grid;
-            grid-template-columns: 1.7fr 0.9fr;
-            gap: 24px;
+            grid-template-columns: 1.6fr 1fr;
+            gap: 32px;
             align-items: center;
             margin-bottom: 32px;
-            box-shadow: 0 24px 70px rgba(15, 23, 42, 0.14);
+            box-shadow: 0 20px 60px rgba(15, 23, 42, 0.18);
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+        .hero-label {
+            font-size: 0.85rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            color: #7dd3f0;
+            margin-bottom: 16px;
+            display: block;
         }
         .hero-area h2 {
-            margin: 0 0 14px 0;
-            font-size: 2.25rem;
-            line-height: 1.05;
+            margin: 0 0 16px 0;
+            font-size: 2rem;
+            line-height: 1.1;
+            font-weight: 700;
         }
         .hero-area p {
-            margin: 0 0 26px 0;
-            max-width: 640px;
-            color: #dbe9ff;
-            font-size: 1rem;
-            line-height: 1.75;
+            margin: 0 0 28px 0;
+            max-width: 550px;
+            color: #c4e0ff;
+            font-size: 0.98rem;
+            line-height: 1.65;
         }
         .hero-actions {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(140px, 1fr));
-            gap: 14px;
-            margin-top: 10px;
+            display: flex;
+            gap: 12px;
+            margin-top: 8px;
         }
         .hero-btn {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            padding: 14px 18px;
-            border-radius: 14px;
+            padding: 12px 24px;
+            border-radius: 12px;
             font-weight: 700;
-            font-size: 0.95rem;
+            font-size: 0.92rem;
             cursor: pointer;
-            min-height: 48px;
+            min-height: 44px;
+            transition: all 0.2s ease;
+            border: none;
         }
         .hero-btn.primary {
-            background: #9ce9ff;
+            background: #1fb2de;
             color: #0f3460;
-            border: none;
+        }
+        .hero-btn.primary:hover {
+            background: #1a9cc6;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(31, 178, 222, 0.3);
         }
         .hero-btn.secondary {
             background: transparent;
-            border: 1px solid rgba(255,255,255,0.48);
+            border: 1.5px solid #7dd3f0;
             color: #ffffff;
         }
-        .upload-block {
-            border: 1px dashed rgba(255,255,255,0.6);
-            border-radius: 22px;
-            min-height: 220px;
+        .hero-btn.secondary:hover {
+            background: rgba(255,255,255,0.1);
+            border-color: #ffffff;
+        }
+        .upload-box {
+            border: 2px dashed rgba(255,255,255,0.35);
+            border-radius: 20px;
+            min-height: 200px;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            gap: 14px;
-            padding: 24px;
-            background: rgba(255,255,255,0.08);
-        }
-        .upload-block .upload-icon {
-            width: 64px;
-            height: 64px;
-            border-radius: 18px;
-            background: rgba(255,255,255,0.18);
-            display: grid;
-            place-items: center;
-            color: #ffffff;
-            font-size: 1.8rem;
-        }
-        .upload-block h4 {
-            margin: 0;
-            font-size: 1.05rem;
-            color: #ffffff;
-        }
-        .upload-block span {
-            color: rgba(255,255,255,0.8);
-            font-size: 0.95rem;
+            gap: 12px;
+            padding: 28px 24px;
+            background: rgba(255,255,255,0.06);
             text-align: center;
         }
-        .feature-row {
-            display: grid;
-            grid-template-columns: repeat(4, minmax(200px, 1fr));
-            gap: 18px;
-            margin-bottom: 18px;
+        .upload-icon-box {
+            width: 56px;
+            height: 56px;
+            border-radius: 14px;
+            background: rgba(31, 178, 222, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #1fb2de;
         }
-        .feature-row.small {
-            grid-template-columns: repeat(2, minmax(220px, 1fr));
+        .upload-box h4 {
+            margin: 0;
+            font-size: 1rem;
+            font-weight: 700;
+            color: #ffffff;
+        }
+        .upload-box span {
+            color: rgba(255,255,255,0.75);
+            font-size: 0.85rem;
+        }
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+        .feature-grid.row-2 {
+            grid-template-columns: repeat(2, 1fr);
+            max-width: 50%;
         }
         .feature-card {
             background: #ffffff;
-            border-radius: 22px;
-            padding: 22px;
-            box-shadow: 0 16px 35px rgba(15, 23, 42, 0.06);
-            min-height: 180px;
+            border-radius: 18px;
+            padding: 20px;
+            box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+            min-height: 160px;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
-            border: 1px solid #eef4ff;
+            border: 1px solid #e8f1ff;
+            transition: all 0.25s ease;
+        }
+        .feature-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 16px 40px rgba(15, 23, 42, 0.12);
+            border-color: #d0e4ff;
+        }
+        .feature-icon-box {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 12px;
         }
         .feature-card h3 {
-            margin: 0 0 12px 0;
-            font-size: 1.05rem;
+            margin: 0 0 10px 0;
+            font-size: 1rem;
+            font-weight: 700;
             color: #0d314e;
         }
         .feature-card p {
             margin: 0;
             color: #6c7a93;
-            font-size: 0.92rem;
-            line-height: 1.6;
+            font-size: 0.88rem;
+            line-height: 1.5;
         }
         .feature-meta {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-top: 20px;
-            font-size: 0.82rem;
-            color: #0f3460;
+            margin-top: 16px;
+            font-size: 0.78rem;
             font-weight: 700;
         }
         .feature-meta .status {
@@ -3516,47 +3553,62 @@ def main():
         .feature-meta .status.alert {
             color: #d93025;
         }
+        .feature-meta .arrow {
+            color: #b0c4de;
+        }
         .bottom-blocks {
             display: grid;
-            grid-template-columns: 1.2fr 1fr;
+            grid-template-columns: 1.3fr 1fr;
             gap: 24px;
-            margin-top: 24px;
+            margin-top: 28px;
         }
         .bottom-card {
             background: #ffffff;
-            border-radius: 22px;
-            border: 1px solid #eef4ff;
-            padding: 22px;
-            box-shadow: 0 16px 35px rgba(15, 23, 42, 0.06);
+            border-radius: 18px;
+            border: 1px solid #e8f1ff;
+            padding: 24px;
+            box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
         }
         .bottom-card h3 {
-            margin-top: 0;
-            margin-bottom: 14px;
+            margin: 0 0 16px 0;
             color: #0f3460;
             font-size: 1.05rem;
+            font-weight: 700;
         }
-        .bottom-card .structured-table {
+        .bottom-card ol {
+            margin: 0;
+            padding-left: 20px;
+            color: #334155;
+            font-size: 0.93rem;
+            line-height: 1.8;
+        }
+        .bottom-card ol li {
+            margin-bottom: 10px;
+        }
+        .structured-table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 0.93rem;
+            font-size: 0.91rem;
         }
-        .bottom-card .structured-table th,
-        .bottom-card .structured-table td {
+        .structured-table th,
+        .structured-table td {
             border: 1px solid #e2e8f0;
-            padding: 12px 14px;
+            padding: 12px;
             text-align: left;
             color: #334155;
         }
-        .bottom-card .structured-table th {
+        .structured-table th {
             background: #f4f8ff;
             color: #0f3460;
+            font-weight: 700;
         }
-        .bottom-card .structured-table tbody tr:nth-child(even) {
+        .structured-table tbody tr:nth-child(even) {
             background: #fbfdff;
         }
         </style>
         """, unsafe_allow_html=True)
 
+        # Header
         st.markdown("""
         <div class="page-header">
             <h1>Análisis Microcurricular basada en datos</h1>
@@ -3564,90 +3616,129 @@ def main():
         </div>
         """, unsafe_allow_html=True)
 
-        st.markdown("""
+        # Hero section con iconos SVG generados dinámicamente
+        icon_cloud = render_icon_svg('upload', '#1fb2de', 48)
+        
+        hero_html = f"""
         <div class="hero-area">
             <div>
-                <div style="font-size:0.95rem; font-weight:700; text-transform:uppercase; letter-spacing:0.16em; color:#c4ddff; margin-bottom:16px;">Sistema de Análisis Microcurricular</div>
+                <span class="hero-label">Sistema de Análisis Microcurricular</span>
                 <h2>Cargar Matriz de Resultados de aprendizaje</h2>
-                <p>Inicie el análisis masivo de su archivo (.XLSX) para obtener métricas instantáneas.</p>
+                <p>Inicia el análisis masivo de tu archivo (.XLSX) para obtener métricas instantáneas.</p>
                 <div class="hero-actions">
-                    <button class="hero-btn primary">Seleccionar Archivos</button>
-                    <button class="hero-btn secondary">Ver guía de carga</button>
+                    <button class="hero-btn primary" onclick="document.querySelector('[data-testid=\\'FileUploader\\']').click()">Seleccionar Archivos</button>
+                    <button class="hero-btn secondary" onclick="alert('Ver guía de carga')">Ver guía de carga</button>
                 </div>
             </div>
-            <div class="upload-block">
-                <div class="upload-icon">☁</div>
+            <div class="upload-box">
+                <div class="upload-icon-box">
+                    {icon_cloud}
+                </div>
                 <h4>Arrastrar archivos aquí</h4>
-                <span>200MB per file · XLSX</span>
+                <span>200MB por archivo · XLSX</span>
             </div>
         </div>
-        """, unsafe_allow_html=True)
+        """
+        st.markdown(hero_html, unsafe_allow_html=True)
 
-        st.markdown("""
-        <div class="feature-row">
+        # Feature cards - Primera fila (4 columnas)
+        icon_document = render_icon_svg('document', '#0f3460', 24)
+        icon_trend = render_icon_svg('trend', '#0f3460', 24)
+        icon_bloom = render_icon_svg('bloom', '#0f3460', 24)
+        icon_search = render_icon_svg('search', '#0f3460', 24)
+        icon_grid = render_icon_svg('grid', '#0f3460', 24)
+        icon_settings = render_icon_svg('settings', '#0f3460', 24)
+        
+        features_row1_html = f"""
+        <div class="feature-grid">
             <div class="feature-card">
                 <div>
-                    <div style="margin-bottom:14px;">{render_icon_svg('document', '#0f3460', 24)}</div>
+                    <div class="feature-icon-box">{icon_document}</div>
                     <h3>Resumen Ejecutivo</h3>
                     <p>Visión general del estado de la Matriz de RA y cumplimiento de metas institucionales.</p>
                 </div>
-                <div class="feature-meta"><span class="status">85% COMPLETADO</span><span>›</span></div>
+                <div class="feature-meta">
+                    <span class="status">85% COMPLETADO</span>
+                    <span class="arrow">›</span>
+                </div>
             </div>
             <div class="feature-card">
                 <div>
-                    <div style="margin-bottom:14px;">{render_icon_svg('trend', '#0f3460', 24)}</div>
+                    <div class="feature-icon-box">{icon_trend}</div>
                     <h3>Tendencias Globales</h3>
                     <p>Comparativa con estándares internacionales y temáticas emergentes en la industria.</p>
                 </div>
-                <div class="feature-meta"><span class="status">12 NUEVAS</span><span>›</span></div>
+                <div class="feature-meta">
+                    <span class="status">12 NUEVAS</span>
+                    <span class="arrow">›</span>
+                </div>
             </div>
             <div class="feature-card">
                 <div>
-                    <div style="margin-bottom:14px;">{render_icon_svg('bloom', '#0f3460', 24)}</div>
+                    <div class="feature-icon-box">{icon_bloom}</div>
                     <h3>Bloom & Integración</h3>
                     <p>Niveles taxonómicos detectados en las competencias y resultados de aprendizaje.</p>
                 </div>
-                <div class="feature-meta"><span class="status">NIVEL: CREAR</span><span>›</span></div>
+                <div class="feature-meta">
+                    <span class="status">NIVEL: CREAR</span>
+                    <span class="arrow">›</span>
+                </div>
             </div>
             <div class="feature-card">
                 <div>
-                    <div style="margin-bottom:14px;">{render_icon_svg('search', '#0f3460', 24)}</div>
+                    <div class="feature-icon-box">{icon_search}</div>
                     <h3>Minería de Texto</h3>
                     <p>Descubrimiento de patrones y nubes de palabras clave en el contenido curricular.</p>
                 </div>
-                <div class="feature-meta"><span class="status">PROCESADO</span><span>›</span></div>
+                <div class="feature-meta">
+                    <span class="status">PROCESADO</span>
+                    <span class="arrow">›</span>
+                </div>
             </div>
         </div>
-        <div class="feature-row small">
+        """
+        st.markdown(features_row1_html, unsafe_allow_html=True)
+
+        # Feature cards - Segunda fila (2 columnas)
+        features_row2_html = f"""
+        <div class="feature-grid row-2">
             <div class="feature-card">
                 <div>
-                    <div style="margin-bottom:14px;">{render_icon_svg('grid', '#0f3460', 24)}</div>
+                    <div class="feature-icon-box">{icon_grid}</div>
                     <h3>Tipo de Saber</h3>
                     <p>Análisis de la balanza entre saber, saber hacer y saber ser en los programas.</p>
                 </div>
-                <div class="feature-meta"><span class="status">—</span><span>›</span></div>
+                <div class="feature-meta">
+                    <span class="status">—</span>
+                    <span class="arrow">›</span>
+                </div>
             </div>
             <div class="feature-card">
                 <div>
-                    <div style="margin-bottom:14px;">{render_icon_svg('settings', '#0f3460', 24)}</div>
+                    <div class="feature-icon-box">{icon_settings}</div>
                     <h3>Cobertura Temática</h3>
                     <p>Detección de redundancias o vacíos temáticos en la malla curricular institucional.</p>
                 </div>
-                <div class="feature-meta"><span class="status alert">ALERTA BRECHAS</span><span>›</span></div>
+                <div class="feature-meta">
+                    <span class="status alert">ALERTA BRECHAS</span>
+                    <span class="arrow">›</span>
+                </div>
             </div>
         </div>
-        """, unsafe_allow_html=True)
+        """
+        st.markdown(features_row2_html, unsafe_allow_html=True)
 
+        # Bottom info blocks
         st.markdown("""
         <div class="bottom-blocks">
             <div class="bottom-card">
                 <h3>Cómo empezar</h3>
-                <ol class="steps-list">
-                    <li><strong>1.</strong> Sube uno o más archivos Excel (.xlsx) en el cargador.</li>
-                    <li><strong>2.</strong> El archivo debe contener la hoja 'Paso 5 Estrategias micro' con encabezados en la fila 2.</li>
-                    <li><strong>3.</strong> El análisis se ejecuta automáticamente al cargar los archivos.</li>
-                    <li><strong>4.</strong> Navega por las secciones usando el menú lateral.</li>
-                    <li><strong>5.</strong> Puedes cargar varios programas a la vez para análisis comparativos.</li>
+                <ol>
+                    <li><strong>Sube uno o más archivos Excel (.xlsx)</strong> en el cargador.</li>
+                    <li><strong>El archivo debe contener la hoja 'Paso 5 Estrategias micro'</strong> con encabezados en la fila 2.</li>
+                    <li><strong>El análisis se ejecuta automáticamente</strong> al cargar los archivos.</li>
+                    <li><strong>Navega por las secciones</strong> usando el menú lateral.</li>
+                    <li><strong>Puedes cargar varios programas a la vez</strong> para análisis comparativos.</li>
                 </ol>
             </div>
             <div class="bottom-card">
@@ -3658,7 +3749,7 @@ def main():
                     </thead>
                     <tbody>
                         <tr><td>Tipo de Saber</td><td>Saber / SaberHacer / SaberSer</td></tr>
-                        <tr><td>Resultado de aprendizaje</td><td>Texto del resultado de aprendizaje (verbo de acción)</td></tr>
+                        <tr><td>Resultado de aprendizaje</td><td>Texto del resultado (verbo acción)</td></tr>
                         <tr><td>Nombre asignatura o modulo</td><td>Nombre de la asignatura o módulo</td></tr>
                         <tr><td>Indicadores de logro</td><td>Indicadores de evaluación del RA</td></tr>
                         <tr><td>Nucleos tematicos</td><td>Temas separados por coma o punto y coma</td></tr>
