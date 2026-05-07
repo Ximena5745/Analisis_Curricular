@@ -3286,19 +3286,21 @@ def main():
     </style>
     """, unsafe_allow_html=True)
     
-    # Carga de archivos - encabezado azul claro
+    # Carga de archivos - encabezado azul claro + expander colapsable
     st.sidebar.markdown(
         "<h3 style='color:#4DA6FF; font-weight:700; margin:0.5rem 0;'>📂 Cargar Archivos Excel</h3>",
         unsafe_allow_html=True
     )
     
-    uploaded_files = st.sidebar.file_uploader(
-        "Selecciona los archivos .xlsx de los programas:",
-        type=['xlsx'],
-        accept_multiple_files=True,
-        help="Sube uno o más archivos Excel con la hoja 'Paso 5 Estrategias micro'",
-        label_visibility="collapsed"
-    )
+    # Expander colapsable después de cargar
+    with st.sidebar.expander(f"📁 Archivos ({len(uploaded_files) if uploaded_files else 0})", expanded=not uploaded_files):
+        uploaded_files = st.file_uploader(
+            "Selecciona archivos .xlsx:",
+            type=['xlsx'],
+            accept_multiple_files=True,
+            help="Sube archivos Excel",
+            label_visibility="collapsed"
+        )
     
     if not uploaded_files:
         # ── Banner institucional ───────────────────────────────────────────
@@ -3446,7 +3448,7 @@ def main():
         <div style='font-size:0.78em;color:rgba(255,255,255,0.7);margin-bottom:4px'>
         📂 Archivos: {cargados_ok}/{total_archivos} | ❌ Error: {len(failed_list)}</div>
         <div style='font-size:0.82em;color:#fff'>
-        <b>{df['Programa'].nunique()}</b> programas &nbsp;|&nbsp;
+        <b>{cargados_ok}</b> programas/modalidades &nbsp;|&nbsp;
         <b>{df['Nombre asignatura o modulo'].nunique()}</b> asignaturas<br>
         <b>{len(df):,}</b> registros procesados
         </div></div>
@@ -3470,15 +3472,14 @@ def main():
     sedes = sorted([str(s) for s in df['Sede'].unique() if pd.notna(s)])
     programas = sorted([str(p) for p in df['Programa'].unique() if pd.notna(p)])
     
-    # Usar pills si está disponible (Streamlit 1.33+), si no usar selectbox
-    try:
+    # Filtros en la misma línea usando columns
+    col_mod, col_sed = st.columns(2)
+    with col_mod:
         modalidad_sel = st.pills("Modalidad", ["Todos"] + modalidades, default="Todos", key="pills_modalidad")
+    with col_sed:
         sede_sel = st.pills("Sede", ["Todos"] + sedes, default="Todos", key="pills_sede")
-        prog_sel = st.pills("Programa", ["Todos"] + programas, default="Todos", key="pills_prog")
-    except:
-        modalidad_sel = st.sidebar.selectbox("Modalidad", ["Todos"] + modalidades)
-        sede_sel = st.sidebar.selectbox("Sede", ["Todos"] + sedes)
-        prog_sel = st.sidebar.selectbox("Programa", ["Todos"] + programas)
+    
+    prog_sel = st.selectbox("Programa", ["Todos"] + programas, key="sel_prog")
     
     # Aplicar filtros
     df_filtered = df.copy()
