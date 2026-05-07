@@ -3271,13 +3271,13 @@ def main():
         label_visibility="collapsed"
     )
     
-# Carga de archivos - encabezado azul + expander colapsable
-    st.markdown(
-        "<div style='color:#003F8A; font-weight:700; font-size:16px; margin-bottom:5px;'>📂 Cargar Archivos Excel</div>",
+    # Carga de archivos - encabezado azul claro + expander
+    st.sidebar.markdown(
+        "<h3 style='color:#4DA6FF; font-weight:700; margin:0.5rem 0;'>📂 Cargar Archivos Excel</h3>",
         unsafe_allow_html=True
     )
     
-    with st.sidebar.expander("", expanded=bool(uploaded_files)):
+    with st.sidebar.expander("Seleccionar archivos", expanded=bool(uploaded_files)):
         st.info("Arrastra o selecciona archivos Excel (.xlsx)")
     
     if not uploaded_files:
@@ -3499,8 +3499,10 @@ def main():
                     "border-radius": "0px",
                 },
                 "icon": {
+                    "display": "inline-block",
                     "color": "#42F2F2",
                     "font-size": "15px",
+                    "margin-right": "8px",
                 },
                 "nav-link": {
                     "font-size": "13px",
@@ -3509,6 +3511,8 @@ def main():
                     "padding": "8px 14px",
                     "border-radius": "6px",
                     "margin": "2px 4px",
+                    "display": "flex",
+                    "align-items": "center",
                     "--hover-color": "rgba(31,178,222,0.25)",
                 },
                 "nav-link-selected": {
