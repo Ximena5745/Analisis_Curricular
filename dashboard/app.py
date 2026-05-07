@@ -196,14 +196,25 @@ def main():
     # Mostrar mensaje de carga Y ERRORES PRIMERO (siempre visible)
     total_en_carpeta = len(programs) + len(failed_files)
     
+    # Mensaje de resumen
     if total_en_carpeta > 0:
         st.info(f"📂 Archivos en carpeta: **{total_en_carpeta}** | ✅ Cargados: **{len(programs)}** | ❌ Error: **{len(failed_files)}**")
         
-    #Siempre mostrar errores si existen
+    #SIEMPRE mostrar lista de archivos (para verificar qué se detectó)
+    all_files = list(Path(INPUT_FOLDER).glob('*.xlsx'))
+    st.caption(f"DEBUG: Archivos encontrados en carpeta = {[f.name for f in all_files]}")
+    
+    # Siempre mostrar errores si existen
     if failed_files:
         st.markdown("### ⚠️ Archivos con errores:")
         for f in failed_files:
             st.warning(f"❌ **{f['nombre']}**: {f['causa']}")
+    elif len(all_files) > len(programs):
+        st.markdown("### ⚠️ Archivos que no se cargaron (posibles errores):")
+        loaded_names = [p['archivo'] for p in programs]
+        for f in all_files:
+            if f.name not in loaded_names:
+                st.warning(f"❌ **{f.name}**: (causa no detectada - revisar formato)")
         
     if not programs:
         st.error(f"❌ No se encontraron archivos para procesar en: {INPUT_FOLDER}")
