@@ -3408,45 +3408,17 @@ def main():
         .upload-icon-box { width:48px; height:48px; border-radius:12px; background:rgba(31,178,222,.22); display:flex; align-items:center; justify-content:center; }
         .hero-right h4 { margin:6px 0 2px; font-size:.97rem; font-weight:700; color:#fff !important; }
         .hero-right span { color:rgba(255,255,255,.65); font-size:.82rem; }
-        .hero-right-actions { width:100%; max-width:320px; margin-top:10px; display:flex; flex-direction:column; gap:10px; }
-        .hero-right-actions .hero-btn { width:100%; }
-        .hero-right-actions .hero-btn.secondary {
-            border:1.5px solid #7dd3f0 !important;
-            color:#fff !important;
-            background:rgba(31,178,222,.08);
-        }
-        .hero-inline-structure {
-            display:none;
-            width:100%;
-            border:1px solid rgba(125,211,240,.45);
-            border-radius:10px;
-            background:rgba(15,52,96,.42);
-            color:#eaf6ff;
-            padding:10px;
-            text-align:left;
-            font-size:.8rem;
-            line-height:1.45;
-        }
-        .hero-inline-structure h5 { margin:0 0 6px 0; font-size:.85rem; color:#fff; }
-        .hero-inline-structure ul { margin:0 0 8px 16px; padding:0; }
-        .hero-inline-structure table { width:100%; border-collapse:collapse; font-size:.76rem; }
-        .hero-inline-structure th, .hero-inline-structure td {
-            border:1px solid rgba(125,211,240,.28);
-            padding:5px 6px;
-            color:#eaf6ff;
-        }
-        .hero-inline-structure th { background:rgba(31,178,222,.18); font-weight:700; }
-
         .st-key-uploader_main {
-            position:absolute !important;
-            width:1px !important;
-            height:1px !important;
-            opacity:0 !important;
-            overflow:hidden !important;
-            margin:0 !important;
-            padding:0 !important;
-            border:0 !important;
-            z-index:-1 !important;
+            margin-top: -98px;
+            background: linear-gradient(180deg, rgba(26,58,82,.96) 0%, rgba(30,80,128,.96) 100%);
+            border: 1px solid rgba(31,178,222,.28);
+            border-radius: 12px;
+            padding: 10px;
+            box-shadow: 0 10px 24px rgba(15,23,42,.18);
+            width: 100%;
+            max-width: 100%;
+            margin-left: auto;
+            margin-right: 0;
         }
         .st-key-uploader_main [data-testid="stFileUploader"] {
             margin-bottom: 6px !important;
@@ -3468,9 +3440,7 @@ def main():
         .st-key-uploader_main [data-testid="stFileUploader"] span {
             color: rgba(255,255,255,.88) !important;
         }
-        .st-key-uploader_main [data-testid="stFileUploaderDropzoneInstructions"] {
-            display: none !important;
-        }
+        .st-key-uploader_main [data-testid="stFileUploaderDropzoneInstructions"] { display: none !important; }
         .st-key-uploader_main [data-testid="stFileUploaderDropzone"] button {
             width: 100% !important;
             border-radius: 10px !important;
@@ -3483,8 +3453,49 @@ def main():
         .st-key-uploader_main [data-testid="stFileUploaderFileName"] {
             color: #e0f2fe !important;
         }
+        .st-key-btn_estructura_archivo {
+            margin-top: 8px;
+            width: 100%;
+            max-width: 100%;
+            margin-left: auto;
+            margin-right: 0;
+        }
+        .st-key-btn_estructura_archivo button {
+            width: 100% !important;
+            border-radius: 10px !important;
+            min-height: 40px !important;
+            font-weight: 700 !important;
+            border: 1.5px solid #7dd3f0 !important;
+            background: rgba(31,178,222,.08) !important;
+            color: #ffffff !important;
+        }
+        .st-key-btn_estructura_archivo button:hover {
+            background: rgba(31,178,222,.18) !important;
+            border-color: #b8ecff !important;
+        }
+        .estructura-card {
+            margin-top: 8px;
+            border: 1px solid rgba(125,211,240,.35);
+            border-radius: 10px;
+            background: rgba(15,52,96,.32);
+            color: #eaf6ff;
+            padding: 10px;
+            font-size: .82rem;
+            line-height: 1.45;
+        }
+        .estructura-card h5 { margin: 0 0 6px 0; font-size: .9rem; color: #fff; }
+        .estructura-card ul { margin: 0 0 8px 16px; padding: 0; }
+        .estructura-mini-table { width: 100%; border-collapse: collapse; font-size: .76rem; }
+        .estructura-mini-table th, .estructura-mini-table td {
+            border: 1px solid rgba(125,211,240,.28);
+            padding: 5px 6px;
+            color: #eaf6ff;
+            text-align: left;
+        }
+        .estructura-mini-table th { background: rgba(31,178,222,.18); font-weight: 700; }
         @media (max-width: 1024px) {
-            .hero-right-actions { max-width:100%; }
+            .st-key-uploader_main { margin-top: 6px; }
+            .st-key-btn_estructura_archivo { margin-top: 6px; }
         }
         .feature-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:18px; }
         .feature-grid.row-2 { grid-template-columns:repeat(2,1fr); max-width:50%; }
@@ -3575,52 +3586,41 @@ def main():
                 <div class="upload-icon-box">{icon_upload}</div>
                 <h4>Selecciona tus archivos</h4>
                 <span>200MB por archivo &middot; XLSX &middot; M&#250;ltiples archivos</span>
-                <div class="hero-right-actions">
-                    <button class="hero-btn primary" id="btnUploadHero" onclick="openUploaderHero()">Seleccionar Archivos</button>
-                    <button class="hero-btn secondary" id="btnEstructuraHero" onclick="toggleEstructuraHero()">Estructura del archivo</button>
-                    <div class="hero-inline-structure" id="estructuraHeroCard">
-                        <h5>Estructura del archivo Excel</h5>
-                        <ul>
-                            <li><strong>Hoja:</strong> Paso 5 Estrategias micro</li>
-                            <li><strong>Encabezados:</strong> fila 2</li>
-                            <li><strong>Formato:</strong> .xlsx</li>
-                        </ul>
-                        <table>
-                            <thead><tr><th>Campo</th><th>Ejemplo</th></tr></thead>
-                            <tbody>
-                                <tr><td>Tipo de Saber</td><td>Saber / SaberHacer / SaberSer</td></tr>
-                                <tr><td>Resultado de aprendizaje</td><td>Analiza los fundamentos...</td></tr>
-                                <tr><td>Nucleos tematicos</td><td>Derivadas, Integrales</td></tr>
-                                <tr><td>Semestre</td><td>1, 2, 3...</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
             </div>
         </div>
         """, unsafe_allow_html=True)
 
-        st.markdown("""
-        <script>
-        function openUploaderHero() {
-            var inp = document.querySelector('[data-testid="stFileUploader"] input[type="file"]') || document.querySelector('input[type="file"]');
-            if (inp) inp.click();
-        }
-        function toggleEstructuraHero() {
-            var card = document.getElementById('estructuraHeroCard');
-            if (!card) return;
-            card.style.display = (card.style.display === 'block') ? 'none' : 'block';
-        }
-        </script>
-        """, unsafe_allow_html=True)
-
-        nuevo_upload = st.file_uploader(
-            "Seleccionar Archivos",
-            type=['xlsx'],
-            accept_multiple_files=True,
-            key="uploader_main",
-            label_visibility="collapsed"
-        )
+        _c1, _c2 = st.columns([1.6, 1])
+        with _c2:
+            nuevo_upload = st.file_uploader(
+                "Seleccionar Archivos",
+                type=['xlsx'],
+                accept_multiple_files=True,
+                key="uploader_main",
+                label_visibility="collapsed"
+            )
+            if st.button("Estructura del archivo", key="btn_estructura_archivo", use_container_width=True):
+                st.session_state['mostrar_estructura_archivo'] = not st.session_state.get('mostrar_estructura_archivo', False)
+            if st.session_state.get('mostrar_estructura_archivo', False):
+                st.markdown("""
+                <div class="estructura-card">
+                    <h5>Estructura del archivo Excel</h5>
+                    <ul>
+                        <li><strong>Hoja:</strong> Paso 5 Estrategias micro</li>
+                        <li><strong>Encabezados:</strong> fila 2</li>
+                        <li><strong>Formato:</strong> .xlsx</li>
+                    </ul>
+                    <table class="estructura-mini-table">
+                        <thead><tr><th>Campo</th><th>Ejemplo</th></tr></thead>
+                        <tbody>
+                            <tr><td>Tipo de Saber</td><td>Saber / SaberHacer / SaberSer</td></tr>
+                            <tr><td>Resultado de aprendizaje</td><td>Analiza los fundamentos...</td></tr>
+                            <tr><td>Nucleos tematicos</td><td>Derivadas, Integrales</td></tr>
+                            <tr><td>Semestre</td><td>1, 2, 3...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                """, unsafe_allow_html=True)
 
         icon_document = render_icon_svg('document', '#0077C8', 22)
         icon_trend    = render_icon_svg('trend',    '#1fb2de', 22)
