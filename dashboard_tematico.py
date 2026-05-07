@@ -3409,12 +3409,12 @@ def main():
         .hero-right h4 { margin:6px 0 2px; font-size:.97rem; font-weight:700; color:#fff !important; }
         .hero-right span { color:rgba(255,255,255,.65); font-size:.82rem; }
         .st-key-uploader_main {
-            margin-top: -122px;
-            background: linear-gradient(180deg, rgba(26,58,82,.96) 0%, rgba(30,80,128,.96) 100%);
-            border: 1px solid rgba(31,178,222,.28);
-            border-radius: 14px;
-            padding: 10px 10px 8px 10px;
-            box-shadow: 0 12px 24px rgba(15,23,42,.18);
+            margin-top: 8px;
+            background: transparent;
+            border: none;
+            border-radius: 0;
+            padding: 0;
+            box-shadow: none;
         }
         .st-key-uploader_main [data-testid="stFileUploader"] {
             margin-bottom: 6px !important;
@@ -3467,6 +3467,50 @@ def main():
         .st-key-btn_estructura_archivo button:hover {
             background: rgba(31,178,222,.18) !important;
             border-color: #b8ecff !important;
+        }
+
+        .estructura-card {
+            margin-top: 10px;
+            border: 1px solid #dbeafe;
+            border-radius: 12px;
+            background: linear-gradient(180deg, #f8fcff 0%, #eef7ff 100%);
+            box-shadow: 0 8px 20px rgba(15,23,42,.08);
+            overflow: hidden;
+        }
+        .estructura-card-header {
+            background: linear-gradient(135deg, #1a3a52 0%, #1e5080 100%);
+            color: #fff;
+            padding: 10px 14px;
+            font-size: .92rem;
+            font-weight: 700;
+            letter-spacing: .02em;
+        }
+        .estructura-card-body {
+            padding: 12px 14px;
+            color: #1e293b;
+            font-size: .86rem;
+            line-height: 1.5;
+        }
+        .estructura-card-body ul {
+            margin: 0 0 10px 16px;
+            padding: 0;
+        }
+        .estructura-mini-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 8px;
+            font-size: .8rem;
+        }
+        .estructura-mini-table th,
+        .estructura-mini-table td {
+            border: 1px solid #cfe4ff;
+            padding: 6px 8px;
+            text-align: left;
+        }
+        .estructura-mini-table th {
+            background: #dff0ff;
+            color: #0f3460;
+            font-weight: 700;
         }
         @media (max-width: 1024px) {
             .st-key-uploader_main { margin-top: 6px; padding: 8px; }
@@ -3575,18 +3619,30 @@ def main():
             )
             if st.button("Estructura del archivo", key="btn_estructura_archivo", use_container_width=True):
                 st.session_state['mostrar_estructura_archivo'] = not st.session_state.get('mostrar_estructura_archivo', False)
-
-        if st.session_state.get('mostrar_estructura_archivo', False):
-            st.markdown("""
-            <div style="background:#f8fcff;border:1px solid #dbeafe;border-radius:12px;padding:14px 16px;margin:4px 0 14px 0;">
-                <h4 style="margin:0 0 8px 0;color:#0f3460;">Estructura del archivo Excel</h4>
-                <p style="margin:0;color:#334155;font-size:.92rem;line-height:1.6;">
-                    Hoja requerida: <strong>Paso 5 Estrategias micro</strong> (encabezados en fila 2).<br>
-                    Campos clave: Tipo de Saber, Resultado de aprendizaje, Nombre asignatura o modulo,
-                    Indicadores de logro, Nucleos tematicos, Semestre y Creditos.
-                </p>
-            </div>
-            """, unsafe_allow_html=True)
+            if st.session_state.get('mostrar_estructura_archivo', False):
+                st.markdown("""
+                <div class="estructura-card">
+                    <div class="estructura-card-header">Estructura del archivo Excel</div>
+                    <div class="estructura-card-body">
+                        <ul>
+                            <li><strong>Hoja:</strong> Paso 5 Estrategias micro</li>
+                            <li><strong>Encabezados:</strong> fila 2</li>
+                            <li><strong>Formato:</strong> .xlsx</li>
+                        </ul>
+                        <table class="estructura-mini-table">
+                            <thead>
+                                <tr><th>Campo</th><th>Ejemplo</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr><td>Tipo de Saber</td><td>Saber / SaberHacer / SaberSer</td></tr>
+                                <tr><td>Resultado de aprendizaje</td><td>Analiza los fundamentos...</td></tr>
+                                <tr><td>Nucleos tematicos</td><td>Derivadas, Integrales</td></tr>
+                                <tr><td>Semestre</td><td>1, 2, 3...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
 
         icon_document = render_icon_svg('document', '#0077C8', 22)
         icon_trend    = render_icon_svg('trend',    '#1fb2de', 22)
