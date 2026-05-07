@@ -3390,17 +3390,17 @@ def main():
             max-width: 820px;
         }
         .hero-area {
-            background: linear-gradient(135deg, #1a3a52 0%, #2a5a8a 100%);
-            border-radius: 24px;
-            padding: 48px 56px;
-            color: #ffffff;
-            display: grid;
-            grid-template-columns: 1.5fr 1fr;
-            gap: 48px;
-            align-items: flex-start;
-            margin-bottom: 40px;
-            box-shadow: 0 20px 60px rgba(15, 23, 42, 0.16);
-            border: 1px solid rgba(31, 178, 222, 0.12);
+            background: linear-gradient(135deg, #1a3a52 0%, #2a5a8a 100%) !important;
+            border-radius: 24px !important;
+            padding: 40px 48px !important;
+            color: #ffffff !important;
+            display: grid !important;
+            grid-template-columns: 1.5fr 1fr !important;
+            gap: 40px !important;
+            align-items: flex-start !important;
+            margin-bottom: 36px !important;
+            box-shadow: 0 20px 60px rgba(15, 23, 42, 0.18) !important;
+            border: 1px solid rgba(31, 178, 222, 0.15) !important;
         }
         .hero-left {
             display: flex;
@@ -3409,33 +3409,34 @@ def main():
             padding-top: 4px;
         }
         .hero-bar {
-            width: 8px;
-            height: 60px;
+            width: 6px;
+            height: 56px;
             background: #1fb2de;
-            border-radius: 2px;
-            margin-bottom: 24px;
+            border-radius: 3px;
+            margin-bottom: 20px;
         }
         .hero-label {
-            font-size: 0.8rem;
-            font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: 0.15em;
-            color: #9dd3ff;
-            margin-bottom: 16px;
-            display: block;
+            font-size: 0.78rem !important;
+            font-weight: 800 !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.15em !important;
+            color: #9dd3ff !important;
+            margin-bottom: 14px !important;
+            display: block !important;
         }
         .hero-area h2 {
-            margin: 0 0 18px 0;
-            font-size: 1.95rem;
-            line-height: 1.15;
-            font-weight: 700;
+            margin: 0 0 14px 0 !important;
+            font-size: 1.9rem !important;
+            line-height: 1.15 !important;
+            font-weight: 700 !important;
+            color: #ffffff !important;
         }
         .hero-area p {
-            margin: 0 0 32px 0;
-            max-width: 520px;
-            color: #d0e4ff;
-            font-size: 0.97rem;
-            line-height: 1.68;
+            margin: 0 0 28px 0 !important;
+            max-width: 520px !important;
+            color: #c8dfff !important;
+            font-size: 0.95rem !important;
+            line-height: 1.65 !important;
         }
         .hero-actions {
             display: flex;
@@ -3474,37 +3475,26 @@ def main():
             border-color: #ffffff;
         }
         .hero-right {
-            border: 2px dashed rgba(31, 178, 222, 0.3);
-            border-radius: 16px;
-            min-height: 200px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 14px;
-            padding: 32px 24px;
-            background: rgba(31, 178, 222, 0.05);
-            text-align: center;
+            border: 2px dashed rgba(31, 178, 222, 0.4) !important;
+            border-radius: 16px !important;
+            min-height: 180px !important;
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            justify-content: center !important;
+            gap: 12px !important;
+            padding: 28px 20px !important;
+            background: rgba(31, 178, 222, 0.07) !important;
+            text-align: center !important;
         }
         .upload-icon-box {
-            width: 52px;
-            height: 52px;
-            border-radius: 12px;
-            background: rgba(31, 178, 222, 0.2);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #1fb2de;
-        }
-        .hero-right h4 {
-            margin: 0;
-            font-size: 0.97rem;
-            font-weight: 700;
-            color: #ffffff;
-        }
-        .hero-right span {
-            color: rgba(255,255,255,0.7);
-            font-size: 0.83rem;
+            width: 52px !important;
+            height: 52px !important;
+            border-radius: 12px !important;
+            background: rgba(31, 178, 222, 0.22) !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
         }
         .feature-grid {
             display: grid;
@@ -3827,20 +3817,32 @@ def main():
                 <div class="upload-icon-box">
                     {icon_upload}
                 </div>
-                <h4>Arrastrar archivos aquí</h4>
-                <span>200MB por archivo · XLSX</span>
+                <h4 style="color:#ffffff !important; font-size:1rem; font-weight:700; margin:8px 0 4px 0;">Selecciona tus archivos</h4>
+                <span style="color:rgba(255,255,255,0.7); font-size:0.83rem;">200MB por archivo · XLSX</span>
             </div>
         </div>
         """
         st.markdown(hero_html, unsafe_allow_html=True)
 
-        # Botón invisible para triggerear file uploader
-        col_hidden = st.columns([1])[0]
-        with col_hidden:
-            st.write("")
-            btn_trigger = st.button("trigger_uploader", key="btn_trigger_up", label_visibility="collapsed")
+        # File uploader con JS para conectar al botón del hero
+        st.markdown("""
+        <style>
+        /* Ocultar visualmente el file uploader pero mantenerlo funcional */
+        [data-testid="stFileUploader"] {
+            position: relative;
+        }
+        [data-testid="stFileUploader"] > div:first-child {
+            background: transparent !important;
+            border: 1.5px dashed #cbd5e1 !important;
+            border-radius: 12px !important;
+            padding: 12px 20px !important;
+        }
+        [data-testid="stFileUploader"] section {
+            background: transparent !important;
+        }
+        </style>
+        """, unsafe_allow_html=True)
 
-        # File uploader
         nuevo_upload = st.file_uploader(
             "",
             type=['xlsx'],
@@ -3848,6 +3850,20 @@ def main():
             label_visibility="collapsed",
             key="uploader_main"
         )
+
+        # JS para conectar botón HTML al input de archivo de Streamlit
+        st.markdown("""
+        <script>
+        (function connectBtn() {
+            const btn = document.getElementById('btnSeleccionar');
+            if (!btn) { setTimeout(connectBtn, 200); return; }
+            btn.addEventListener('click', function() {
+                const inp = document.querySelector('input[type="file"]');
+                if (inp) inp.click();
+            });
+        })();
+        </script>
+        """, unsafe_allow_html=True)
         
         # Feature cards - Primera fila (4 columnas)
         icon_document = render_icon_svg('document', '#6b7280', 20)
