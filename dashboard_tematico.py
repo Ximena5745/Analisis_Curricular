@@ -3389,12 +3389,11 @@ def main():
             color:#9dd3ff !important; margin-bottom:12px !important;
         }
         .hero-area h2 { margin:0 0 12px !important; font-size:1.85rem !important; line-height:1.15 !important; font-weight:700 !important; color:#fff !important; }
-        .hero-area > div > p { margin:0 0 28px !important; color:#c0d9ff !important; font-size:.94rem !important; line-height:1.65 !important; }
-        .hero-actions { display:flex; flex-direction:column; gap:12px; }
+        .hero-area > div > p { margin:0 0 8px !important; color:#c0d9ff !important; font-size:.94rem !important; line-height:1.65 !important; }
         .hero-btn {
             display:inline-flex; align-items:center; justify-content:center; gap:8px;
             padding:12px 26px; border-radius:10px; font-weight:700; font-size:.92rem;
-            cursor:pointer; min-height:44px; transition:all .22s ease; border:none; width:fit-content;
+            cursor:pointer; min-height:44px; transition:all .22s ease; border:none; width:100%;
         }
         .hero-btn.primary { background:#1fb2de; color:#0f2d44; }
         .hero-btn.primary:hover { background:#19a0cc; transform:translateY(-2px); box-shadow:0 8px 22px rgba(31,178,222,.35); }
@@ -3409,9 +3408,20 @@ def main():
         .upload-icon-box { width:54px; height:54px; border-radius:14px; background:rgba(31,178,222,.22); display:flex; align-items:center; justify-content:center; }
         .hero-right h4 { margin:6px 0 2px; font-size:.97rem; font-weight:700; color:#fff !important; }
         .hero-right span { color:rgba(255,255,255,.65); font-size:.82rem; }
-        [data-testid="stFileUploader"] { border-radius:14px !important; margin-bottom:28px !important; }
-        [data-testid="stFileUploader"] > div { border:1.5px dashed #1fb2de !important; border-radius:14px !important; background:#f0faff !important; }
-        [data-testid="stFileUploader"] section { background:transparent !important; }
+        .hero-right-actions { margin-top:16px; width:100%; max-width:260px; display:flex; flex-direction:column; gap:12px; }
+
+        /* Mantener uploader funcional pero oculto para no mostrar Upload files */
+        [data-testid="stFileUploader"] {
+            position:absolute !important;
+            width:1px !important;
+            height:1px !important;
+            margin:0 !important;
+            padding:0 !important;
+            border:0 !important;
+            opacity:0 !important;
+            overflow:hidden !important;
+            z-index:-1 !important;
+        }
         .feature-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:18px; }
         .feature-grid.row-2 { grid-template-columns:repeat(2,1fr); max-width:50%; }
         .feature-card {
@@ -3450,7 +3460,7 @@ def main():
             <div class="dialog-inner">
                 <div class="dialog-header">
                     <h2>Estructura del archivo Excel</h2>
-                    <button class="dialog-close" onclick="document.getElementById('estructuraModal').close()">&#215;</button>
+                    <button class="dialog-close" onclick="(function(){var d=document.getElementById('estructuraModal'); if(d && d.close){d.close();} else if(d){d.removeAttribute('open');}})()">&#215;</button>
                 </div>
                 <div class="dialog-section">
                     <h3>Como empezar</h3>
@@ -3496,15 +3506,15 @@ def main():
                 <span class="hero-label">Sistema de An&#225;lisis Microcurricular</span>
                 <h2>Cargar Matriz de Resultados de aprendizaje</h2>
                 <p>Inicia el an&#225;lisis masivo de tu archivo (.XLSX) para obtener m&#233;tricas instant&#225;neas.</p>
-                <div class="hero-actions">
-                    <button class="hero-btn primary" id="btnSeleccionar">Seleccionar Archivos</button>
-                    <button class="hero-btn secondary" onclick="document.getElementById('estructuraModal').showModal()">Estructura del archivo</button>
-                </div>
             </div>
             <div class="hero-right">
                 <div class="upload-icon-box">{icon_upload}</div>
                 <h4>Selecciona tus archivos</h4>
                 <span>200MB por archivo &middot; XLSX &middot; M&#250;ltiples archivos</span>
+                <div class="hero-right-actions">
+                    <button class="hero-btn primary" id="btnSeleccionar" onclick="var f=document.querySelectorAll('input[type=\'file\']'); var i=f.length ? f[f.length-1] : null; i && i.click();">Seleccionar Archivos</button>
+                    <button class="hero-btn secondary" id="btnEstructura" onclick="var d=document.getElementById('estructuraModal'); d && (d.showModal ? d.showModal() : d.setAttribute('open','open'));">Estructura del archivo</button>
+                </div>
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -3515,26 +3525,6 @@ def main():
             accept_multiple_files=True,
             key="uploader_main"
         )
-
-        st.markdown("""
-        <script>
-        (function() {
-            function connectHeroBtn() {
-                var btn = document.getElementById('btnSeleccionar');
-                var inp = document.querySelector('input[type="file"]');
-                if (btn && inp) {
-                    btn.onclick = function(e) { e.preventDefault(); inp.click(); };
-                    return true;
-                }
-                return false;
-            }
-            if (!connectHeroBtn()) {
-                var obs = new MutationObserver(function() { if (connectHeroBtn()) obs.disconnect(); });
-                obs.observe(document.body, { childList: true, subtree: true });
-            }
-        })();
-        </script>
-        """, unsafe_allow_html=True)
 
         icon_document = render_icon_svg('document', '#0077C8', 22)
         icon_trend    = render_icon_svg('trend',    '#1fb2de', 22)
