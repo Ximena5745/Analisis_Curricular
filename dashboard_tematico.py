@@ -3286,22 +3286,19 @@ def main():
     </style>
     """, unsafe_allow_html=True)
     
-    # Carga de archivos - encabezado azul claro + expander colapsable
+    # Carga de archivos - encabezado azul
     st.sidebar.markdown(
         "<h3 style='color:#4DA6FF; font-weight:700; margin:0.5rem 0;'>📂 Cargar Archivos Excel</h3>",
         unsafe_allow_html=True
     )
     
-    # Expander colapsable después de cargar
-    num_archivos = len(uploaded_files) if uploaded_files else 0
-    with st.sidebar.expander(f"📁 Archivos ({num_archivos})", expanded=not uploaded_files):
-        uploaded_files = st.file_uploader(
-            "Selecciona archivos .xlsx:",
-            type=['xlsx'],
-            accept_multiple_files=True,
-            help="Sube archivos Excel",
-            label_visibility="collapsed"
-        )
+    # File uploader en expander colapsable
+    uploaded_files = st.sidebar.file_uploader(
+        "Sube archivos Excel (.xlsx):",
+        type=['xlsx'],
+        accept_multiple_files=True,
+        label_visibility="collapsed"
+    )
     
     if not uploaded_files:
         # ── Banner institucional ───────────────────────────────────────────
