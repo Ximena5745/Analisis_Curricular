@@ -3377,10 +3377,12 @@ def main():
         .page-header p  { margin: 10px 0 0; color: #475569; font-size: 0.98rem; line-height: 1.7; max-width: 800px; }
         .hero-area {
             background: linear-gradient(135deg, #1a3a52 0%, #1e5080 60%, #2a6494 100%) !important;
-            border-radius: 18px !important; padding: 28px 34px 24px !important; color: #fff !important;
-            display: grid !important; grid-template-columns: 1.6fr 1fr !important; gap: 22px !important;
-            align-items: center !important; margin-bottom: 8px !important;
-            box-shadow: 0 20px 60px rgba(15,23,42,.2) !important; border: 1px solid rgba(31,178,222,.18) !important;
+            border-radius: 18px !important;
+            padding: 28px 34px 24px !important;
+            color: #fff !important;
+            margin-bottom: 8px !important;
+            box-shadow: 0 20px 60px rgba(15,23,42,.2) !important;
+            border: 1px solid rgba(31,178,222,.18) !important;
         }
         .hero-bar  { width:5px; height:44px; background:#1fb2de; border-radius:3px; margin-bottom:14px; }
         .hero-label {
@@ -3409,16 +3411,9 @@ def main():
         .hero-right h4 { margin:6px 0 2px; font-size:.97rem; font-weight:700; color:#fff !important; }
         .hero-right span { color:rgba(255,255,255,.65); font-size:.82rem; }
         .st-key-uploader_main {
-            margin-top: -132px;
-            background: transparent;
-            border: none;
-            border-radius: 0;
-            padding: 0;
-            box-shadow: none;
+            margin-top: 8px;
             width: 100%;
             max-width: 100%;
-            margin-left: auto;
-            margin-right: 0;
         }
         .st-key-uploader_main [data-testid="stFileUploader"] {
             margin-bottom: 6px !important;
@@ -3430,16 +3425,16 @@ def main():
             background: transparent !important;
         }
         .st-key-uploader_main [data-testid="stFileUploader"] > div {
-            border: 1.5px solid #7dd3f0 !important;
-            background: #eef7ff !important;
+            border: 1.5px solid rgba(125,211,240,.6) !important;
+            background: rgba(17,66,103,.65) !important;
             border-radius: 12px !important;
-            padding: 6px !important;
+            padding: 8px !important;
         }
         .st-key-uploader_main [data-testid="stFileUploader"] label,
         .st-key-uploader_main [data-testid="stFileUploader"] small,
         .st-key-uploader_main [data-testid="stFileUploader"] p,
         .st-key-uploader_main [data-testid="stFileUploader"] span {
-            color: rgba(255,255,255,.88) !important;
+            color: #e6f5ff !important;
         }
         .st-key-uploader_main [data-testid="stFileUploaderDropzoneInstructions"] { display: none !important; }
         .st-key-uploader_main [data-testid="stFileUploaderDropzone"] button {
@@ -3467,35 +3462,35 @@ def main():
             min-height: 40px !important;
             font-weight: 700 !important;
             border: 1.5px solid #7dd3f0 !important;
-            background: #eef7ff !important;
-            color: #0f3460 !important;
+            background: rgba(17,66,103,.65) !important;
+            color: #ffffff !important;
         }
         .st-key-btn_estructura_archivo button:hover {
-            background: #dff3ff !important;
-            border-color: #38bdf8 !important;
+            background: rgba(31,178,222,.18) !important;
+            border-color: #b8ecff !important;
         }
         .estructura-card {
             margin-top: 6px;
-            border: 1px solid #d6ecff;
+            border: 1px solid rgba(125,211,240,.35);
             border-radius: 10px;
-            background: #f7fcff;
-            color: #1e293b;
+            background: rgba(15,52,96,.32);
+            color: #eaf6ff;
             padding: 8px;
             font-size: .82rem;
             line-height: 1.45;
         }
-        .estructura-card h5 { margin: 0 0 6px 0; font-size: .9rem; color: #0f3460; }
+        .estructura-card h5 { margin: 0 0 6px 0; font-size: .9rem; color: #fff; }
         .estructura-card ul { margin: 0 0 8px 16px; padding: 0; }
         .estructura-mini-table { width: 100%; border-collapse: collapse; font-size: .76rem; }
         .estructura-mini-table th, .estructura-mini-table td {
-            border: 1px solid #d6ecff;
+            border: 1px solid rgba(125,211,240,.28);
             padding: 5px 6px;
-            color: #334155;
+            color: #eaf6ff;
             text-align: left;
         }
-        .estructura-mini-table th { background: #e7f5ff; font-weight: 700; color: #0f3460; }
+        .estructura-mini-table th { background: rgba(31,178,222,.18); font-weight: 700; color: #fff; }
         @media (max-width: 1024px) {
-            .st-key-uploader_main { margin-top: 6px; }
+            .st-key-uploader_main { margin-top: 8px; }
             .st-key-btn_estructura_archivo { margin-top: 6px; }
         }
         .feature-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:18px; }
@@ -3575,24 +3570,26 @@ def main():
         """, unsafe_allow_html=True)
 
         icon_upload = render_icon_svg('upload', '#1fb2de', 40)
-        st.markdown(f"""
-        <div class="hero-area">
-            <div>
+        _c1, _c2 = st.columns([1.6, 1], gap="large")
+        with _c1:
+            st.markdown("""
+            <div class="hero-area">
                 <div class="hero-bar"></div>
                 <span class="hero-label">Sistema de An&#225;lisis Microcurricular</span>
                 <h2>Cargar Matriz de Resultados de aprendizaje</h2>
                 <p>Inicia el an&#225;lisis masivo de tu archivo (.XLSX) para obtener m&#233;tricas instant&#225;neas.</p>
             </div>
+            """, unsafe_allow_html=True)
+
+        with _c2:
+            st.markdown(f"""
             <div class="hero-right">
                 <div class="upload-icon-box">{icon_upload}</div>
                 <h4>Selecciona tus archivos</h4>
                 <span>200MB por archivo &middot; XLSX &middot; M&#250;ltiples archivos</span>
             </div>
-        </div>
-        """, unsafe_allow_html=True)
+            """, unsafe_allow_html=True)
 
-        _c1, _c2 = st.columns([1.6, 1])
-        with _c2:
             nuevo_upload = st.file_uploader(
                 "Seleccionar Archivos",
                 type=['xlsx'],
