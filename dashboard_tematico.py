@@ -3293,7 +3293,8 @@ def main():
     )
     
     # Expander colapsable después de cargar
-    with st.sidebar.expander(f"📁 Archivos ({len(uploaded_files) if uploaded_files else 0})", expanded=not uploaded_files):
+    num_archivos = len(uploaded_files) if uploaded_files else 0
+    with st.sidebar.expander(f"📁 Archivos ({num_archivos})", expanded=not uploaded_files):
         uploaded_files = st.file_uploader(
             "Selecciona archivos .xlsx:",
             type=['xlsx'],
