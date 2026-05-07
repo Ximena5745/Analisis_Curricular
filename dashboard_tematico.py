@@ -3258,10 +3258,7 @@ def pagina_datos(df: pd.DataFrame):
 # ============================================================================
 
 def main():
-    # --- SIDEBAR ---
-    st.sidebar.title("Configuracion")
-    st.sidebar.markdown("---")
-
+    # --- SIDEBAR SIEMPRE VISIBLE (menu + filtros) ---
     # Sidebar styling consistente oscuro
     st.markdown("""
     <style>
@@ -3280,14 +3277,86 @@ def main():
     </style>
     """, unsafe_allow_html=True)
     
-    # Carga de archivos en area principal (sidebar siempre limpio)
+    # Navegacion con option_menu (SIEMPRE se renderiza)
+    PAGINAS = {
+        "Inicio":               ("house",          "Resumen general y métricas clave del currículo"),
+        "Tipo de Saber":        ("bar-chart",       "Saber, SaberHacer y SaberSer por semestre y asignatura"),
+        "Cobertura Temática":   ("map",             "Núcleos temáticos: diversidad y densidad por programa"),
+        "Tendencias Globales":  ("graph-up-arrow",  "Alineación con IA, Sostenibilidad, Innovación, etc."),
+        "Minería de Texto":     ("search",          "Términos clave, similitud y frases frecuentes"),
+        "Bloom & Integración":  ("diagram-3",       "Taxonomía de Bloom y mapa de integración temática"),
+        "Configurar Tendencias":("sliders",         "Personalizar las tendencias globales a detectar"),
+        "Explorar Datos":       ("table",           "Explorar y filtrar los registros cargados"),
+    }
+
+    with st.sidebar:
+        st.title("Configuracion")
+        st.markdown("---")
+        
+        pagina = option_menu(
+            menu_title=None,
+            options=list(PAGINAS.keys()),
+            icons=[v[0] for v in PAGINAS.values()],
+            default_index=0,
+            styles={
+                "container": {
+                    "padding": "4px 0",
+                    "background-color": "#0F385A",
+                    "border-radius": "0px",
+                },
+                "icon": {
+                    "display": "inline-block",
+                    "color": "#42F2F2",
+                    "font-size": "15px",
+                    "margin-right": "8px",
+                },
+                "nav-link": {
+                    "font-size": "13px",
+                    "color": "#FFFFFF",
+                    "background-color": "transparent",
+                    "padding": "8px 14px",
+                    "border-radius": "6px",
+                    "margin": "2px 4px",
+                    "display": "flex",
+                    "align-items": "center",
+                    "--hover-color": "rgba(31,178,222,0.25)",
+                },
+                "nav-link-selected": {
+                    "background-color": "rgba(31,178,222,0.35)",
+                    "border-left": "3px solid #FBAF17",
+                    "font-weight": "600",
+                    "color": "#FFFFFF",
+                },
+            }
+        )
+
+        st.caption(f"_{PAGINAS[pagina][1]}_")
+        st.markdown("---")
+        st.markdown(
+            """
+            <div style='text-align:center;padding:10px 0;opacity:0.7'>
+            <div style='font-size:0.7em;color:rgba(255,255,255,0.6)'>
+            Politécnico Grancolombiano<br>
+            Análisis Microcurricular v2.0
+            </div></div>
+            """,
+            unsafe_allow_html=True
+        )
+    
+    # Carga de archivos en session state
     if 'archivos_subidos' not in st.session_state:
         st.session_state['archivos_subidos'] = None
     
     uploaded_files = st.session_state['archivos_subidos']
     
+    # Scroll al top al cambiar de página
+    st_components.html(
+        "<script>window.parent.document.querySelector('.main').scrollTo(0, 0);</script>",
+        height=0
+    )
+    
+    # ── Sin archivos: mostrar banner + uploader ──────────────────────────
     if not uploaded_files:
-        # ── Banner horizontal con uploader ─────────────────────────────────
         st.markdown("""
         <style>
         .upload-banner {
@@ -3537,73 +3606,10 @@ def main():
     st.session_state['df_filtered'] = df_filtered
     st.session_state['failed_list'] = failed_list
 
-    # Navegacion con option_menu
-    PAGINAS = {
-        "Inicio":               ("house",          "Resumen general y métricas clave del currículo"),
-        "Tipo de Saber":        ("bar-chart",       "Saber, SaberHacer y SaberSer por semestre y asignatura"),
-        "Cobertura Temática":   ("map",             "Núcleos temáticos: diversidad y densidad por programa"),
-        "Tendencias Globales":  ("graph-up-arrow",  "Alineación con IA, Sostenibilidad, Innovación, etc."),
-        "Minería de Texto":     ("search",          "Términos clave, similitud y frases frecuentes"),
-        "Bloom & Integración":  ("diagram-3",       "Taxonomía de Bloom y mapa de integración temática"),
-        "Configurar Tendencias":("sliders",         "Personalizar las tendencias globales a detectar"),
-        "Explorar Datos":       ("table",           "Explorar y filtrar los registros cargados"),
-    }
-
-    with st.sidebar:
-        pagina = option_menu(
-            menu_title=None,
-            options=list(PAGINAS.keys()),
-            icons=[v[0] for v in PAGINAS.values()],
-            default_index=0,
-            styles={
-                "container": {
-                    "padding": "4px 0",
-                    "background-color": "#0F385A",
-                    "border-radius": "0px",
-                },
-                "icon": {
-                    "display": "inline-block",
-                    "color": "#42F2F2",
-                    "font-size": "15px",
-                    "margin-right": "8px",
-                },
-                "nav-link": {
-                    "font-size": "13px",
-                    "color": "#FFFFFF",
-                    "background-color": "transparent",
-                    "padding": "8px 14px",
-                    "border-radius": "6px",
-                    "margin": "2px 4px",
-                    "display": "flex",
-                    "align-items": "center",
-                    "--hover-color": "rgba(31,178,222,0.25)",
-                },
-                "nav-link-selected": {
-                    "background-color": "rgba(31,178,222,0.35)",
-                    "border-left": "3px solid #FBAF17",
-                    "font-weight": "600",
-                    "color": "#FFFFFF",
-                },
-            }
-        )
-
-    st.sidebar.caption(f"_{PAGINAS[pagina][1]}_")
-    st.sidebar.markdown("---")
-    st.sidebar.markdown(
-        """
-        <div style='text-align:center;padding:10px 0;opacity:0.7'>
-        <div style='font-size:0.7em;color:rgba(255,255,255,0.6)'>
-        Politécnico Grancolombiano<br>
-        Análisis Microcurricular v2.0
-        </div></div>
-        """,
-        unsafe_allow_html=True
-    )
-
     # Obtener tendencias
     tendencias = obtener_tendencias()
 
-    # Scroll al top al cambiar de página
+    # Scroll al top
     st_components.html(
         "<script>window.parent.document.querySelector('.main').scrollTo(0, 0);</script>",
         height=0
