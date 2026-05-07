@@ -3408,12 +3408,33 @@ def main():
         .upload-icon-box { width:48px; height:48px; border-radius:12px; background:rgba(31,178,222,.22); display:flex; align-items:center; justify-content:center; }
         .hero-right h4 { margin:6px 0 2px; font-size:.97rem; font-weight:700; color:#fff !important; }
         .hero-right span { color:rgba(255,255,255,.65); font-size:.82rem; }
-        .hero-controls-wrap { margin-top: 2px; margin-bottom: 10px; }
+        .hero-controls-wrap { margin-top: -96px; margin-bottom: 8px; }
+        .hero-controls-wrap .stColumn:last-child {
+            background: linear-gradient(180deg, rgba(26,58,82,.96) 0%, rgba(30,80,128,.96) 100%);
+            border: 1px solid rgba(31,178,222,.28);
+            border-radius: 14px;
+            padding: 12px 12px 8px 12px;
+            box-shadow: 0 12px 24px rgba(15,23,42,.18);
+        }
+        .hero-controls-wrap [data-testid="stFileUploader"] {
+            margin-bottom: 6px !important;
+        }
         .hero-controls-wrap [data-testid="stFileUploaderDropzone"] {
             min-height: auto !important;
-            padding: 8px !important;
+            padding: 0 !important;
             border: 0 !important;
             background: transparent !important;
+        }
+        .hero-controls-wrap [data-testid="stFileUploader"] > div {
+            border: 0 !important;
+            background: transparent !important;
+            padding: 0 !important;
+        }
+        .hero-controls-wrap [data-testid="stFileUploader"] label,
+        .hero-controls-wrap [data-testid="stFileUploader"] small,
+        .hero-controls-wrap [data-testid="stFileUploader"] p,
+        .hero-controls-wrap [data-testid="stFileUploader"] span {
+            color: rgba(255,255,255,.88) !important;
         }
         .hero-controls-wrap [data-testid="stFileUploaderDropzoneInstructions"] {
             display: none !important;
@@ -3434,7 +3455,11 @@ def main():
             font-weight: 700 !important;
             border: 1.5px solid #7dd3f0 !important;
             background: transparent !important;
-            color: #0f3460 !important;
+            color: #ffffff !important;
+        }
+        @media (max-width: 1024px) {
+            .hero-controls-wrap { margin-top: 4px; }
+            .hero-controls-wrap .stColumn:last-child { padding: 8px; }
         }
         .feature-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:18px; }
         .feature-grid.row-2 { grid-template-columns:repeat(2,1fr); max-width:50%; }
@@ -3536,7 +3561,8 @@ def main():
                 "Seleccionar Archivos",
                 type=['xlsx'],
                 accept_multiple_files=True,
-                key="uploader_main"
+                key="uploader_main",
+                label_visibility="collapsed"
             )
             if st.button("Estructura del archivo", key="btn_estructura_archivo", use_container_width=True):
                 st.session_state['mostrar_estructura_archivo'] = not st.session_state.get('mostrar_estructura_archivo', False)
