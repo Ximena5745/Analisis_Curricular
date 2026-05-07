@@ -3292,14 +3292,32 @@ def main():
         unsafe_allow_html=True
     )
     
-    # Mostrar uploader solo si NO hay archivos cargados
-    if not uploaded_files:
-        uploaded_files = st.sidebar.file_uploader(
-            "Sube archivos Excel (.xlsx):",
-            type=['xlsx'],
-            accept_multiple_files=True,
-            label_visibility="collapsed"
-        )
+    # Session state para archivos - persiste entre reruns
+    if 'archivos_subidos' not in st.session_state:
+        st.session_state['archivos_subidos'] = None
+    
+    uploaded_files = st.session_state['archivos_subidos']
+    
+    #File uploader siempre visible (permite cambiar archivos)
+    nuevo_upload = st.sidebar.file_uploader(
+        "Sube archivos Excel (.xlsx):",
+        type=['xlsx'],
+        accept_multiple_files=True,
+        label_visibility="collapsed"
+    )
+    
+    #Actualizar session state si hay nuevos archivos
+    if nuevo_upload is not None and len(nuevo_upload) > 0:
+        st.session_state['archivos_subidos'] = nuevo_upload
+        uploaded_files = nuevo_upload
+    
+    # Ocultar uploader después de cargar (con CSS)
+    if uploaded_files:
+        st.markdown("""
+        <style>
+        [data-testid="stFileUploader"] {display: none !important;}
+        </style>
+        """, unsafe_allow_html=True)
     
     if not uploaded_files:
         # ── Banner institucional ───────────────────────────────────────────
