@@ -789,11 +789,12 @@ def procesar_archivos(uploaded_files) -> pd.DataFrame:
                 nrows=5,
                 engine='openpyxl'
             )
-            if not df_perfil.empty:
-                # Celda A3 = fila 2, columna 0 (0-indexed)
-                programa_nombre = str(df_perfil.iloc[2, 0]).strip() if len(df_perfil) > 2 and pd.notna(df_perfil.iloc[2, 0]) else None
-        except:
-            pass
+            if df_perfil is not None and not df_perfil.empty and len(df_perfil) > 2:
+                val = df_perfil.iloc[2, 0]
+                if pd.notna(val):
+                    programa_nombre = str(val).strip()
+        except Exception:
+            pass  # Si falla, usar fallback
         
         # Si no se pudo extraer del Excel, usar el nombre del archivo
         if not programa_nombre:
