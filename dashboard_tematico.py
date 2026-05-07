@@ -3262,15 +3262,18 @@ def main():
     st.sidebar.title("Configuracion")
     st.sidebar.markdown("---")
 
+# Carga de archivos - inicializar variable primero
+    uploaded_files = st.sidebar.file_uploader(
+        "Selecciona los archivos .xlsx de los programas:",
+        type=['xlsx'],
+        accept_multiple_files=True,
+        help="Sube uno o más archivos Excel con la hoja 'Paso 5 Estrategias micro'",
+        label_visibility="collapsed"
+    )
+    
     # Carga de archivos - collapsible después de cargar
-    with st.sidebar.expander("📂 Cargar Archivos Excel", expanded=not uploaded_files):
-        uploaded_files = st.file_uploader(
-            "Selecciona los archivos .xlsx de los programas:",
-            type=['xlsx'],
-            accept_multiple_files=True,
-            help="Sube uno o más archivos Excel con la hoja 'Paso 5 Estrategias micro'",
-            label_visibility="collapsed"
-        )
+    with st.sidebar.expander("📂 Cargar Archivos Excel", expanded=bool(uploaded_files)):
+        st.info("Arrastra archivos Excel (.xlsx) aquí")
 
     if not uploaded_files:
         # ── Banner institucional ───────────────────────────────────────────
