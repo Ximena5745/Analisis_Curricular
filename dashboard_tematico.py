@@ -3370,6 +3370,7 @@ def main():
     
     # ── Sin archivos: mostrar banner + uploader ──────────────────────────
     if not uploaded_files:
+        # Modal para guía de carga
         st.markdown("""
         <style>
         .page-header {
@@ -3389,66 +3390,79 @@ def main():
             max-width: 820px;
         }
         .hero-area {
-            background: linear-gradient(135deg, #0f3460 0%, #1a4a7a 100%);
-            border-radius: 28px;
-            padding: 40px 48px;
+            background: linear-gradient(135deg, #1a3a52 0%, #2a5a8a 100%);
+            border-radius: 24px;
+            padding: 48px 56px;
             color: #ffffff;
             display: grid;
-            grid-template-columns: 1.6fr 1fr;
-            gap: 32px;
-            align-items: center;
-            margin-bottom: 32px;
-            box-shadow: 0 20px 60px rgba(15, 23, 42, 0.18);
-            border: 1px solid rgba(255,255,255,0.08);
+            grid-template-columns: 1.5fr 1fr;
+            gap: 48px;
+            align-items: flex-start;
+            margin-bottom: 40px;
+            box-shadow: 0 20px 60px rgba(15, 23, 42, 0.16);
+            border: 1px solid rgba(31, 178, 222, 0.12);
+        }
+        .hero-left {
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            padding-top: 4px;
+        }
+        .hero-bar {
+            width: 8px;
+            height: 60px;
+            background: #1fb2de;
+            border-radius: 2px;
+            margin-bottom: 24px;
         }
         .hero-label {
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             font-weight: 800;
             text-transform: uppercase;
             letter-spacing: 0.15em;
-            color: #7dd3f0;
+            color: #9dd3ff;
             margin-bottom: 16px;
             display: block;
         }
         .hero-area h2 {
-            margin: 0 0 16px 0;
-            font-size: 2rem;
-            line-height: 1.1;
+            margin: 0 0 18px 0;
+            font-size: 1.95rem;
+            line-height: 1.15;
             font-weight: 700;
         }
         .hero-area p {
-            margin: 0 0 28px 0;
-            max-width: 550px;
-            color: #c4e0ff;
-            font-size: 0.98rem;
-            line-height: 1.65;
+            margin: 0 0 32px 0;
+            max-width: 520px;
+            color: #d0e4ff;
+            font-size: 0.97rem;
+            line-height: 1.68;
         }
         .hero-actions {
             display: flex;
-            gap: 12px;
-            margin-top: 8px;
+            gap: 14px;
+            margin-top: 4px;
         }
         .hero-btn {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            padding: 12px 24px;
-            border-radius: 12px;
+            padding: 11px 22px;
+            border-radius: 10px;
             font-weight: 700;
-            font-size: 0.92rem;
+            font-size: 0.91rem;
             cursor: pointer;
-            min-height: 44px;
-            transition: all 0.2s ease;
+            min-height: 42px;
+            transition: all 0.25s ease;
             border: none;
         }
         .hero-btn.primary {
             background: #1fb2de;
-            color: #0f3460;
+            color: #1a3a52;
         }
         .hero-btn.primary:hover {
-            background: #1a9cc6;
+            background: #19a0cc;
             transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(31, 178, 222, 0.3);
+            box-shadow: 0 10px 25px rgba(31, 178, 222, 0.35);
         }
         .hero-btn.secondary {
             background: transparent;
@@ -3456,41 +3470,41 @@ def main():
             color: #ffffff;
         }
         .hero-btn.secondary:hover {
-            background: rgba(255,255,255,0.1);
+            background: rgba(31, 178, 222, 0.15);
             border-color: #ffffff;
         }
-        .upload-box {
-            border: 2px dashed rgba(255,255,255,0.35);
-            border-radius: 20px;
+        .hero-right {
+            border: 2px dashed rgba(31, 178, 222, 0.3);
+            border-radius: 16px;
             min-height: 200px;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            gap: 12px;
-            padding: 28px 24px;
-            background: rgba(255,255,255,0.06);
+            gap: 14px;
+            padding: 32px 24px;
+            background: rgba(31, 178, 222, 0.05);
             text-align: center;
         }
         .upload-icon-box {
-            width: 56px;
-            height: 56px;
-            border-radius: 14px;
+            width: 52px;
+            height: 52px;
+            border-radius: 12px;
             background: rgba(31, 178, 222, 0.2);
             display: flex;
             align-items: center;
             justify-content: center;
             color: #1fb2de;
         }
-        .upload-box h4 {
+        .hero-right h4 {
             margin: 0;
-            font-size: 1rem;
+            font-size: 0.97rem;
             font-weight: 700;
             color: #ffffff;
         }
-        .upload-box span {
-            color: rgba(255,255,255,0.75);
-            font-size: 0.85rem;
+        .hero-right span {
+            color: rgba(255,255,255,0.7);
+            font-size: 0.83rem;
         }
         .feature-grid {
             display: grid;
@@ -3504,9 +3518,9 @@ def main():
         }
         .feature-card {
             background: #ffffff;
-            border-radius: 18px;
+            border-radius: 16px;
             padding: 20px;
-            box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+            box-shadow: 0 10px 28px rgba(15, 23, 42, 0.07);
             min-height: 160px;
             display: flex;
             flex-direction: column;
@@ -3515,9 +3529,9 @@ def main():
             transition: all 0.25s ease;
         }
         .feature-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 16px 40px rgba(15, 23, 42, 0.12);
-            border-color: #d0e4ff;
+            transform: translateY(-3px);
+            box-shadow: 0 14px 36px rgba(15, 23, 42, 0.11);
+            border-color: #d4e8ff;
         }
         .feature-icon-box {
             width: 40px;
@@ -3529,14 +3543,14 @@ def main():
         }
         .feature-card h3 {
             margin: 0 0 10px 0;
-            font-size: 1rem;
+            font-size: 0.98rem;
             font-weight: 700;
             color: #0d314e;
         }
         .feature-card p {
             margin: 0;
             color: #6c7a93;
-            font-size: 0.88rem;
+            font-size: 0.87rem;
             line-height: 1.5;
         }
         .feature-meta {
@@ -3544,7 +3558,7 @@ def main():
             justify-content: space-between;
             align-items: center;
             margin-top: 16px;
-            font-size: 0.78rem;
+            font-size: 0.76rem;
             font-weight: 700;
         }
         .feature-meta .status {
@@ -3564,10 +3578,10 @@ def main():
         }
         .bottom-card {
             background: #ffffff;
-            border-radius: 18px;
+            border-radius: 16px;
             border: 1px solid #e8f1ff;
             padding: 24px;
-            box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+            box-shadow: 0 10px 28px rgba(15, 23, 42, 0.07);
         }
         .bottom-card h3 {
             margin: 0 0 16px 0;
@@ -3605,7 +3619,185 @@ def main():
         .structured-table tbody tr:nth-child(even) {
             background: #fbfdff;
         }
+        
+        /* ──────────────────── MODAL EMERGENTE ──────────────────── */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            z-index: 10000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+        }
+        .modal-overlay.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-content {
+            background: #ffffff;
+            border-radius: 20px;
+            padding: 40px;
+            width: 90%;
+            max-width: 900px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 30px 90px rgba(0, 0, 0, 0.25);
+            animation: slideIn 0.3s ease-out;
+        }
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 28px;
+            border-bottom: 2px solid #f0f4ff;
+            padding-bottom: 20px;
+        }
+        .modal-header h2 {
+            margin: 0;
+            color: #0f3460;
+            font-size: 1.8rem;
+        }
+        .modal-close {
+            background: #f0f4ff;
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            cursor: pointer;
+            font-size: 24px;
+            color: #0f3460;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+        .modal-close:hover {
+            background: #1fb2de;
+            color: #ffffff;
+        }
+        .modal-section {
+            margin-bottom: 32px;
+        }
+        .modal-section h3 {
+            color: #1a3a52;
+            font-size: 1.2rem;
+            margin: 0 0 16px 0;
+        }
+        .modal-section ol {
+            margin: 0;
+            padding-left: 20px;
+            color: #334155;
+            font-size: 0.95rem;
+            line-height: 1.85;
+        }
+        .modal-section ol li {
+            margin-bottom: 12px;
+        }
+        .modal-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.92rem;
+            margin-top: 12px;
+        }
+        .modal-table th,
+        .modal-table td {
+            border: 1px solid #e2e8f0;
+            padding: 12px;
+            text-align: left;
+            color: #334155;
+        }
+        .modal-table th {
+            background: linear-gradient(135deg, #1fb2de 0%, #1a9cc6 100%);
+            color: #ffffff;
+            font-weight: 700;
+        }
+        .modal-table tbody tr:nth-child(even) {
+            background: #fbfdff;
+        }
         </style>
+        
+        <div class="modal-overlay" id="guiaModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Guía de Uso - Cómo empezar</h2>
+                    <button class="modal-close" onclick="document.getElementById('guiaModal').classList.remove('active')">×</button>
+                </div>
+                
+                <div class="modal-section">
+                    <h3>Cómo empezar</h3>
+                    <ol>
+                        <li><strong>Sube uno o más archivos Excel (.xlsx)</strong> en el cargador.</li>
+                        <li><strong>El archivo debe contener la hoja 'Paso 5 Estrategias micro'</strong> con encabezados en la fila 2.</li>
+                        <li><strong>El análisis se ejecuta automáticamente</strong> al cargar los archivos.</li>
+                        <li><strong>Navega por las secciones</strong> usando el menú lateral.</li>
+                        <li><strong>Puedes cargar varios programas a la vez</strong> para análisis comparativos.</li>
+                    </ol>
+                </div>
+                
+                <div class="modal-section">
+                    <h3>Estructura esperada del Excel</h3>
+                    <table class="modal-table">
+                        <thead>
+                            <tr><th>Columna</th><th>Descripción</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>Tipo de Saber</td><td>Saber / SaberHacer / SaberSer</td></tr>
+                            <tr><td>Resultado de aprendizaje</td><td>Texto del resultado (verbo acción)</td></tr>
+                            <tr><td>Nombre asignatura o modulo</td><td>Nombre de la asignatura o módulo</td></tr>
+                            <tr><td>Indicadores de logro</td><td>Indicadores de evaluación del RA</td></tr>
+                            <tr><td>Nucleos tematicos</td><td>Temas separados por coma o punto y coma</td></tr>
+                            <tr><td>Semestre</td><td>Número de semestre (1, 2, 3...)</td></tr>
+                            <tr><td>Creditos</td><td>Créditos académicos de la asignatura</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <script>
+        function abrirGuia() {
+            document.getElementById('guiaModal').classList.add('active');
+        }
+        function cerrarGuia() {
+            document.getElementById('guiaModal').classList.remove('active');
+        }
+        document.getElementById('guiaModal').addEventListener('click', function(event) {
+            if (event.target === this) {
+                this.classList.remove('active');
+            }
+        });
+        
+        // Conectar botón Seleccionar Archivos con file uploader
+        document.addEventListener('DOMContentLoaded', function() {
+            const btnSeleccionar = document.getElementById('btnSeleccionar');
+            if (btnSeleccionar) {
+                btnSeleccionar.addEventListener('click', function() {
+                    // Buscar el botón del file uploader
+                    const fileUploadButtons = document.querySelectorAll('[role="button"]');
+                    for (let btn of fileUploadButtons) {
+                        if (btn.textContent.includes('Browse files') || btn.textContent.includes('Examinar archivos')) {
+                            btn.click();
+                            break;
+                        }
+                    }
+                });
+            }
+        });
+        </script>
         """, unsafe_allow_html=True)
 
         # Header
@@ -3617,22 +3809,23 @@ def main():
         """, unsafe_allow_html=True)
 
         # Hero section con iconos SVG generados dinámicamente
-        icon_cloud = render_icon_svg('upload', '#1fb2de', 48)
+        icon_upload = render_icon_svg('upload', '#1fb2de', 40)
         
         hero_html = f"""
         <div class="hero-area">
-            <div>
+            <div class="hero-left">
+                <div class="hero-bar"></div>
                 <span class="hero-label">Sistema de Análisis Microcurricular</span>
                 <h2>Cargar Matriz de Resultados de aprendizaje</h2>
                 <p>Inicia el análisis masivo de tu archivo (.XLSX) para obtener métricas instantáneas.</p>
                 <div class="hero-actions">
-                    <button class="hero-btn primary" onclick="document.querySelector('[data-testid=\\'FileUploader\\']').click()">Seleccionar Archivos</button>
-                    <button class="hero-btn secondary" onclick="alert('Ver guía de carga')">Ver guía de carga</button>
+                    <button class="hero-btn primary" id="btnSeleccionar">Seleccionar Archivos</button>
+                    <button class="hero-btn secondary" onclick="abrirGuia()">Ver guía de carga</button>
                 </div>
             </div>
-            <div class="upload-box">
+            <div class="hero-right">
                 <div class="upload-icon-box">
-                    {icon_cloud}
+                    {icon_upload}
                 </div>
                 <h4>Arrastrar archivos aquí</h4>
                 <span>200MB por archivo · XLSX</span>
@@ -3641,13 +3834,28 @@ def main():
         """
         st.markdown(hero_html, unsafe_allow_html=True)
 
+        # Botón invisible para triggerear file uploader
+        col_hidden = st.columns([1])[0]
+        with col_hidden:
+            st.write("")
+            btn_trigger = st.button("trigger_uploader", key="btn_trigger_up", label_visibility="collapsed")
+
+        # File uploader
+        nuevo_upload = st.file_uploader(
+            "",
+            type=['xlsx'],
+            accept_multiple_files=True,
+            label_visibility="collapsed",
+            key="uploader_main"
+        )
+        
         # Feature cards - Primera fila (4 columnas)
-        icon_document = render_icon_svg('document', '#0f3460', 24)
-        icon_trend = render_icon_svg('trend', '#0f3460', 24)
-        icon_bloom = render_icon_svg('bloom', '#0f3460', 24)
-        icon_search = render_icon_svg('search', '#0f3460', 24)
-        icon_grid = render_icon_svg('grid', '#0f3460', 24)
-        icon_settings = render_icon_svg('settings', '#0f3460', 24)
+        icon_document = render_icon_svg('document', '#6b7280', 20)
+        icon_trend = render_icon_svg('trend', '#6b7280', 20)
+        icon_bloom = render_icon_svg('bloom', '#6b7280', 20)
+        icon_search = render_icon_svg('search', '#6b7280', 20)
+        icon_grid = render_icon_svg('grid', '#6b7280', 20)
+        icon_settings = render_icon_svg('settings', '#6b7280', 20)
         
         features_row1_html = f"""
         <div class="feature-grid">
@@ -3728,50 +3936,11 @@ def main():
         """
         st.markdown(features_row2_html, unsafe_allow_html=True)
 
-        # Bottom info blocks
-        st.markdown("""
-        <div class="bottom-blocks">
-            <div class="bottom-card">
-                <h3>Cómo empezar</h3>
-                <ol>
-                    <li><strong>Sube uno o más archivos Excel (.xlsx)</strong> en el cargador.</li>
-                    <li><strong>El archivo debe contener la hoja 'Paso 5 Estrategias micro'</strong> con encabezados en la fila 2.</li>
-                    <li><strong>El análisis se ejecuta automáticamente</strong> al cargar los archivos.</li>
-                    <li><strong>Navega por las secciones</strong> usando el menú lateral.</li>
-                    <li><strong>Puedes cargar varios programas a la vez</strong> para análisis comparativos.</li>
-                </ol>
-            </div>
-            <div class="bottom-card">
-                <h3>Estructura esperada del Excel</h3>
-                <table class="structured-table">
-                    <thead>
-                        <tr><th>Columna</th><th>Descripción</th></tr>
-                    </thead>
-                    <tbody>
-                        <tr><td>Tipo de Saber</td><td>Saber / SaberHacer / SaberSer</td></tr>
-                        <tr><td>Resultado de aprendizaje</td><td>Texto del resultado (verbo acción)</td></tr>
-                        <tr><td>Nombre asignatura o modulo</td><td>Nombre de la asignatura o módulo</td></tr>
-                        <tr><td>Indicadores de logro</td><td>Indicadores de evaluación del RA</td></tr>
-                        <tr><td>Nucleos tematicos</td><td>Temas separados por coma o punto y coma</td></tr>
-                        <tr><td>Semestre</td><td>Número de semestre (1, 2, 3...)</td></tr>
-                        <tr><td>Creditos</td><td>Créditos académicos de la asignatura</td></tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-
-        nuevo_upload = st.file_uploader(
-            "",
-            type=['xlsx'],
-            accept_multiple_files=True,
-            label_visibility="collapsed",
-            key="uploader_main"
-        )
+        # Manejo de carga de archivos
         if nuevo_upload is not None and len(nuevo_upload) > 0:
             st.session_state['archivos_subidos'] = nuevo_upload
             st.rerun()
-
+        
         st.stop()
 
     # Procesar archivos
