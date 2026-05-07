@@ -3409,12 +3409,12 @@ def main():
         .hero-right h4 { margin:6px 0 2px; font-size:.97rem; font-weight:700; color:#fff !important; }
         .hero-right span { color:rgba(255,255,255,.65); font-size:.82rem; }
         .st-key-uploader_main {
-            margin-top: -98px;
-            background: linear-gradient(180deg, rgba(26,58,82,.96) 0%, rgba(30,80,128,.96) 100%);
-            border: 1px solid rgba(31,178,222,.28);
-            border-radius: 12px;
-            padding: 10px;
-            box-shadow: 0 10px 24px rgba(15,23,42,.18);
+            margin-top: -132px;
+            background: transparent;
+            border: none;
+            border-radius: 0;
+            padding: 0;
+            box-shadow: none;
             width: 100%;
             max-width: 100%;
             margin-left: auto;
@@ -3430,9 +3430,10 @@ def main():
             background: transparent !important;
         }
         .st-key-uploader_main [data-testid="stFileUploader"] > div {
-            border: 0 !important;
-            background: transparent !important;
-            padding: 0 !important;
+            border: 1.5px solid #7dd3f0 !important;
+            background: #eef7ff !important;
+            border-radius: 12px !important;
+            padding: 6px !important;
         }
         .st-key-uploader_main [data-testid="stFileUploader"] label,
         .st-key-uploader_main [data-testid="stFileUploader"] small,
@@ -3454,7 +3455,7 @@ def main():
             color: #e0f2fe !important;
         }
         .st-key-btn_estructura_archivo {
-            margin-top: 8px;
+            margin-top: 6px;
             width: 100%;
             max-width: 100%;
             margin-left: auto;
@@ -3466,33 +3467,33 @@ def main():
             min-height: 40px !important;
             font-weight: 700 !important;
             border: 1.5px solid #7dd3f0 !important;
-            background: rgba(31,178,222,.08) !important;
-            color: #ffffff !important;
+            background: #eef7ff !important;
+            color: #0f3460 !important;
         }
         .st-key-btn_estructura_archivo button:hover {
-            background: rgba(31,178,222,.18) !important;
-            border-color: #b8ecff !important;
+            background: #dff3ff !important;
+            border-color: #38bdf8 !important;
         }
         .estructura-card {
-            margin-top: 8px;
-            border: 1px solid rgba(125,211,240,.35);
+            margin-top: 6px;
+            border: 1px solid #d6ecff;
             border-radius: 10px;
-            background: rgba(15,52,96,.32);
-            color: #eaf6ff;
-            padding: 10px;
+            background: #f7fcff;
+            color: #1e293b;
+            padding: 8px;
             font-size: .82rem;
             line-height: 1.45;
         }
-        .estructura-card h5 { margin: 0 0 6px 0; font-size: .9rem; color: #fff; }
+        .estructura-card h5 { margin: 0 0 6px 0; font-size: .9rem; color: #0f3460; }
         .estructura-card ul { margin: 0 0 8px 16px; padding: 0; }
         .estructura-mini-table { width: 100%; border-collapse: collapse; font-size: .76rem; }
         .estructura-mini-table th, .estructura-mini-table td {
-            border: 1px solid rgba(125,211,240,.28);
+            border: 1px solid #d6ecff;
             padding: 5px 6px;
-            color: #eaf6ff;
+            color: #334155;
             text-align: left;
         }
-        .estructura-mini-table th { background: rgba(31,178,222,.18); font-weight: 700; }
+        .estructura-mini-table th { background: #e7f5ff; font-weight: 700; color: #0f3460; }
         @media (max-width: 1024px) {
             .st-key-uploader_main { margin-top: 6px; }
             .st-key-btn_estructura_archivo { margin-top: 6px; }
