@@ -3262,14 +3262,15 @@ def main():
     st.sidebar.title("Configuracion")
     st.sidebar.markdown("---")
 
-    # Carga de archivos
-    st.sidebar.subheader("Cargar Archivos Excel")
-    uploaded_files = st.sidebar.file_uploader(
-        "Selecciona los archivos .xlsx de los programas:",
-        type=['xlsx'],
-        accept_multiple_files=True,
-        help="Sube uno o mas archivos Excel con la hoja 'Paso 5 Estrategias micro'"
-    )
+    # Carga de archivos - collapsible después de cargar
+    with st.sidebar.expander("📂 Cargar Archivos Excel", expanded=not uploaded_files):
+        uploaded_files = st.file_uploader(
+            "Selecciona los archivos .xlsx de los programas:",
+            type=['xlsx'],
+            accept_multiple_files=True,
+            help="Sube uno o más archivos Excel con la hoja 'Paso 5 Estrategias micro'",
+            label_visibility="collapsed"
+        )
 
     if not uploaded_files:
         # ── Banner institucional ───────────────────────────────────────────
@@ -3433,15 +3434,23 @@ def main():
 
     st.sidebar.markdown("---")
     
-    # FILTROS DE MODALIDAD Y SEDE
+    # FILTROS DE MODALIDAD Y SEDE (usando selectbox si st.pills no disponible)
     st.sidebar.subheader("🔍 Filtros")
     
     # Obtener valores únicos
     modalidades = sorted([str(m) for m in df['Modalidad'].unique() if pd.notna(m)])
     sedes = sorted([str(s) for s in df['Sede'].unique() if pd.notna(s)])
+    programas = sorted([str(p) for p in df['Programa'].unique() if pd.notna(p)])
     
-    modalidad_sel = st.sidebar.selectbox("Modalidad", ["Todos"] + modalidades)
-    sede_sel = st.sidebar.selectbox("Sede", ["Todos"] + sedes)
+    # Usar pills si está disponible (Streamlit 1.33+), si no usar selectbox
+    try:
+        modalidad_sel = st.pills("Modalidad", ["Todos"] + modalidades, default="Todos", key="pills_modalidad")
+        sede_sel = st.pills("Sede", ["Todos"] + sedes, default="Todos", key="pills_sede")
+        prog_sel = st.pills("Programa", ["Todos"] + programas, default="Todos", key="pills_prog")
+    except:
+        modalidad_sel = st.sidebar.selectbox("Modalidad", ["Todos"] + modalidades)
+        sede_sel = st.sidebar.selectbox("Sede", ["Todos"] + sedes)
+        prog_sel = st.sidebar.selectbox("Programa", ["Todos"] + programas)
     
     # Aplicar filtros
     df_filtered = df.copy()
@@ -3449,10 +3458,13 @@ def main():
         df_filtered = df_filtered[df_filtered['Modalidad'] == modalidad_sel]
     if sede_sel != "Todos":
         df_filtered = df_filtered[df_filtered['Sede'] == sede_sel]
+    if prog_sel != "Todos":
+        df_filtered = df_filtered[df_filtered['Programa'] == prog_sel]
     
-    # Actualizar referencias si hay filtros activos
-    if modalidad_sel != "Todos" or sede_sel != "Todos":
-        st.sidebar.caption(f"📊 Mostrando {len(df_filtered)} de {len(df)} registros")
+    # Guardar en session_state
+    st.session_state['df'] = df
+    st.session_state['df_filtered'] = df_filtered
+    st.session_state['failed_list'] = failed_list
 
     # Navegacion con option_menu
     PAGINAS = {
