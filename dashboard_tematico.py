@@ -751,21 +751,62 @@ def leer_taxonomias_bloom(uploaded_files=None) -> Dict[str, list]:
     return {nivel: list(dict.fromkeys(verbos)) for nivel, verbos in taxonomias.items()}
 
 
+def extract_modality_sede(filename):
+    """Extrae modalidad y sede del nombre del archivo."""
+    base_name = filename.replace('.xlsx', '').replace('.xls', '')
+    codigo = base_name[-4:] if len(base_name) >= 4 else ""
+    
+    sede_map = {
+        'PBOG': 'Bogotá', 'PMED': 'Medellín', 'VNAL': 'Nacional',
+        'HBOG': 'Bogotá', 'HMED': 'Medellín', 'HVAL': 'Virtual',
+    }
+    modalidad_map = {'P': 'Presencial', 'V': 'Virtual'}
+    
+    modalidad_codigo = codigo[0] if codigo else ""
+    modalidad = modalidad_map.get(modalidad_codigo, 'No identificado')
+    sede = sede_map.get(codigo, codigo if codigo else 'No identificado')
+    
+    return {'modalidad': modalidad, 'sede': sede, 'codigo': codigo}
+
+
 def procesar_archivos(uploaded_files) -> pd.DataFrame:
     """Procesa archivos Excel subidos y consolida datos."""
     all_data = []
+    failed_files = []  # Registrar archivos fallidos
 
     for uploaded_file in uploaded_files:
         nombre = uploaded_file.name
-        programa_nombre = (
-            nombre
-            .replace("FormatoRA_", "")
-            .replace("_PBOG", "")
-            .replace("_VNAL", "")
-            .replace("_PMED", "")
-            .replace(".xlsx", "")
-            .replace(".xls", "")
-        )
+        metadata = extract_modality_sede(nombre)
+        
+        # Extraer nombre del programa de celda A3
+        programa_nombre = None
+        try:
+            uploaded_file.seek(0)
+            df_perfil = pd.read_excel(
+                uploaded_file,
+                sheet_name='Paso1 Analisis perfil egreso',
+                header=None,
+                nrows=5,
+                engine='openpyxl'
+            )
+            if not df_perfil.empty:
+                # Celda A3 = fila 2, columna 0 (0-indexed)
+                programa_nombre = str(df_perfil.iloc[2, 0]).strip() if len(df_perfil) > 2 and pd.notna(df_perfil.iloc[2, 0]) else None
+        except:
+            pass
+        
+        # Si no se pudo extraer del Excel, usar el nombre del archivo
+        if not programa_nombre:
+            programa_nombre = (
+                nombre
+                .replace("FormatoRA_", "")
+                .replace("_PBOG", "")
+                .replace("_VNAL", "")
+                .replace("_PMED", "")
+                .replace(".xlsx", "")
+                .replace(".xls", "")
+            )
+        
         try:
             uploaded_file.seek(0)
             df = pd.read_excel(
@@ -776,9 +817,21 @@ def procesar_archivos(uploaded_files) -> pd.DataFrame:
             )
             df = normalizar_columnas(df)
             df['Programa'] = programa_nombre
+            df['Modalidad'] = metadata['modalidad']
+            df['Sede'] = metadata['sede']
+            df['Codigo'] = metadata['codigo']
             all_data.append(df)
         except Exception as e:
-            st.sidebar.warning(f"Error en {nombre}: {str(e)[:60]}")
+            error_msg = str(e)
+            if 'multiple' in error_msg.lower() or 'found' in error_msg.lower():
+                causa = "Hoja no encontrada o formato inválido"
+            elif 'empty' in error_msg.lower():
+                causa = "Archivo vacío o sin datos"
+            elif 'permission' in error_msg.lower():
+                causa = "Archivo en uso por otra aplicación"
+            else:
+                causa = error_msg[:80] if len(error_msg) > 80 else error_msg
+            failed_files.append({'nombre': nombre, 'causa': causa})
             continue
 
     if not all_data:
@@ -3333,10 +3386,16 @@ def main():
 
         st.stop()
 
-    # Procesar archivos y leer totales oficiales del footer de cada Excel
-    df = procesar_archivos(uploaded_files)
+    # Procesar archivos
+    df, failed_list = procesar_archivos(uploaded_files)
     for f in uploaded_files:
         f.seek(0)
+    
+    # Mostrar errores SIEMPRE visibles (después de procesar)
+    if failed_list:
+        st.sidebar.error(f"⚠️ {len(failed_list)} archivo(s) con error:")
+        for f_err in failed_list:
+            st.sidebar.warning(f"❌ {f_err['nombre']}: {f_err['causa']}")
     totales_oficiales = leer_totales_programa(uploaded_files)
 
     if df.empty:
@@ -3346,13 +3405,16 @@ def main():
         )
         st.stop()
 
-    # Info sidebar
+    # Info sidebar - incluyendo errores
+    total_archivos = len(uploaded_files)
+    cargados_ok = total_archivos - len(failed_list) if failed_list else total_archivos
+    
     st.sidebar.markdown(
         f"""
         <div style='background:rgba(247,148,29,0.15);border:1px solid rgba(247,148,29,0.4);
         border-radius:8px;padding:10px 14px;margin-bottom:8px'>
         <div style='font-size:0.78em;color:rgba(255,255,255,0.7);margin-bottom:4px'>
-        ✅ {len(uploaded_files)} archivo(s) cargado(s)</div>
+        📂 Archivos: {cargados_ok}/{total_archivos} | ❌ Error: {len(failed_list)}</div>
         <div style='font-size:0.82em;color:#fff'>
         <b>{df['Programa'].nunique()}</b> programas &nbsp;|&nbsp;
         <b>{df['Nombre asignatura o modulo'].nunique()}</b> asignaturas<br>
@@ -3362,7 +3424,34 @@ def main():
         unsafe_allow_html=True
     )
 
+    # MOSTRAR ERRORES EN AREA PRINCIPAL (más visible)
+    if failed_list:
+        st.error(f"⚠️ **{len(failed_list)}** archivo(s) no se cargaron:")
+        for f_err in failed_list:
+            st.warning(f"❌ **{f_err['nombre']}**: {f_err['causa']}")
+
     st.sidebar.markdown("---")
+    
+    # FILTROS DE MODALIDAD Y SEDE
+    st.sidebar.subheader("🔍 Filtros")
+    
+    # Obtener valores únicos
+    modalidades = sorted([str(m) for m in df['Modalidad'].unique() if pd.notna(m)])
+    sedes = sorted([str(s) for s in df['Sede'].unique() if pd.notna(s)])
+    
+    modalidad_sel = st.sidebar.selectbox("Modalidad", ["Todos"] + modalidades)
+    sede_sel = st.sidebar.selectbox("Sede", ["Todos"] + sedes)
+    
+    # Aplicar filtros
+    df_filtered = df.copy()
+    if modalidad_sel != "Todos":
+        df_filtered = df_filtered[df_filtered['Modalidad'] == modalidad_sel]
+    if sede_sel != "Todos":
+        df_filtered = df_filtered[df_filtered['Sede'] == sede_sel]
+    
+    # Actualizar referencias si hay filtros activos
+    if modalidad_sel != "Todos" or sede_sel != "Todos":
+        st.sidebar.caption(f"📊 Mostrando {len(df_filtered)} de {len(df)} registros")
 
     # Navegacion con option_menu
     PAGINAS = {
