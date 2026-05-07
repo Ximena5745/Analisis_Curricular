@@ -193,19 +193,20 @@ def main():
     with st.spinner("Cargando datos..."):
         programs, failed_files = load_all_programs()
 
-    # Mostrar mensaje de carga
+    # Mostrar mensaje de carga Y ERRORES PRIMERO (siempre visible)
     total_en_carpeta = len(programs) + len(failed_files)
     
     if total_en_carpeta > 0:
-        st.success(f"📂 **Carga completada:** {len(programs)} de {total_en_carpeta} archivos cargados exitosamente")
+        st.info(f"📂 Archivos en carpeta: **{total_en_carpeta}** | ✅ Cargados: **{len(programs)}** | ❌ Error: **{len(failed_files)}**")
         
+    #Siempre mostrar errores si existen
     if failed_files:
-        with st.expander(f"⚠️ Archivos con errores ({len(failed_files)})"):
-            for f in failed_files:
-                st.error(f"❌ **{f['nombre']}**: {f['causa']}")
-
+        st.markdown("### ⚠️ Archivos con errores:")
+        for f in failed_files:
+            st.warning(f"❌ **{f['nombre']}**: {f['causa']}")
+        
     if not programs:
-        st.error(f"❌ No se encontraron archivos en: {INPUT_FOLDER}")
+        st.error(f"❌ No se encontraron archivos para procesar en: {INPUT_FOLDER}")
         st.info(f"Coloca archivos Excel en la carpeta '{INPUT_FOLDER}' y recarga la página.")
         return
 
