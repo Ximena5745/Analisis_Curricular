@@ -257,6 +257,14 @@ html, body,
 [data-testid="stSidebar"] a.nav-link i {
     color: #42F2F2 !important;
 }
+/* ── Forzar visibilidad del iframe de option_menu ── */
+[data-testid="stSidebar"] iframe {
+    display: block !important;
+    min-height: 340px !important;
+    height: 340px !important;
+    width: 100% !important;
+    border: none !important;
+}
 [data-testid="stSidebar"] hr {
     border-color: rgba(66,242,242,0.25) !important;
 }
@@ -3311,6 +3319,7 @@ def main():
             options=list(PAGINAS.keys()),
             icons=[v[0] for v in PAGINAS.values()],
             default_index=0,
+            key="nav_menu",
             styles={
                 "container": {
                     "padding": "4px 0",
@@ -3386,7 +3395,7 @@ def main():
             box-shadow: 0 20px 60px rgba(15,23,42,.22);
             border: 1px solid rgba(31,178,222,.2);
             height: 100%;
-            min-height: 220px;
+            box-sizing: border-box;
         }
         .hero-bar  { width:5px; height:44px; background:#1fb2de; border-radius:3px; margin-bottom:14px; }
         .hero-label {
@@ -3413,7 +3422,15 @@ def main():
             box-shadow: 0 20px 60px rgba(15,23,42,.22);
             border: 1.5px dashed rgba(125,211,240,.45);
             height: 100%;
-            min-height: 220px;
+            box-sizing: border-box;
+        }
+        /* Igualar altura de las columnas del hero */
+        [data-testid="stHorizontalBlock"]:has(.st-key-hero_left_panel) [data-testid="stVerticalBlock"],
+        [data-testid="stHorizontalBlock"]:has(.st-key-upload_right_panel) [data-testid="stVerticalBlock"] {
+            height: 100%;
+        }
+        [data-testid="stHorizontalBlock"]:has(.st-key-hero_left_panel) {
+            align-items: stretch !important;
         }
         .upload-panel-deco {
             text-align: center;
@@ -3431,12 +3448,22 @@ def main():
         .upload-panel-deco span { color: #d6eeff; font-size: .82rem; }
 
         /* ── File uploader dentro del panel derecho ── */
+        /* Ocultar la zona de drag & instrucciones; dejar solo el botón */
         .st-key-upload_right_panel [data-testid="stFileUploaderDropzone"] {
-            background: rgba(255,255,255,.06) !important;
-            border: 1.5px dashed rgba(125,211,240,.4) !important;
-            border-radius: 10px !important;
-            padding: 10px !important;
+            background: transparent !important;
+            border: none !important;
+            padding: 0 !important;
         }
+        .st-key-upload_right_panel [data-testid="stFileUploader"] section {
+            background: transparent !important;
+            border: none !important;
+            padding: 0 !important;
+        }
+        /* Ocultar texto de instrucciones nativo (200MB per file · XLSX) */
+        .st-key-upload_right_panel [data-testid="stFileUploaderDropzoneInstructions"] {
+            display: none !important;
+        }
+        /* Botón "Browse files" / "Upload" nativo — apariencia del mockup */
         .st-key-upload_right_panel [data-testid="stFileUploaderDropzone"] button {
             background: #1fb2de !important;
             color: #0f2d44 !important;
@@ -3444,28 +3471,31 @@ def main():
             border-radius: 10px !important;
             border: none !important;
             width: 100% !important;
-            min-height: 40px !important;
+            min-height: 44px !important;
+            font-size: .95rem !important;
+            margin-bottom: 10px !important;
         }
         .st-key-upload_right_panel [data-testid="stFileUploaderDropzone"] button:hover {
             background: #19a0cc !important;
         }
-        .st-key-upload_right_panel [data-testid="stFileUploaderDropzoneInstructions"] span,
-        .st-key-upload_right_panel [data-testid="stFileUploaderDropzoneInstructions"] small {
-            color: #b8d9f0 !important;
-        }
         .st-key-upload_right_panel [data-testid="stFileUploaderFileName"] { color: #e0f2fe !important; }
-        .st-key-upload_right_panel small { color: #b8d9f0 !important; }
+        /* Ocultar el helper text "200MB per file" que aparece debajo del botón nativo */
+        .st-key-upload_right_panel [data-testid="stFileUploader"] small,
+        .st-key-upload_right_panel [data-testid="stFileUploader"] > div > small {
+            display: none !important;
+        }
 
         /* ── Botón "Estructura del archivo" dentro del panel ── */
         .st-key-upload_right_panel [data-testid="stBaseButton-secondary"] {
-            background: rgba(31,178,222,.1) !important;
-            border: 1.5px solid rgba(125,211,240,.55) !important;
-            color: #fff !important;
+            background: rgba(31,178,222,.08) !important;
+            border: 1.5px solid rgba(125,211,240,.5) !important;
+            color: #e6f5ff !important;
             border-radius: 10px !important;
             font-weight: 600 !important;
+            min-height: 40px !important;
         }
         .st-key-upload_right_panel [data-testid="stBaseButton-secondary"]:hover {
-            background: rgba(31,178,222,.22) !important;
+            background: rgba(31,178,222,.2) !important;
             border-color: #b8ecff !important;
         }
 
