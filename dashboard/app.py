@@ -49,23 +49,34 @@ st.markdown("""
 
 @st.cache_data
 def load_all_programs():
-    """Carga todos los programas desde la carpeta de entrada."""
+    """Carga todos los programas desde la carpeta de entrada.
+    
+    Returns:
+        programs: lista de programas cargados exitosamente
+        failed_files: lista de archivos que fallaron con {nombre, causa}
+    """
     input_folder = Path(INPUT_FOLDER)
     excel_files = list(input_folder.glob('*.xlsx'))
 
     if not excel_files:
-        return []
+        return [], []
 
     programs = []
+    failed_files = []
     detector = ThematicDetector()
 
     for file_path in excel_files:
+        # Extraer modalidad y sede del nombre del archivo
+        metadata = extract_modality_sede(file_path.name)
+        
         try:
             extractor = ExcelExtractor(str(file_path))
             data = extractor.extract_all()
             analyzer = CurricularAnalyzer(data)
             indicadores = analyzer.generar_reporte_indicadores()
             tematicas = detector.analyze_programa(data)
+            
+            # ... (rest of existing code)
             
             # Calcular creditos totales del programa
             creditos_total = 0.0
@@ -83,7 +94,7 @@ def load_all_programs():
                     if 'Nombre' in col and 'asignatura' in col.lower():
                         nombre_col = col
                 
-                # Primero: buscar fila con "Total" en Semestre
+                # Primero: buscar fila con "Total" in Semestre
                 if semestre_col and creditos_col:
                     try:
                         filas_total = estrategias[estrategias[semestre_col].astype(str).str.contains('Total', na=False)]
@@ -101,15 +112,75 @@ def load_all_programs():
             
             programs.append({
                 'nombre': data['metadata']['programa'],
+                'archivo': file_path.name,
+                'modalidad': metadata['modalidad'],
+                'sede': metadata['sede'],
+                'codigo': metadata['codigo'],
                 'data': data,
                 'indicadores': indicadores,
                 'tematicas': tematicas,
                 'creditos_total': creditos_total
             })
         except Exception as e:
-            st.warning(f"Error cargando {file_path.name}: {str(e)}")
+            error_msg = str(e)
+            # Limpiar mensaje de error para mostrar
+            if 'multiple' in error_msg.lower() or 'found' in error_msg.lower():
+                causa = "Hoja no encontrada o formato inválido"
+            elif 'empty' in error_msg.lower():
+                causa = "Archivo vacío o sin datos"
+            elif 'permission' in error_msg.lower():
+                causa = "Archivo en uso por otra aplicación"
+            else:
+                causa = error_msg[:80] if len(error_msg) > 80 else error_msg
+            
+            failed_files.append({
+                'nombre': file_path.name,
+                'causa': causa
+            })
 
-    return programs
+    return programs, failed_files
+
+
+def extract_modality_sede(filename):
+    """Extrae modalidad y sede del nombre del archivo.
+    
+    Args:
+        filename: nombre del archivo (ej: FormatoRA_AdmonEmpresas_PBOG.xlsx)
+    
+    Returns:
+        dict: {modalidad, sede, codigo}
+    """
+    # Extraer últimos 4 caracteres antes de .xlsx
+    base_name = filename.replace('.xlsx', '').replace('.xls', '')
+    codigo = base_name[-4:] if len(base_name) >= 4 else ""
+    
+    # Mapas de códigos
+    sede_map = {
+        'PBOG': 'Bogotá',
+        'PMED': 'Medellín',
+        'VNAL': 'Nacional',
+        'HBOG': 'Bogotá',
+        'HMED': 'Medellín',
+        'HVAL': 'Virtual',
+    }
+    
+    modalidad_map = {
+        'P': 'Presencial',
+        'V': 'Virtual',
+    }
+    
+    # Parsear código (ej: PBOG -> P + BOG)
+    modalidad_codigo = codigo[0] if codigo else ""
+    sede_codigo = codigo[1:] if len(codigo) > 1 else ""
+    
+    modalidad = modalidad_map.get(modalidad_codigo, 'No identificado')
+    sede = sede_map.get(codigo, sede_codigo if sede_codigo else 'No identificado')
+    
+    return {
+        'modalidad': modalidad,
+        'sede': sede,
+        'codigo': codigo
+    }
 
 
 def main():
@@ -120,7 +191,18 @@ def main():
 
     # Cargar programas
     with st.spinner("Cargando datos..."):
-        programs = load_all_programs()
+        programs, failed_files = load_all_programs()
+
+    # Mostrar mensaje de carga
+    total_en_carpeta = len(programs) + len(failed_files)
+    
+    if total_en_carpeta > 0:
+        st.success(f"📂 **Carga completada:** {len(programs)} de {total_en_carpeta} archivos cargados exitosamente")
+        
+    if failed_files:
+        with st.expander(f"⚠️ Archivos con errores ({len(failed_files)})"):
+            for f in failed_files:
+                st.error(f"❌ **{f['nombre']}**: {f['causa']}")
 
     if not programs:
         st.error(f"❌ No se encontraron archivos en: {INPUT_FOLDER}")
@@ -132,6 +214,38 @@ def main():
         "Ir a:",
         ["🏠 Inicio", "📊 Programas", "🏷️ Temáticas", "📈 Comparativa", "📋 Estrategias Micro"]
     )
+
+    # ========================================================================
+    # FILTROS DE MODALIDAD Y SEDE
+    # ========================================================================
+    st.sidebar.markdown("---")
+    st.sidebar.subheader("🔍 Filtros")
+    
+    # Obtener valores únicos
+    modalidades = sorted(list(set(p['modalidad'] for p in programs)))
+    sedes = sorted(list(set(p['sede'] for p in programs)))
+    
+    # Agregar opción "Todos"
+    modalidad_sel = st.sidebar.selectbox(
+        "Modalidad",
+        ["Todos"] + modalidades
+    )
+    
+    sede_sel = st.sidebar.selectbox(
+        "Sede",
+        ["Todos"] + sedes
+    )
+    
+    # Aplicar filtros
+    filtered_programs = programs
+    if modalidad_sel != "Todos":
+        filtered_programs = [p for p in filtered_programs if p['modalidad'] == modalidad_sel]
+    if sede_sel != "Todos":
+        filtered_programs = [p for p in filtered_programs if p['sede'] == sede_sel]
+    
+    # Indicador de filtros activos
+    if modalidad_sel != "Todos" or sede_sel != "Todos":
+        st.sidebar.info(f"📊 Mostrando {len(filtered_programs)} de {len(programs)} programas")
 
     # ========================================================================
     # PÁGINA: INICIO
@@ -146,25 +260,25 @@ def main():
         with col1:
             st.metric(
                 "Programas Analizados",
-                len(programs),
-                delta=None
+                len(filtered_programs),
+                delta=None if len(filtered_programs) == len(programs) else len(programs) - len(filtered_programs)
             )
 
-        total_comp = sum(p['indicadores']['resumen']['total_competencias'] for p in programs)
+        total_comp = sum(p['indicadores']['resumen']['total_competencias'] for p in filtered_programs)
         with col2:
             st.metric(
                 "Total Competencias",
                 total_comp
             )
 
-        total_ra = sum(p['indicadores']['resumen']['total_ra'] for p in programs)
+        total_ra = sum(p['indicadores']['resumen']['total_ra'] for p in filtered_programs)
         with col3:
             st.metric(
                 "Total RA",
                 total_ra
             )
 
-        avg_score = sum(p['indicadores']['score_calidad'] for p in programs) / len(programs)
+        avg_score = sum(p['indicadores']['score_calidad'] for p in filtered_programs) / len(filtered_programs) if filtered_programs else 0
         with col4:
             st.metric(
                 "Score Promedio",
@@ -206,8 +320,8 @@ def main():
         st.markdown("---")
         st.subheader("📈 Distribución de Scores de Calidad")
 
-        scores = [p['indicadores']['score_calidad'] for p in programs]
-        nombres = [p['nombre'] for p in programs]
+        scores = [p['indicadores']['score_calidad'] for p in filtered_programs]
+        nombres = [p['nombre'] for p in filtered_programs]
 
         df_scores = pd.DataFrame({
             'Programa': nombres,
@@ -235,14 +349,18 @@ def main():
         st.markdown("---")
 
         # Selector de programa
-        program_names = [p['nombre'] for p in programs]
+        program_names = [p['nombre'] for p in filtered_programs]
+        if not program_names:
+            st.warning("No hay programas que coincidan con los filtros seleccionados.")
+            return
+            
         selected_program_name = st.selectbox(
             "Seleccionar programa:",
             program_names
         )
 
         # Obtener programa seleccionado
-        selected_program = next(p for p in programs if p['nombre'] == selected_program_name)
+        selected_program = next(p for p in filtered_programs if p['nombre'] == selected_program_name)
         ind = selected_program['indicadores']
 
         # Score de calidad
@@ -343,14 +461,14 @@ def main():
 
         # Filtrar programas con esa temática
         programas_con_tematica = [
-            p for p in programs
+            p for p in filtered_programs
             if tematica_seleccionada in p['tematicas']['tematicas_presentes']
         ]
 
         st.subheader(f"Programas que abordan: {tematica_seleccionada}")
         st.metric(
             "Total de programas",
-            f"{len(programas_con_tematica)} de {len(programs)}"
+            f"{len(programas_con_tematica)} de {len(filtered_programs)}"
         )
 
         if programas_con_tematica:
@@ -390,29 +508,27 @@ def main():
 
         # ── TAB 1: Comparar 2 Programas ──────────────────────────────────────
         with tab_dos:
-            program_names = [p['nombre'] for p in programs]
+program_names = [p['nombre'] for p in filtered_programs]
+        
+        if len(program_names) < 2:
+            st.warning("Se necesitan al menos 2 programas para comparar. Selecciona más programas en los filtros.")
+            return
+            
+        prog1_name = st.selectbox(
+            "Programa 1:",
+            program_names,
+            index=0 if len(program_names) > 0 else 0
+        )
 
-            col1, col2 = st.columns(2)
-            with col1:
-                prog1_name = st.selectbox(
-                    "Programa 1",
-                    program_names,
-                    index=0,
-                    key='comp_prog1'
-                )
-            with col2:
-                prog2_name = st.selectbox(
-                    "Programa 2",
-                    program_names,
-                    index=min(1, len(program_names) - 1),
-                    key='comp_prog2'
-                )
+        prog2_name = st.selectbox(
+            "Programa 2:",
+            program_names,
+            index=1 if len(program_names) > 1 else 0
+        )
 
-            if prog1_name == prog2_name:
-                st.warning("Selecciona dos programas diferentes para comparar.")
-            else:
-                prog1 = next((p for p in programs if p['nombre'] == prog1_name), None)
-                prog2 = next((p for p in programs if p['nombre'] == prog2_name), None)
+        # Obtener programas
+        prog1 = next((p for p in filtered_programs if p['nombre'] == prog1_name), None)
+        prog2 = next((p for p in filtered_programs if p['nombre'] == prog2_name), None)
 
                 if prog1 is None or prog2 is None:
                     st.error("Error al cargar los programas.")
@@ -779,23 +895,43 @@ def main():
 
         st.subheader("📊 Distribución Tipo de Saber por Programa")
         
-        # Cargar datos de estrategias micro para todos los programas
-        from src.extractor import ExcelExtractor
-        from pathlib import Path
-        
-        input_folder = Path(INPUT_FOLDER)
-        excel_files = list(input_folder.glob('*.xlsx'))
-        
+        # Usar programas filtrados en lugar de recargar archivos
         datos_tipo_saber = []
         datos_tipologia = []
         datos_horas = []
         datos_estrategias = []
         
-        for file_path in excel_files:
+        for p in filtered_programs:
             try:
-                extractor = ExcelExtractor(str(file_path))
-                estrategias_micro = extractor.extract_estrategias_micro()
-                nombre_prog = extractor.programa_nombre
+                estrategias_micro = p['data'].get('estrategias_micro')
+                if estrategias_micro is None or estrategias_micro.empty:
+                    continue
+                    
+                nombre_prog = p['nombre']
+                modalidad = p.get('modalidad', '')
+                sede = p.get('sede', '')
+                
+                if not estrategias_micro.empty:
+                    # Tipo de Saber
+                    tipo_saber_counts = estrategias_micro['Tipo de Saber'].value_counts()
+                    for tipo, count in tipo_saber_counts.items():
+                        if pd.notna(tipo):
+                            datos_tipo_saber.append({
+                                'Programa': f"{nombre_prog} ({modalidad} - {sede})",
+                                'Tipo de Saber': tipo,
+                                'Cantidad': count
+                            })
+                    
+                    # Tipología (omitir vacíos)
+                    tipologia = estrategias_micro['Tipología'].dropna()
+                    if len(tipologia) > 0:
+                        tipologia_counts = tipologia.value_counts()
+                        for tipo, count in tipologia_counts.items():
+                            datos_tipologia.append({
+                                'Programa': nombre_prog,
+                                'Tipología': tipo,
+                                'Cantidad': count
+                            })
                 
                 if not estrategias_micro.empty:
                     # Tipo de Saber
