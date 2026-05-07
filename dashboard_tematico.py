@@ -3408,38 +3408,38 @@ def main():
         .upload-icon-box { width:48px; height:48px; border-radius:12px; background:rgba(31,178,222,.22); display:flex; align-items:center; justify-content:center; }
         .hero-right h4 { margin:6px 0 2px; font-size:.97rem; font-weight:700; color:#fff !important; }
         .hero-right span { color:rgba(255,255,255,.65); font-size:.82rem; }
-        .hero-controls-wrap { margin-top: -96px; margin-bottom: 8px; }
-        .hero-controls-wrap .stColumn:last-child {
+        .st-key-uploader_main {
+            margin-top: -122px;
             background: linear-gradient(180deg, rgba(26,58,82,.96) 0%, rgba(30,80,128,.96) 100%);
             border: 1px solid rgba(31,178,222,.28);
             border-radius: 14px;
-            padding: 12px 12px 8px 12px;
+            padding: 10px 10px 8px 10px;
             box-shadow: 0 12px 24px rgba(15,23,42,.18);
         }
-        .hero-controls-wrap [data-testid="stFileUploader"] {
+        .st-key-uploader_main [data-testid="stFileUploader"] {
             margin-bottom: 6px !important;
         }
-        .hero-controls-wrap [data-testid="stFileUploaderDropzone"] {
+        .st-key-uploader_main [data-testid="stFileUploaderDropzone"] {
             min-height: auto !important;
             padding: 0 !important;
             border: 0 !important;
             background: transparent !important;
         }
-        .hero-controls-wrap [data-testid="stFileUploader"] > div {
+        .st-key-uploader_main [data-testid="stFileUploader"] > div {
             border: 0 !important;
             background: transparent !important;
             padding: 0 !important;
         }
-        .hero-controls-wrap [data-testid="stFileUploader"] label,
-        .hero-controls-wrap [data-testid="stFileUploader"] small,
-        .hero-controls-wrap [data-testid="stFileUploader"] p,
-        .hero-controls-wrap [data-testid="stFileUploader"] span {
+        .st-key-uploader_main [data-testid="stFileUploader"] label,
+        .st-key-uploader_main [data-testid="stFileUploader"] small,
+        .st-key-uploader_main [data-testid="stFileUploader"] p,
+        .st-key-uploader_main [data-testid="stFileUploader"] span {
             color: rgba(255,255,255,.88) !important;
         }
-        .hero-controls-wrap [data-testid="stFileUploaderDropzoneInstructions"] {
+        .st-key-uploader_main [data-testid="stFileUploaderDropzoneInstructions"] {
             display: none !important;
         }
-        .hero-controls-wrap [data-testid="stFileUploaderDropzone"] button {
+        .st-key-uploader_main [data-testid="stFileUploaderDropzone"] button {
             width: 100% !important;
             border-radius: 10px !important;
             min-height: 40px !important;
@@ -3448,18 +3448,28 @@ def main():
             background: #1fb2de !important;
             color: #0f2d44 !important;
         }
-        .hero-controls-wrap [data-testid="stButton"] button {
+        .st-key-uploader_main [data-testid="stFileUploaderFileName"] {
+            color: #e0f2fe !important;
+        }
+        .st-key-btn_estructura_archivo {
+            margin-top: 6px;
+        }
+        .st-key-btn_estructura_archivo [data-testid="stButton"] button,
+        .st-key-btn_estructura_archivo button {
             width: 100% !important;
             border-radius: 10px !important;
             min-height: 40px !important;
             font-weight: 700 !important;
             border: 1.5px solid #7dd3f0 !important;
-            background: transparent !important;
+            background: rgba(31,178,222,.08) !important;
             color: #ffffff !important;
         }
+        .st-key-btn_estructura_archivo button:hover {
+            background: rgba(31,178,222,.18) !important;
+            border-color: #b8ecff !important;
+        }
         @media (max-width: 1024px) {
-            .hero-controls-wrap { margin-top: 4px; }
-            .hero-controls-wrap .stColumn:last-child { padding: 8px; }
+            .st-key-uploader_main { margin-top: 6px; padding: 8px; }
         }
         .feature-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:18px; }
         .feature-grid.row-2 { grid-template-columns:repeat(2,1fr); max-width:50%; }
@@ -3554,7 +3564,6 @@ def main():
         </div>
         """, unsafe_allow_html=True)
 
-        st.markdown('<div class="hero-controls-wrap">', unsafe_allow_html=True)
         _c1, _c2 = st.columns([1.6, 1])
         with _c2:
             nuevo_upload = st.file_uploader(
@@ -3566,7 +3575,6 @@ def main():
             )
             if st.button("Estructura del archivo", key="btn_estructura_archivo", use_container_width=True):
                 st.session_state['mostrar_estructura_archivo'] = not st.session_state.get('mostrar_estructura_archivo', False)
-        st.markdown('</div>', unsafe_allow_html=True)
 
         if st.session_state.get('mostrar_estructura_archivo', False):
             st.markdown("""
