@@ -3388,83 +3388,96 @@ def main():
         .page-header p  { margin: 10px 0 0; color: #475569; font-size: 0.98rem; line-height: 1.7; max-width: 800px; }
 
         /* ── Panel izquierdo (hero) via st.container(key="hero_left_panel") ── */
-        .st-key-hero_left_panel {
+        /* ── Hero global unificado ── */
+        .st-key-hero_section {
             background: linear-gradient(135deg, #1a3a52 0%, #1e5080 60%, #2a6494 100%);
-            border-radius: 18px;
-            padding: 32px 36px 28px;
+            border-radius: 22px;
+            padding: 24px;
             box-shadow: 0 20px 60px rgba(15,23,42,.22);
-            border: 1px solid rgba(31,178,222,.2);
-            height: 100%;
-            box-sizing: border-box;
+            border: 1px solid rgba(31,178,222,.16);
+            overflow: hidden;
         }
-        .hero-bar  { width:5px; height:44px; background:#1fb2de; border-radius:3px; margin-bottom:14px; }
-        .hero-label {
+        .st-key-hero_section [data-testid="stHorizontalBlock"] {
+            display: flex !important;
+            align-items: stretch !important;
+            gap: 20px !important;
+        }
+        .st-key-hero_section [data-testid="stColumn"] {
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 0 !important;
+        }
+        .st-key-hero_section [data-testid="stVerticalBlock"] {
+            display: flex !important;
+            flex-direction: column !important;
+            flex: 1 1 auto !important;
+        }
+        .hero-left-panel {
+            color: #ffffff;
+            padding: 26px 28px 24px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            min-height: 245px;
+            gap: 16px;
+        }
+        .hero-left-panel .hero-bar {
+            width: 5px; height: 44px; background:#1fb2de;
+            border-radius: 3px;
+        }
+        .hero-left-panel .hero-label {
             display:block; font-size:.75rem; font-weight:800;
             text-transform:uppercase; letter-spacing:.16em;
-            color:#9dd3ff; margin-bottom:12px;
+            color:#9dd3ff;
         }
-        .st-key-hero_left_panel h2 {
-            margin:0 0 10px; font-size:1.55rem; line-height:1.15;
+        .hero-left-panel h2 {
+            margin:0; font-size:1.62rem; line-height:1.15;
             font-weight:700; color:#fff;
         }
-        .st-key-hero_left_panel p {
-            margin:0; color:#c0d9ff; font-size:.92rem; line-height:1.6;
+        .hero-left-panel p {
+            margin:0; color:#c0d9ff; font-size:.95rem; line-height:1.65;
+            max-width: 460px;
         }
-
-        /* ── Panel derecho (upload) via st.container(key="upload_right_panel") ── */
-        /* Este selector aplica el fondo al contenedor Streamlit que envuelve
-           TANTO el HTML decorativo COMO los widgets nativos (file_uploader, button).
-           Es la solución correcta: todo queda dentro del mismo div con el mismo fondo. */
-        .st-key-upload_right_panel {
-            background: linear-gradient(160deg, #134d78 0%, #0f3460 100%);
-            border-radius: 18px;
-            padding: 22px 18px 18px;
-            box-shadow: 0 20px 60px rgba(15,23,42,.22);
-            border: 1.5px dashed rgba(125,211,240,.45);
-            height: 100%;
-            box-sizing: border-box;
-        }
-        /* Igualar altura de las columnas del hero */
-        [data-testid="stHorizontalBlock"]:has(.st-key-hero_left_panel) [data-testid="stVerticalBlock"],
-        [data-testid="stHorizontalBlock"]:has(.st-key-upload_right_panel) [data-testid="stVerticalBlock"] {
-            height: 100%;
-        }
-        [data-testid="stHorizontalBlock"]:has(.st-key-hero_left_panel) {
-            align-items: stretch !important;
+        .upload-panel-card {
+            background: rgba(255,255,255,.08);
+            border: 1px solid rgba(255,255,255,.16);
+            border-radius: 20px;
+            padding: 20px;
+            min-height: 245px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            gap: 16px;
         }
         .upload-panel-deco {
             text-align: center;
-            padding-bottom: 14px;
-            border-bottom: 1px solid rgba(125,211,240,.2);
-            margin-bottom: 12px;
+            padding: 14px 0 12px;
+            border-bottom: 1px solid rgba(255,255,255,.16);
         }
         .upload-icon-box {
             width: 54px; height: 54px; border-radius: 14px;
             background: rgba(31,178,222,.22);
             display: inline-flex; align-items: center; justify-content: center;
-            margin-bottom: 10px;
+            margin: 0 auto 10px;
         }
         .upload-panel-deco h4 { margin: 0 0 4px; font-size: 1rem; font-weight: 700; color: #fff; }
         .upload-panel-deco span { color: #d6eeff; font-size: .82rem; }
 
         /* ── File uploader dentro del panel derecho ── */
-        /* Ocultar la zona de drag & instrucciones; dejar solo el botón */
-        .st-key-upload_right_panel [data-testid="stFileUploaderDropzone"] {
+        .st-key-hero_section [data-testid="stFileUploaderDropzone"] {
             background: transparent !important;
             border: none !important;
             padding: 0 !important;
         }
-        .st-key-upload_right_panel [data-testid="stFileUploader"] section {
+        .st-key-hero_section [data-testid="stFileUploader"] section {
             background: transparent !important;
             border: none !important;
             padding: 0 !important;
         }
-        /* Ocultar texto de instrucciones nativo (200MB per file · XLSX) */
-        .st-key-upload_right_panel [data-testid="stFileUploaderDropzoneInstructions"] {
+        .st-key-hero_section [data-testid="stFileUploaderDropzoneInstructions"] {
             display: none !important;
         }
-        /* Botón "Browse files" / "Upload" nativo — apariencia del mockup */
-        .st-key-upload_right_panel [data-testid="stFileUploaderDropzone"] button {
+        .st-key-hero_section [data-testid="stFileUploaderDropzone"] button {
             background: #1fb2de !important;
             color: #0f2d44 !important;
             font-weight: 700 !important;
@@ -3475,18 +3488,15 @@ def main():
             font-size: .95rem !important;
             margin-bottom: 10px !important;
         }
-        .st-key-upload_right_panel [data-testid="stFileUploaderDropzone"] button:hover {
+        .st-key-hero_section [data-testid="stFileUploaderDropzone"] button:hover {
             background: #19a0cc !important;
         }
-        .st-key-upload_right_panel [data-testid="stFileUploaderFileName"] { color: #e0f2fe !important; }
-        /* Ocultar el helper text "200MB per file" que aparece debajo del botón nativo */
-        .st-key-upload_right_panel [data-testid="stFileUploader"] small,
-        .st-key-upload_right_panel [data-testid="stFileUploader"] > div > small {
+        .st-key-hero_section [data-testid="stFileUploaderFileName"] { color: #e0f2fe !important; }
+        .st-key-hero_section [data-testid="stFileUploader"] small,
+        .st-key-hero_section [data-testid="stFileUploader"] > div > small {
             display: none !important;
         }
-
-        /* ── Botón "Estructura del archivo" dentro del panel ── */
-        .st-key-upload_right_panel [data-testid="stBaseButton-secondary"] {
+        .st-key-hero_section [data-testid="stBaseButton-secondary"] {
             background: rgba(31,178,222,.08) !important;
             border: 1.5px solid rgba(125,211,240,.5) !important;
             color: #e6f5ff !important;
@@ -3494,7 +3504,7 @@ def main():
             font-weight: 600 !important;
             min-height: 40px !important;
         }
-        .st-key-upload_right_panel [data-testid="stBaseButton-secondary"]:hover {
+        .st-key-hero_section [data-testid="stBaseButton-secondary"]:hover {
             background: rgba(31,178,222,.2) !important;
             border-color: #b8ecff !important;
         }
@@ -3548,16 +3558,14 @@ def main():
         </div>
         """, unsafe_allow_html=True)
 
-        # ── Hero: dos columnas, cada una envuelta en st.container(key=...) ──
-        # Clave: st.container(key="...") genera un div con clase CSS "st-key-..."
-        # que abraza tanto el HTML como los widgets nativos dentro del bloque with.
+        # ── Hero: un solo bloque unificado con columnas internas ──
         icon_upload = render_icon_svg('upload', '#1fb2de', 38)
-        _c1, _c2 = st.columns([1.6, 1], gap="large")
+        with st.container(key="hero_section"):
+            _c1, _c2 = st.columns([1.6, 1], gap="large")
 
-        with _c1:
-            with st.container(key="hero_left_panel"):
+            with _c1:
                 st.markdown("""
-                <div>
+                <div class="hero-left-panel">
                     <div class="hero-bar"></div>
                     <span class="hero-label">Sistema de An&#225;lisis Microcurricular</span>
                     <h2>Cargar Matriz de Resultados de aprendizaje</h2>
@@ -3565,9 +3573,7 @@ def main():
                 </div>
                 """, unsafe_allow_html=True)
 
-        with _c2:
-            with st.container(key="upload_right_panel"):
-                # Cabecera decorativa HTML (ícono + título + subtítulo)
+            with _c2:
                 st.markdown(f"""
                 <div class="upload-panel-deco">
                     <div class="upload-icon-box">{icon_upload}</div>
@@ -3576,16 +3582,14 @@ def main():
                 </div>
                 """, unsafe_allow_html=True)
 
-                # Widget nativo — queda DENTRO del contenedor con fondo oscuro
                 nuevo_upload = st.file_uploader(
-                    "Seleccionar Archivos",
+                    "Seleccionar archivos",
                     type=['xlsx'],
                     accept_multiple_files=True,
                     key="uploader_main",
                     label_visibility="collapsed"
                 )
 
-                # Botón nativo — también dentro del mismo contenedor
                 if st.button("Estructura del archivo", key="btn_estructura_archivo", use_container_width=True):
                     st.session_state['mostrar_estructura_archivo'] = not st.session_state.get('mostrar_estructura_archivo', False)
 
