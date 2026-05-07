@@ -3371,176 +3371,276 @@ def main():
     if not uploaded_files:
         st.markdown("""
         <style>
-        .hero-panel {
-            background: linear-gradient(180deg, #ffffff 0%, #f4f8ff 100%);
-            border: 1px solid #dbeafe;
-            border-radius: 24px;
-            padding: 32px;
+        .page-header {
             margin-bottom: 24px;
-            box-shadow: 0 24px 60px rgba(15, 23, 42, 0.08);
         }
-        .hero-panel h2 {
-            color: #0f3460 !important;
-            margin: 0 0 12px 0 !important;
-            font-size: 2.4rem !important;
-            line-height: 1.05 !important;
+        .page-header h1 {
+            margin: 0;
+            font-size: 2.8rem;
+            color: #0f3460;
+            line-height: 1.05;
         }
-        .hero-panel p {
-            color: #475569 !important;
-            margin: 0 0 18px 0 !important;
-            font-size: 1rem !important;
-            line-height: 1.75 !important;
+        .page-header p {
+            margin: 12px 0 0 0;
+            color: #475569;
+            font-size: 1rem;
+            line-height: 1.7;
+            max-width: 820px;
         }
-        .hero-panel .hero-tag {
-            display: inline-flex;
+        .hero-area {
+            background: #0f3f8a;
+            border-radius: 30px;
+            padding: 32px;
+            color: #ffffff;
+            display: grid;
+            grid-template-columns: 1.7fr 0.9fr;
+            gap: 24px;
             align-items: center;
-            gap: 10px;
-            background: #e0efff;
-            border-radius: 999px;
-            padding: 8px 14px;
-            margin-bottom: 18px;
-            color: #0f3460 !important;
-            font-size: 0.85rem !important;
-            font-weight: 700;
+            margin-bottom: 32px;
+            box-shadow: 0 24px 70px rgba(15, 23, 42, 0.14);
+        }
+        .hero-area h2 {
+            margin: 0 0 14px 0;
+            font-size: 2.25rem;
+            line-height: 1.05;
+        }
+        .hero-area p {
+            margin: 0 0 26px 0;
+            max-width: 640px;
+            color: #dbe9ff;
+            font-size: 1rem;
+            line-height: 1.75;
         }
         .hero-actions {
             display: grid;
             grid-template-columns: repeat(2, minmax(140px, 1fr));
-            gap: 10px;
-            margin-top: 22px;
+            gap: 14px;
+            margin-top: 10px;
         }
-        .hero-callout {
-            border: 1px dashed #bfdbfe;
-            border-radius: 18px;
-            background: #ffffff;
-            padding: 24px;
-            min-height: 160px;
+        .hero-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 14px 18px;
+            border-radius: 14px;
+            font-weight: 700;
+            font-size: 0.95rem;
+            cursor: pointer;
+            min-height: 48px;
+        }
+        .hero-btn.primary {
+            background: #9ce9ff;
+            color: #0f3460;
+            border: none;
+        }
+        .hero-btn.secondary {
+            background: transparent;
+            border: 1px solid rgba(255,255,255,0.48);
+            color: #ffffff;
+        }
+        .upload-block {
+            border: 1px dashed rgba(255,255,255,0.6);
+            border-radius: 22px;
+            min-height: 220px;
             display: flex;
             flex-direction: column;
+            align-items: center;
             justify-content: center;
-            gap: 10px;
+            gap: 14px;
+            padding: 24px;
+            background: rgba(255,255,255,0.08);
+        }
+        .upload-block .upload-icon {
+            width: 64px;
+            height: 64px;
+            border-radius: 18px;
+            background: rgba(255,255,255,0.18);
+            display: grid;
+            place-items: center;
+            color: #ffffff;
+            font-size: 1.8rem;
+        }
+        .upload-block h4 {
+            margin: 0;
+            font-size: 1.05rem;
+            color: #ffffff;
+        }
+        .upload-block span {
+            color: rgba(255,255,255,0.8);
+            font-size: 0.95rem;
+            text-align: center;
+        }
+        .feature-row {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(200px, 1fr));
+            gap: 18px;
+            margin-bottom: 18px;
+        }
+        .feature-row.small {
+            grid-template-columns: repeat(2, minmax(220px, 1fr));
+        }
+        .feature-card {
+            background: #ffffff;
+            border-radius: 22px;
+            padding: 22px;
+            box-shadow: 0 16px 35px rgba(15, 23, 42, 0.06);
+            min-height: 180px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            border: 1px solid #eef4ff;
+        }
+        .feature-card h3 {
+            margin: 0 0 12px 0;
+            font-size: 1.05rem;
+            color: #0d314e;
+        }
+        .feature-card p {
+            margin: 0;
+            color: #6c7a93;
+            font-size: 0.92rem;
+            line-height: 1.6;
+        }
+        .feature-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 20px;
+            font-size: 0.82rem;
+            color: #0f3460;
+            font-weight: 700;
+        }
+        .feature-meta .status {
             color: #0f3460;
         }
-        .hero-callout strong {
-            display: block;
-            font-size: 1rem;
-            margin-bottom: 6px;
+        .feature-meta .status.alert {
+            color: #d93025;
         }
-        .section-grid {
+        .bottom-blocks {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 16px;
+            grid-template-columns: 1.2fr 1fr;
+            gap: 24px;
             margin-top: 24px;
         }
-        .section-card {
-            border: 1px solid #e2e8f0;
-            border-radius: 18px;
+        .bottom-card {
             background: #ffffff;
-            padding: 18px;
-            min-height: 140px;
-            box-shadow: 0 10px 30px rgba(15, 23, 42, 0.04);
+            border-radius: 22px;
+            border: 1px solid #eef4ff;
+            padding: 22px;
+            box-shadow: 0 16px 35px rgba(15, 23, 42, 0.06);
         }
-        .section-card h3 {
+        .bottom-card h3 {
             margin-top: 0;
-            margin-bottom: 10px;
+            margin-bottom: 14px;
             color: #0f3460;
-            font-size: 1rem;
+            font-size: 1.05rem;
         }
-        .section-card p {
-            margin: 0;
-            color: #475569;
-            line-height: 1.6;
-            font-size: 0.92rem;
+        .bottom-card .structured-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.93rem;
         }
-        .steps-list {
-            margin: 0;
-            padding-left: 18px;
-        }
-        .steps-list li {
-            margin-bottom: 12px;
+        .bottom-card .structured-table th,
+        .bottom-card .structured-table td {
+            border: 1px solid #e2e8f0;
+            padding: 12px 14px;
+            text-align: left;
             color: #334155;
-            line-height: 1.6;
-            font-size: 0.95rem;
         }
-        .steps-list li strong {
+        .bottom-card .structured-table th {
+            background: #f4f8ff;
             color: #0f3460;
+        }
+        .bottom-card .structured-table tbody tr:nth-child(even) {
+            background: #fbfdff;
         }
         </style>
         """, unsafe_allow_html=True)
 
-        col_banner, col_upload = st.columns([2, 1], gap="large")
-        with col_banner:
-            st.markdown(f"""
-            <div class="hero-panel">
-                <div class="hero-tag">{render_icon_svg('document', '#0f3460', 18)}Sistema de Análisis Microcurricular</div>
-                <h2>Analiza brechas y tendencias del plan de estudios con datos confiables.</h2>
-                <p>Optimice el análisis curricular con una vista unificada de resultados de aprendizaje, tipos de saber, cobertura temática y tendencias globales.</p>
+        st.markdown("""
+        <div class="page-header">
+            <h1>Análisis Microcurricular basada en datos</h1>
+            <p>Optimice sus procesos de diseño curricular a través del uso de herramientas avanzadas de Inteligencia Artificial para visualizar brechas y tendencias en tiempo real.</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("""
+        <div class="hero-area">
+            <div>
+                <div style="font-size:0.95rem; font-weight:700; text-transform:uppercase; letter-spacing:0.16em; color:#c4ddff; margin-bottom:16px;">Sistema de Análisis Microcurricular</div>
+                <h2>Cargar Matriz de Resultados de aprendizaje</h2>
+                <p>Inicie el análisis masivo de su archivo (.XLSX) para obtener métricas instantáneas.</p>
                 <div class="hero-actions">
-                    <div class="hero-callout">
-                        <strong>{render_icon_svg('upload', '#0f3460', 22)}Subir archivos</strong>
-                        <span>Arrastre archivos XLSX o use el cargador para iniciar el análisis.</span>
-                    </div>
-                    <div class="hero-callout">
-                        <strong>{render_icon_svg('settings', '#0f3460', 22)}Guía de carga</strong>
-                        <span>Revisa el formato esperado y asegúrate de que la hoja tenga la estructura correcta.</span>
-                    </div>
+                    <button class="hero-btn primary">Seleccionar Archivos</button>
+                    <button class="hero-btn secondary">Ver guía de carga</button>
                 </div>
             </div>
-            """, unsafe_allow_html=True)
-        with col_upload:
-            st.markdown('<div style="margin-top:8px"><b style="color:#003F8A">Subir archivos</b></div>', unsafe_allow_html=True)
-            nuevo_upload = st.file_uploader(
-                "",
-                type=['xlsx'],
-                accept_multiple_files=True,
-                label_visibility="collapsed",
-                key="uploader_main"
-            )
-            if nuevo_upload is not None and len(nuevo_upload) > 0:
-                st.session_state['archivos_subidos'] = nuevo_upload
-                st.rerun()
-
-        st.markdown("### ¿Qué puedes analizar con esta herramienta?")
-        st.markdown(f"""
-        <div class="section-grid">
-            <div class="section-card">
-                {render_icon_svg('document', '#0f3460', 24)}
-                <h3>Resumen Ejecutivo</h3>
-                <p>Alertas automáticas, fortalezas detectadas y recomendaciones priorizadas para comités académicos.</p>
-            </div>
-            <div class="section-card">
-                {render_icon_svg('grid', '#0f3460', 24)}
-                <h3>Tipo de Saber</h3>
-                <p>Balance entre Saber, SaberHacer y SaberSer por semestre, programa y asignatura.</p>
-            </div>
-            <div class="section-card">
-                {render_icon_svg('trend', '#0f3460', 24)}
-                <h3>Cobertura Temática</h3>
-                <p>Diversidad y densidad de núcleos temáticos en la malla curricular institucional.</p>
-            </div>
-            <div class="section-card">
-                {render_icon_svg('trend', '#0f3460', 24)}
-                <h3>Tendencias Globales</h3>
-                <p>Alineación del currículo con sostenibilidad, IA, transformación digital e innovación.</p>
-            </div>
-            <div class="section-card">
-                {render_icon_svg('search', '#0f3460', 24)}
-                <h3>Minería de Texto</h3>
-                <p>Términos relevantes, n-gramas frecuentes y similitud entre asignaturas.</p>
-            </div>
-            <div class="section-card">
-                {render_icon_svg('bloom', '#0f3460', 24)}
-                <h3>Bloom e Integración</h3>
-                <p>Taxonomía cognitiva de RA y mapa de integración de núcleos temáticos.</p>
+            <div class="upload-block">
+                <div class="upload-icon">☁</div>
+                <h4>Arrastrar archivos aquí</h4>
+                <span>200MB per file · XLSX</span>
             </div>
         </div>
         """, unsafe_allow_html=True)
 
-        st.markdown("---")
-        col_how, col_struct = st.columns([1, 1])
-        with col_how:
-            st.markdown("""
-            <div class="section-card">
+        st.markdown("""
+        <div class="feature-row">
+            <div class="feature-card">
+                <div>
+                    <div style="margin-bottom:14px;">{render_icon_svg('document', '#0f3460', 24)}</div>
+                    <h3>Resumen Ejecutivo</h3>
+                    <p>Visión general del estado de la Matriz de RA y cumplimiento de metas institucionales.</p>
+                </div>
+                <div class="feature-meta"><span class="status">85% COMPLETADO</span><span>›</span></div>
+            </div>
+            <div class="feature-card">
+                <div>
+                    <div style="margin-bottom:14px;">{render_icon_svg('trend', '#0f3460', 24)}</div>
+                    <h3>Tendencias Globales</h3>
+                    <p>Comparativa con estándares internacionales y temáticas emergentes en la industria.</p>
+                </div>
+                <div class="feature-meta"><span class="status">12 NUEVAS</span><span>›</span></div>
+            </div>
+            <div class="feature-card">
+                <div>
+                    <div style="margin-bottom:14px;">{render_icon_svg('bloom', '#0f3460', 24)}</div>
+                    <h3>Bloom & Integración</h3>
+                    <p>Niveles taxonómicos detectados en las competencias y resultados de aprendizaje.</p>
+                </div>
+                <div class="feature-meta"><span class="status">NIVEL: CREAR</span><span>›</span></div>
+            </div>
+            <div class="feature-card">
+                <div>
+                    <div style="margin-bottom:14px;">{render_icon_svg('search', '#0f3460', 24)}</div>
+                    <h3>Minería de Texto</h3>
+                    <p>Descubrimiento de patrones y nubes de palabras clave en el contenido curricular.</p>
+                </div>
+                <div class="feature-meta"><span class="status">PROCESADO</span><span>›</span></div>
+            </div>
+        </div>
+        <div class="feature-row small">
+            <div class="feature-card">
+                <div>
+                    <div style="margin-bottom:14px;">{render_icon_svg('grid', '#0f3460', 24)}</div>
+                    <h3>Tipo de Saber</h3>
+                    <p>Análisis de la balanza entre saber, saber hacer y saber ser en los programas.</p>
+                </div>
+                <div class="feature-meta"><span class="status">—</span><span>›</span></div>
+            </div>
+            <div class="feature-card">
+                <div>
+                    <div style="margin-bottom:14px;">{render_icon_svg('settings', '#0f3460', 24)}</div>
+                    <h3>Cobertura Temática</h3>
+                    <p>Detección de redundancias o vacíos temáticos en la malla curricular institucional.</p>
+                </div>
+                <div class="feature-meta"><span class="status alert">ALERTA BRECHAS</span><span>›</span></div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("""
+        <div class="bottom-blocks">
+            <div class="bottom-card">
                 <h3>Cómo empezar</h3>
                 <ol class="steps-list">
                     <li><strong>1.</strong> Sube uno o más archivos Excel (.xlsx) en el cargador.</li>
@@ -3550,33 +3650,36 @@ def main():
                     <li><strong>5.</strong> Puedes cargar varios programas a la vez para análisis comparativos.</li>
                 </ol>
             </div>
-            """, unsafe_allow_html=True)
-        with col_struct:
-            st.markdown("""
-            <div class="section-card">
+            <div class="bottom-card">
                 <h3>Estructura esperada del Excel</h3>
+                <table class="structured-table">
+                    <thead>
+                        <tr><th>Columna</th><th>Descripción</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>Tipo de Saber</td><td>Saber / SaberHacer / SaberSer</td></tr>
+                        <tr><td>Resultado de aprendizaje</td><td>Texto del resultado de aprendizaje (verbo de acción)</td></tr>
+                        <tr><td>Nombre asignatura o modulo</td><td>Nombre de la asignatura o módulo</td></tr>
+                        <tr><td>Indicadores de logro</td><td>Indicadores de evaluación del RA</td></tr>
+                        <tr><td>Nucleos tematicos</td><td>Temas separados por coma o punto y coma</td></tr>
+                        <tr><td>Semestre</td><td>Número de semestre (1, 2, 3...)</td></tr>
+                        <tr><td>Creditos</td><td>Créditos académicos de la asignatura</td></tr>
+                    </tbody>
+                </table>
             </div>
-            """, unsafe_allow_html=True)
-            st.table(pd.DataFrame({
-                "Columna": [
-                    "Tipo de Saber",
-                    "Resultado de aprendizaje",
-                    "Nombre asignatura o modulo",
-                    "Indicadores de logro",
-                    "Nucleos tematicos",
-                    "Semestre",
-                    "Creditos"
-                ],
-                "Descripción": [
-                    "Saber / SaberHacer / SaberSer",
-                    "Texto del resultado de aprendizaje (verbo de acción)",
-                    "Nombre de la asignatura o módulo",
-                    "Indicadores de evaluación del RA",
-                    "Temas separados por coma o punto y coma",
-                    "Número de semestre (1, 2, 3…)",
-                    "Créditos académicos de la asignatura"
-                ]
-            }))
+        </div>
+        """, unsafe_allow_html=True)
+
+        nuevo_upload = st.file_uploader(
+            "",
+            type=['xlsx'],
+            accept_multiple_files=True,
+            label_visibility="collapsed",
+            key="uploader_main"
+        )
+        if nuevo_upload is not None and len(nuevo_upload) > 0:
+            st.session_state['archivos_subidos'] = nuevo_upload
+            st.rerun()
 
         st.stop()
 
