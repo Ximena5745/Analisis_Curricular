@@ -836,7 +836,7 @@ def procesar_archivos(uploaded_files) -> pd.DataFrame:
             continue
 
     if not all_data:
-        return pd.DataFrame()
+        return pd.DataFrame(), failed_files
 
     df_consolidado = pd.concat(all_data, ignore_index=True)
 
