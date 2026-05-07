@@ -3277,60 +3277,81 @@ def main():
     section[data-testid="stSidebar"] .stExpander summary {
         background-color: #0F385A !important;
     }
-    section[data-testid="stSidebar"] div[data-testid="stFileUploader"] {
-        background-color: #1a4a7a;
-        border: 1px dashed #4DA6FF;
-        border-radius: 8px;
-        padding: 12px;
-    }
     </style>
     """, unsafe_allow_html=True)
     
-    # Carga de archivos - encabezado azul
-    st.sidebar.markdown(
-        "<h3 style='color:#4DA6FF; font-weight:700; margin:0.5rem 0;'>📂 Cargar Archivos Excel</h3>",
-        unsafe_allow_html=True
-    )
-    
-    # Session state para archivos - persiste entre reruns
+    # Carga de archivos en area principal (sidebar siempre limpio)
     if 'archivos_subidos' not in st.session_state:
         st.session_state['archivos_subidos'] = None
     
     uploaded_files = st.session_state['archivos_subidos']
     
-    #File uploader siempre visible (permite cambiar archivos)
-    nuevo_upload = st.sidebar.file_uploader(
-        "Sube archivos Excel (.xlsx):",
-        type=['xlsx'],
-        accept_multiple_files=True,
-        label_visibility="collapsed"
-    )
-    
-    #Actualizar session state si hay nuevos archivos
-    if nuevo_upload is not None and len(nuevo_upload) > 0:
-        st.session_state['archivos_subidos'] = nuevo_upload
-        uploaded_files = nuevo_upload
-    
-    # Ocultar uploader después de cargar (con CSS)
-    if uploaded_files:
+    if not uploaded_files:
+        # ── Banner horizontal con uploader ─────────────────────────────────
         st.markdown("""
         <style>
-        [data-testid="stFileUploader"] {display: none !important;}
+        .upload-banner {
+            background: linear-gradient(135deg, #003F8A 0%, #0077C8 100%);
+            border-radius: 16px;
+            padding: 28px 36px;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 28px;
+        }
+        .upload-banner h2 {
+            color: #FFFFFF !important;
+            margin: 0 0 6px 0 !important;
+            font-size: 1.5em;
+        }
+        .upload-banner p {
+            color: rgba(255,255,255,0.85) !important;
+            margin: 0 0 10px 0 !important;
+            font-size: 0.95em;
+        }
+        .upload-banner .poligran-badge {
+            background: rgba(255,255,255,0.2);
+            color: #FFFFFF !important;
+            padding: 4px 14px;
+            border-radius: 20px;
+            font-size: 0.75em;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+        .upload-area {
+            min-width: 340px;
+            max-width: 420px;
+            flex-shrink: 0;
+        }
+        .upload-area label {
+            color: #FFFFFF !important;
+        }
         </style>
         """, unsafe_allow_html=True)
-    
-    if not uploaded_files:
-        # ── Banner institucional ───────────────────────────────────────────
-        st.markdown("""
-        <div class="poligran-header">
-            <div>
-                <h2>📊 Sistema de Análisis Microcurricular</h2>
-                <p>Herramienta para el análisis temático, cognitivo e integrador del plan de estudios</p>
-                <span class="poligran-badge">POLITÉCNICO GRANCOLOMBIANO</span>
+        
+        col_banner, col_upload = st.columns([2, 1], gap="large")
+        with col_banner:
+            st.markdown("""
+            <div style="padding: 12px 0;">
+                <h2 style="color:#FFFFFF !important; margin:0 0 6px 0;">📊 Sistema de Análisis Microcurricular</h2>
+                <p style="color:rgba(255,255,255,0.85) !important; margin:0 0 12px 0;">Herramienta para el análisis temático, cognitivo e integrador del plan de estudios</p>
+                <span class="poligran-badge" style="background:rgba(255,255,255,0.2);color:#FFFFFF !important;padding:4px 14px;border-radius:20px;font-size:0.75em;font-weight:600;">POLITÉCNICO GRANCOLOMBIANO</span>
             </div>
-        </div>
-        """, unsafe_allow_html=True)
-
+            """, unsafe_allow_html=True)
+        with col_upload:
+            st.markdown('<div style="margin-top:8px"><b style="color:#FFFFFF">📂 Subir archivos</b></div>', unsafe_allow_html=True)
+            nuevo_upload = st.file_uploader(
+                "",
+                type=['xlsx'],
+                accept_multiple_files=True,
+                label_visibility="collapsed",
+                key="uploader_main"
+            )
+            if nuevo_upload is not None and len(nuevo_upload) > 0:
+                st.session_state['archivos_subidos'] = nuevo_upload
+                st.rerun()
+        
         # ── Descripción de módulos ─────────────────────────────────────────
         st.markdown("### ¿Qué puedes analizar con esta herramienta?")
 
@@ -3397,7 +3418,7 @@ def main():
             <div class="section-card">
             <h3 style="color:#003F8A;margin-top:0">🚀 Cómo empezar</h3>
 
-            1. Sube uno o más archivos **Excel (.xlsx)** en el panel lateral izquierdo
+            1. Sube uno o más archivos **Excel (.xlsx)** abajo
             2. Los archivos deben contener la hoja **'Paso 5 Estrategias micro'** con encabezados en la **fila 2**
             3. El análisis se ejecuta automáticamente al cargar los archivos
             4. Navega por las secciones usando el menú lateral
@@ -3440,6 +3461,16 @@ def main():
     for f in uploaded_files:
         f.seek(0)
     
+    # Barra compacta de archivos cargados + boton cambiar
+    col_files, col_btn = st.columns([4, 1])
+    with col_files:
+        num_archivos = len(uploaded_files)
+        st.success(f"✅ **{num_archivos}** archivo(s) cargados — {num_archivos} programa(s)/modalidad(es)")
+    with col_btn:
+        if st.button("🔄 Cambiar archivos", use_container_width=True):
+            st.session_state['archivos_subidos'] = None
+            st.rerun()
+    
     # Mostrar errores SIEMPRE visibles (después de procesar)
     if failed_list:
         st.sidebar.error(f"⚠️ {len(failed_list)} archivo(s) con error:")
@@ -3454,18 +3485,12 @@ def main():
         )
         st.stop()
 
-    # Info sidebar - incluyendo errores
-    total_archivos = len(uploaded_files)
-    cargados_ok = total_archivos - len(failed_list) if failed_list else total_archivos
-    
+    # Info sidebar - simplificada (archivos en area principal)
     st.sidebar.markdown(
         f"""
         <div style='background:rgba(247,148,29,0.15);border:1px solid rgba(247,148,29,0.4);
         border-radius:8px;padding:10px 14px;margin-bottom:8px'>
-        <div style='font-size:0.78em;color:rgba(255,255,255,0.7);margin-bottom:4px'>
-        📂 Archivos: {cargados_ok}/{total_archivos} | ❌ Error: {len(failed_list)}</div>
         <div style='font-size:0.82em;color:#fff'>
-        <b>{cargados_ok}</b> programas/modalidades &nbsp;|&nbsp;
         <b>{df['Nombre asignatura o modulo'].nunique()}</b> asignaturas<br>
         <b>{len(df):,}</b> registros procesados
         </div></div>
