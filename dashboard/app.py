@@ -23,7 +23,7 @@ from config import INPUT_FOLDER, OUTPUT_FOLDER, TEMATICAS
 # Configuración de la página
 st.set_page_config(
     page_title="Análisis Microcurricular",
-    page_icon="🎓",
+    page_icon="📈",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -43,11 +43,145 @@ st.markdown("""
     h1 {
         color: #1f77b4;
     }
+    .hero-panel {
+        border-radius: 22px;
+        border: 1px solid #dbeafe;
+        background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+        padding: 26px;
+        box-shadow: 0 24px 60px rgba(15, 23, 42, 0.08);
+    }
+    .feature-card {
+        border-radius: 20px;
+        border: 1px solid #e2e8f0;
+        background: #ffffff;
+        padding: 20px;
+        min-height: 170px;
+        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.04);
+    }
+    .feature-card h3 {
+        margin: 0.75rem 0 0.4rem;
+        color: #0f3460;
+        font-size: 1.05rem;
+    }
+    .feature-card p {
+        margin: 0;
+        color: #475569;
+        font-size: 0.95rem;
+        line-height: 1.6;
+    }
+    .feature-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 18px;
+    }
+    .hero-action {
+        border-radius: 16px;
+        background: #f8fbff;
+        border: 1px solid #dbeafe;
+        padding: 22px;
+    }
+    .hero-action h2 {
+        margin-top: 0;
+        margin-bottom: 8px;
+        color: #0f3460;
+    }
+    .hero-action p {
+        margin: 0;
+        color: #475569;
+        font-size: 0.95rem;
+        line-height: 1.7;
+    }
+    .action-box {
+        border: 2px dashed #bfdbfe;
+        border-radius: 18px;
+        background: #ffffff;
+        padding: 24px;
+        text-align: center;
+        min-height: 170px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 12px;
+        color: #0f3460;
+    }
+    .cta-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 12px;
+        margin-top: 18px;
+    }
+    .cta-button {
+        border-radius: 14px;
+        border: 1px solid #dbeafe;
+        background: #ffffff;
+        color: #0f3460;
+        padding: 12px 14px;
+        font-weight: 700;
+        text-align: center;
+    }
+    .content-block {
+        display: grid;
+        grid-template-columns: 1.2fr 1fr;
+        gap: 24px;
+        margin-top: 32px;
+    }
+    .steps-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+    .steps-list li {
+        margin-bottom: 14px;
+        font-size: 0.98rem;
+        color: #334155;
+    }
+    .steps-list li strong {
+        color: #0f3460;
+    }
+    .table-card {
+        border-radius: 20px;
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        padding: 24px;
+    }
+    .structured-table {
+        border-collapse: collapse;
+        width: 100%;
+        font-size: 0.95rem;
+    }
+    .structured-table th,
+    .structured-table td {
+        border: 1px solid #e2e8f0;
+        padding: 12px 14px;
+        text-align: left;
+        color: #334155;
+    }
+    .structured-table th {
+        background: #eff6ff;
+        color: #0f3460;
+    }
+    .structured-table tbody tr:nth-child(even) {
+        background: #f8fafc;
+    }
     </style>
 """, unsafe_allow_html=True)
 
 
+def render_icon_svg(name: str, color: str = "#0f3460", size: int = 36) -> str:
+    icons = {
+        'document': f'''<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 2H14L18 6V22H6V2Z" fill="{color}" fill-opacity="0.12"/><path d="M14 2V6H18" stroke="{color}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 2H14L18 6V22H6V2Z" stroke="{color}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 12H15" stroke="{color}" stroke-width="1.8" stroke-linecap="round"/><path d="M9 16H15" stroke="{color}" stroke-width="1.8" stroke-linecap="round"/></svg>''',
+        'trend': f'''<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 16L9 11L13 15L20 8" stroke="{color}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 20H20" stroke="{color}" stroke-width="1.8" stroke-linecap="round"/><path d="M4 4V20" stroke="{color}" stroke-width="1.8" stroke-linecap="round"/></svg>''',
+        'bloom': f'''<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="4" width="16" height="16" rx="4" fill="{color}" fill-opacity="0.12"/><path d="M8 15H16" stroke="{color}" stroke-width="1.8" stroke-linecap="round"/><path d="M8 11H14" stroke="{color}" stroke-width="1.8" stroke-linecap="round"/><path d="M8 7H12" stroke="{color}" stroke-width="1.8" stroke-linecap="round"/></svg>''',
+        'search': f'''<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="11" cy="11" r="6" stroke="{color}" stroke-width="1.8"/><path d="M16.5 16.5L20 20" stroke="{color}" stroke-width="1.8" stroke-linecap="round"/></svg>''',
+        'gear': f'''<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="3" stroke="{color}" stroke-width="1.8"/><path d="M19.4 15A1.66 1.66 0 0 0 20 13.7 1.67 1.67 0 0 0 19.4 12.4L21 10.6 19.4 8.8 17.5 9.1A1.67 1.67 0 0 0 16 8 1.67 1.67 0 0 0 14.5 9.1L12.6 8.8 11 10.6 12.6 12.4A1.67 1.67 0 0 0 12 13.7 1.67 1.67 0 0 0 12.5 15L11 16.9 12.6 18.7 14.5 18.4A1.67 1.67 0 0 0 16 20 1.67 1.67 0 0 0 17.5 18.9L19.4 19.2 21 17.4 19.4 15Z" stroke="{color}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>''',
+        'grid': f'''<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="4" width="6" height="6" rx="1.5" fill="{color}" fill-opacity="0.16" stroke="{color}" stroke-width="1.8"/><rect x="14" y="4" width="6" height="6" rx="1.5" fill="{color}" fill-opacity="0.08" stroke="{color}" stroke-width="1.8"/><rect x="4" y="14" width="6" height="6" rx="1.5" fill="{color}" fill-opacity="0.08" stroke="{color}" stroke-width="1.8"/><rect x="14" y="14" width="6" height="6" rx="1.5" fill="{color}" fill-opacity="0.16" stroke="{color}" stroke-width="1.8"/></svg>''',
+        'upload': f'''<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 3V15" stroke="{color}" stroke-width="1.8" stroke-linecap="round"/><path d="M8 7L12 3L16 7" stroke="{color}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 21H18" stroke="{color}" stroke-width="1.8" stroke-linecap="round"/></svg>''',
+    }
+    return icons.get(name, '')
+
+
 @st.cache_data
+
 def load_all_programs():
     """Carga todos los programas desde la carpeta de entrada.
     
@@ -263,95 +397,106 @@ def main():
     # PÁGINA: INICIO
     # ========================================================================
     if page == "🏠 Inicio":
-        st.title("🎓 Dashboard de Análisis Microcurricular")
-        st.markdown("---")
+        st.markdown("""
+        <div style="margin-bottom:30px;">
+            <div style="display:flex; flex-wrap:wrap; gap:28px; align-items:flex-start;">
+                <div style="flex:1; min-width:320px; max-width:720px;">
+                    <div style="font-size:3.2rem; font-weight:700; line-height:1.02; color:#0f3460; margin-bottom:14px;">Análisis Microcurricular basada en datos</div>
+                    <div style="font-size:1.05rem; color:#475569; max-width:740px; line-height:1.75;">
+                        Optimice sus procesos de diseño curricular a través del uso de herramientas avanzadas de inteligencia artificial para visualizar brechas y tendencias en tiempo real.
+                    </div>
+                </div>
+                <div style="flex:0 0 380px; min-width:300px;">
+                    <div class="hero-action">
+                        <div style="display:flex; align-items:center; gap:14px; margin-bottom:16px;">
+                            <div style="width:44px; height:44px; border-radius:14px; display:flex; align-items:center; justify-content:center; background:#e0efff;">
+                                {render_icon_svg('upload', '#0f3460', 24)}
+                            </div>
+                            <div>
+                                <div style="font-size:1rem; font-weight:700; color:#0f3460; margin-bottom:4px;">Cargar Matriz de Resultados de aprendizaje</div>
+                                <div style="font-size:0.92rem; color:#64748b; line-height:1.5;">Inicie el análisis masivo de su archivo (.XLSX) para obtener métricas instantáneas.</div>
+                            </div>
+                        </div>
+                        <div class="action-box">
+                            <div style="font-size:2.2rem;">{render_icon_svg('document', '#0f3460', 40)}</div>
+                            <div style="font-weight:700;">Arrastre archivos aquí</div>
+                            <div style="color:#64748b;">200MB por archivo · XLSX</div>
+                        </div>
+                        <div class="cta-row">
+                            <div class="cta-button">Seleccionar Archivos</div>
+                            <div class="cta-button">Ver guía de carga</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-        # KPIs principales
-        col1, col2, col3, col4 = st.columns(4)
+        <div class="feature-grid" style="margin-bottom:34px;">
+            <div class="feature-card">
+                <div>{render_icon_svg('document', '#0f3460', 28)}</div>
+                <h3>Resumen Ejecutivo</h3>
+                <p>Visión general del estado de la Matriz de RA y cumplimiento de metas institucionales.</p>
+            </div>
+            <div class="feature-card">
+                <div>{render_icon_svg('trend', '#0f3460', 28)}</div>
+                <h3>Tendencias Globales</h3>
+                <p>Comparativa con estándares internacionales y temáticas emergentes en la industria.</p>
+            </div>
+            <div class="feature-card">
+                <div>{render_icon_svg('bloom', '#0f3460', 28)}</div>
+                <h3>Bloom e Integración</h3>
+                <p>Niveles taxonómicos detectados en las competencias y resultados de aprendizaje.</p>
+            </div>
+            <div class="feature-card">
+                <div>{render_icon_svg('search', '#0f3460', 28)}</div>
+                <h3>Minería de Texto</h3>
+                <p>Descubrimiento de patrones y nubes de palabras clave en el contenido curricular.</p>
+            </div>
+            <div class="feature-card">
+                <div>{render_icon_svg('grid', '#0f3460', 28)}</div>
+                <h3>Tipo de Saber</h3>
+                <p>Análisis de la balanza entre saber, saber hacer y saber ser en los programas.</p>
+            </div>
+            <div class="feature-card">
+                <div>{render_icon_svg('gear', '#0f3460', 28)}</div>
+                <h3>Cobertura Temática</h3>
+                <p>Detección de redundancias o vacíos temáticos en la malla curricular institucional.</p>
+            </div>
+        </div>
 
-        with col1:
-            st.metric(
-                "Programas Analizados",
-                len(filtered_programs),
-                delta=None if len(filtered_programs) == len(programs) else len(programs) - len(filtered_programs)
-            )
-
-        total_comp = sum(p['indicadores']['resumen']['total_competencias'] for p in filtered_programs)
-        with col2:
-            st.metric(
-                "Total Competencias",
-                total_comp
-            )
-
-        total_ra = sum(p['indicadores']['resumen']['total_ra'] for p in filtered_programs)
-        with col3:
-            st.metric(
-                "Total RA",
-                total_ra
-            )
-
-        avg_score = sum(p['indicadores']['score_calidad'] for p in filtered_programs) / len(filtered_programs) if filtered_programs else 0
-        with col4:
-            st.metric(
-                "Score Promedio",
-                f"{avg_score:.1f}/100"
-            )
-
-        st.markdown("---")
-
-        # Gráfico de cobertura de temáticas
-        st.subheader("📊 Cobertura de Temáticas")
-
-        # Calcular programas por temática
-        tematicas_count = {t: 0 for t in TEMATICAS.keys()}
-
-        for program in programs:
-            for tematica in program['tematicas']['tematicas_presentes']:
-                if tematica in tematicas_count:
-                    tematicas_count[tematica] += 1
-
-        # Calcular también métricas normalizadas por créditos
-        df_tematicas = pd.DataFrame([
-            {'Temática': k, 'Programas': v}
-            for k, v in tematicas_count.items()
-        ]).sort_values('Programas', ascending=True)
-
-        fig_tematicas = px.bar(
-            df_tematicas,
-            x='Programas',
-            y='Temática',
-            orientation='h',
-            title='Número de Programas por Temática',
-            color='Programas',
-            color_continuous_scale='Blues'
-        )
-        fig_tematicas.update_layout(height=500, showlegend=False)
-        st.plotly_chart(fig_tematicas, use_container_width=True)
-
-        # Distribución de scores
-        st.markdown("---")
-        st.subheader("📈 Distribución de Scores de Calidad")
-
-        scores = [p['indicadores']['score_calidad'] for p in filtered_programs]
-        nombres = [p['nombre'] for p in filtered_programs]
-
-        df_scores = pd.DataFrame({
-            'Programa': nombres,
-            'Score': scores
-        }).sort_values('Score', ascending=False)
-
-        fig_scores = px.bar(
-            df_scores,
-            x='Score',
-            y='Programa',
-            orientation='h',
-            title='Score de Calidad por Programa',
-            color='Score',
-            color_continuous_scale='RdYlGn',
-            range_color=[0, 100]
-        )
-        fig_scores.update_layout(height=600)
-        st.plotly_chart(fig_scores, use_container_width=True)
+        <div class="content-block">
+            <div>
+                <h2 style="font-size:1.5rem; color:#0f3460; margin-bottom:12px;">Cómo empezar</h2>
+                <ul class="steps-list">
+                    <li><strong>1.</strong> Suba uno o más archivos Excel (.xlsx) en la carpeta de entrada.</li>
+                    <li><strong>2.</strong> Los archivos deben contener la hoja "Paso 5 Estrategias micro" con encabezados en la fila 2.</li>
+                    <li><strong>3.</strong> El análisis se ejecuta automáticamente al cargar los archivos.</li>
+                    <li><strong>4.</strong> Navegue por las secciones usando el menú lateral.</li>
+                    <li><strong>5.</strong> Puede cargar varios programas a la vez para análisis comparativos.</li>
+                </ul>
+            </div>
+            <div class="table-card">
+                <h2 style="font-size:1.25rem; color:#0f3460; margin-bottom:14px;">Estructura esperada del Excel</h2>
+                <table class="structured-table">
+                    <thead>
+                        <tr>
+                            <th>Columna</th>
+                            <th>Descripción</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>Tipo de Saber</td><td>Saber / SaberHacer / SaberSer</td></tr>
+                        <tr><td>Resultado de aprendizaje</td><td>Texto del resultado de aprendizaje (verbo de acción)</td></tr>
+                        <tr><td>Nombre asignatura o módulo</td><td>Nombre de la asignatura o módulo</td></tr>
+                        <tr><td>Indicadores de logro</td><td>Indicadores de evaluación del RA</td></tr>
+                        <tr><td>Núcleos temáticos</td><td>Temas separados por coma o punto y coma</td></tr>
+                        <tr><td>Semestre</td><td>Número de semestre (1, 2, 3,...)</td></tr>
+                        <tr><td>Créditos</td><td>Créditos académicos de la asignatura</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
     # ========================================================================
     # PÁGINA: PROGRAMAS
@@ -520,31 +665,31 @@ def main():
 
         # ── TAB 1: Comparar 2 Programas ──────────────────────────────────────
         with tab_dos:
-program_names = [p['nombre'] for p in filtered_programs]
-        
-        if len(program_names) < 2:
-            st.warning("Se necesitan al menos 2 programas para comparar. Selecciona más programas en los filtros.")
-            return
+            program_names = [p['nombre'] for p in filtered_programs]
             
-        prog1_name = st.selectbox(
-            "Programa 1:",
-            program_names,
-            index=0 if len(program_names) > 0 else 0
-        )
+            if len(program_names) < 2:
+                st.warning("Se necesitan al menos 2 programas para comparar. Selecciona más programas en los filtros.")
+                return
+            
+            prog1_name = st.selectbox(
+                "Programa 1:",
+                program_names,
+                index=0 if len(program_names) > 0 else 0
+            )
 
-        prog2_name = st.selectbox(
-            "Programa 2:",
-            program_names,
-            index=1 if len(program_names) > 1 else 0
-        )
+            prog2_name = st.selectbox(
+                "Programa 2:",
+                program_names,
+                index=1 if len(program_names) > 1 else 0
+            )
 
-        # Obtener programas
-        prog1 = next((p for p in filtered_programs if p['nombre'] == prog1_name), None)
-        prog2 = next((p for p in filtered_programs if p['nombre'] == prog2_name), None)
+            # Obtener programas
+            prog1 = next((p for p in filtered_programs if p['nombre'] == prog1_name), None)
+            prog2 = next((p for p in filtered_programs if p['nombre'] == prog2_name), None)
 
-                if prog1 is None or prog2 is None:
-                    st.error("Error al cargar los programas.")
-                else:
+            if prog1 is None or prog2 is None:
+                st.error("Error al cargar los programas.")
+            else:
                     # Radar chart
                     st.subheader("🕸️ Perfil de Indicadores")
                     st.caption(

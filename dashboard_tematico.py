@@ -80,6 +80,18 @@ def _es_nucleo_valido(texto: str) -> bool:
     return True
 
 
+def render_icon_svg(name: str, color: str = "#0f3460", size: int = 28) -> str:
+    icons = {
+        'document': f'''<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 2H14L18 6V22H6V2Z" fill="{color}" fill-opacity="0.12"/><path d="M14 2V6H18" stroke="{color}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 2H14L18 6V22H6V2Z" stroke="{color}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 12H15" stroke="{color}" stroke-width="1.8" stroke-linecap="round"/><path d="M9 16H15" stroke="{color}" stroke-width="1.8" stroke-linecap="round"/></svg>''',
+        'trend': f'''<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 16L9 11L13 15L20 8" stroke="{color}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 20H20" stroke="{color}" stroke-width="1.8" stroke-linecap="round"/><path d="M4 4V20" stroke="{color}" stroke-width="1.8" stroke-linecap="round"/></svg>''',
+        'bloom': f'''<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="4" width="16" height="16" rx="4" fill="{color}" fill-opacity="0.12"/><path d="M8 15H16" stroke="{color}" stroke-width="1.8" stroke-linecap="round"/><path d="M8 11H14" stroke="{color}" stroke-width="1.8" stroke-linecap="round"/><path d="M8 7H12" stroke="{color}" stroke-width="1.8" stroke-linecap="round"/></svg>''',
+        'search': f'''<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="11" cy="11" r="6" stroke="{color}" stroke-width="1.8"/><path d="M16.5 16.5L20 20" stroke="{color}" stroke-width="1.8" stroke-linecap="round"/></svg>''',
+        'grid': f'''<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="4" width="6" height="6" rx="1.5" fill="{color}" fill-opacity="0.16" stroke="{color}" stroke-width="1.8"/><rect x="14" y="4" width="6" height="6" rx="1.5" fill="{color}" fill-opacity="0.08" stroke="{color}" stroke-width="1.8"/><rect x="4" y="14" width="6" height="6" rx="1.5" fill="{color}" fill-opacity="0.08" stroke="{color}" stroke-width="1.8"/><rect x="14" y="14" width="6" height="6" rx="1.5" fill="{color}" fill-opacity="0.16" stroke="{color}" stroke-width="1.8"/></svg>''',
+        'settings': f'''<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="3" stroke="{color}" stroke-width="1.8"/><path d="M19.4 15A1.66 1.66 0 0 0 20 13.7 1.67 1.67 0 0 0 19.4 12.4L21 10.6 19.4 8.8 17.5 9.1A1.67 1.67 0 0 0 16 8 1.67 1.67 0 0 0 14.5 9.1L12.6 8.8 11 10.6 12.6 12.4A1.67 1.67 0 0 0 12 13.7 1.67 1.67 0 0 0 12.5 15L11 16.9 12.6 18.7 14.5 18.4A1.67 1.67 0 0 0 16 20 1.67 1.67 0 0 0 17.5 18.9L19.4 19.2 21 17.4 19.4 15Z" stroke="{color}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>'''
+    }
+    return icons.get(name, '')
+
+
 # ============================================================================
 # CONFIGURACION DE PAGINA
 # ============================================================================
@@ -1313,7 +1325,7 @@ def pagina_inicio(df: pd.DataFrame, totales_oficiales: Optional[Dict] = None):
     st.caption(
         "Los créditos oficiales se leen directamente desde las filas de totales declaradas "
         "al final de cada Excel ('Total créditos programa', 'Total créditos bloque...'). "
-        "La columna **⚠ Dif.** compara el total oficial con la suma de los tres bloques."
+        "La columna **Diferencia** compara el total oficial con la suma de los tres bloques."
     )
 
     resumen_rows = []
@@ -1348,7 +1360,7 @@ def pagina_inicio(df: pd.DataFrame, totales_oficiales: Optional[Dict] = None):
             'Cr. Disciplinar':   cr_disc,
             'Cr. Electivo':      cr_elec,
             'Suma bloques':      suma_bloques,
-            '⚠ Dif.':           diferencia,
+            'Diferencia':        diferencia,
         })
 
     resumen = pd.DataFrame(resumen_rows)
@@ -1359,13 +1371,13 @@ def pagina_inicio(df: pd.DataFrame, totales_oficiales: Optional[Dict] = None):
         return 'background-color:#f8d7da;color:#721c24'
 
     st.dataframe(
-        resumen.style.map(_color_dif, subset=['⚠ Dif.']),
+        resumen.style.map(_color_dif, subset=['Diferencia']),
         use_container_width=True, hide_index=True
     )
     st.caption(
         "**Cr. Total** = declarado en el Excel (fila 'Total créditos programa'). "
         "**Suma bloques** = Institucional + Disciplinar + Electivo. "
-        "**⚠ Dif. = 0** ✅ coinciden | **≠ 0** 🔴 revisar el Excel."
+        "**Diferencia = 0** coincide | **≠ 0** revisar el Excel."
     )
 
 
@@ -3359,57 +3371,124 @@ def main():
     if not uploaded_files:
         st.markdown("""
         <style>
-        .upload-banner {
-            background: linear-gradient(135deg, #003F8A 0%, #0077C8 100%);
-            border-radius: 16px;
-            padding: 28px 36px;
+        .hero-panel {
+            background: linear-gradient(180deg, #ffffff 0%, #f4f8ff 100%);
+            border: 1px solid #dbeafe;
+            border-radius: 24px;
+            padding: 32px;
             margin-bottom: 24px;
-            display: flex;
+            box-shadow: 0 24px 60px rgba(15, 23, 42, 0.08);
+        }
+        .hero-panel h2 {
+            color: #0f3460 !important;
+            margin: 0 0 12px 0 !important;
+            font-size: 2.4rem !important;
+            line-height: 1.05 !important;
+        }
+        .hero-panel p {
+            color: #475569 !important;
+            margin: 0 0 18px 0 !important;
+            font-size: 1rem !important;
+            line-height: 1.75 !important;
+        }
+        .hero-panel .hero-tag {
+            display: inline-flex;
             align-items: center;
-            justify-content: space-between;
-            gap: 28px;
+            gap: 10px;
+            background: #e0efff;
+            border-radius: 999px;
+            padding: 8px 14px;
+            margin-bottom: 18px;
+            color: #0f3460 !important;
+            font-size: 0.85rem !important;
+            font-weight: 700;
         }
-        .upload-banner h2 {
-            color: #FFFFFF !important;
-            margin: 0 0 6px 0 !important;
-            font-size: 1.5em;
+        .hero-actions {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(140px, 1fr));
+            gap: 10px;
+            margin-top: 22px;
         }
-        .upload-banner p {
-            color: rgba(255,255,255,0.85) !important;
-            margin: 0 0 10px 0 !important;
-            font-size: 0.95em;
+        .hero-callout {
+            border: 1px dashed #bfdbfe;
+            border-radius: 18px;
+            background: #ffffff;
+            padding: 24px;
+            min-height: 160px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 10px;
+            color: #0f3460;
         }
-        .upload-banner .poligran-badge {
-            background: rgba(255,255,255,0.2);
-            color: #FFFFFF !important;
-            padding: 4px 14px;
-            border-radius: 20px;
-            font-size: 0.75em;
-            font-weight: 600;
-            letter-spacing: 0.5px;
+        .hero-callout strong {
+            display: block;
+            font-size: 1rem;
+            margin-bottom: 6px;
         }
-        .upload-area {
-            min-width: 340px;
-            max-width: 420px;
-            flex-shrink: 0;
+        .section-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+            margin-top: 24px;
         }
-        .upload-area label {
-            color: #FFFFFF !important;
+        .section-card {
+            border: 1px solid #e2e8f0;
+            border-radius: 18px;
+            background: #ffffff;
+            padding: 18px;
+            min-height: 140px;
+            box-shadow: 0 10px 30px rgba(15, 23, 42, 0.04);
+        }
+        .section-card h3 {
+            margin-top: 0;
+            margin-bottom: 10px;
+            color: #0f3460;
+            font-size: 1rem;
+        }
+        .section-card p {
+            margin: 0;
+            color: #475569;
+            line-height: 1.6;
+            font-size: 0.92rem;
+        }
+        .steps-list {
+            margin: 0;
+            padding-left: 18px;
+        }
+        .steps-list li {
+            margin-bottom: 12px;
+            color: #334155;
+            line-height: 1.6;
+            font-size: 0.95rem;
+        }
+        .steps-list li strong {
+            color: #0f3460;
         }
         </style>
         """, unsafe_allow_html=True)
-        
+
         col_banner, col_upload = st.columns([2, 1], gap="large")
         with col_banner:
-            st.markdown("""
-            <div style="padding: 12px 0;">
-                <h2 style="color:#FFFFFF !important; margin:0 0 6px 0;">📊 Sistema de Análisis Microcurricular</h2>
-                <p style="color:rgba(255,255,255,0.85) !important; margin:0 0 12px 0;">Herramienta para el análisis temático, cognitivo e integrador del plan de estudios</p>
-                <span class="poligran-badge" style="background:rgba(255,255,255,0.2);color:#FFFFFF !important;padding:4px 14px;border-radius:20px;font-size:0.75em;font-weight:600;">POLITÉCNICO GRANCOLOMBIANO</span>
+            st.markdown(f"""
+            <div class="hero-panel">
+                <div class="hero-tag">{render_icon_svg('document', '#0f3460', 18)}Sistema de Análisis Microcurricular</div>
+                <h2>Analiza brechas y tendencias del plan de estudios con datos confiables.</h2>
+                <p>Optimice el análisis curricular con una vista unificada de resultados de aprendizaje, tipos de saber, cobertura temática y tendencias globales.</p>
+                <div class="hero-actions">
+                    <div class="hero-callout">
+                        <strong>{render_icon_svg('upload', '#0f3460', 22)}Subir archivos</strong>
+                        <span>Arrastre archivos XLSX o use el cargador para iniciar el análisis.</span>
+                    </div>
+                    <div class="hero-callout">
+                        <strong>{render_icon_svg('settings', '#0f3460', 22)}Guía de carga</strong>
+                        <span>Revisa el formato esperado y asegúrate de que la hoja tenga la estructura correcta.</span>
+                    </div>
+                </div>
             </div>
             """, unsafe_allow_html=True)
         with col_upload:
-            st.markdown('<div style="margin-top:8px"><b style="color:#FFFFFF">📂 Subir archivos</b></div>', unsafe_allow_html=True)
+            st.markdown('<div style="margin-top:8px"><b style="color:#003F8A">Subir archivos</b></div>', unsafe_allow_html=True)
             nuevo_upload = st.file_uploader(
                 "",
                 type=['xlsx'],
@@ -3420,86 +3499,62 @@ def main():
             if nuevo_upload is not None and len(nuevo_upload) > 0:
                 st.session_state['archivos_subidos'] = nuevo_upload
                 st.rerun()
-        
-        # ── Descripción de módulos ─────────────────────────────────────────
+
         st.markdown("### ¿Qué puedes analizar con esta herramienta?")
-
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.markdown("""
+        st.markdown(f"""
+        <div class="section-grid">
             <div class="section-card">
-                <h3 style="color:#003F8A;margin-top:0">📋 Resumen Ejecutivo</h3>
-                <p style="font-size:0.88em;color:#444">Alertas automáticas, fortalezas detectadas y
-                recomendaciones priorizadas para comités académicos y procesos de autoevaluación.</p>
+                {render_icon_svg('document', '#0f3460', 24)}
+                <h3>Resumen Ejecutivo</h3>
+                <p>Alertas automáticas, fortalezas detectadas y recomendaciones priorizadas para comités académicos.</p>
             </div>
-            <div class="section-card" style="margin-top:10px">
-                <h3 style="color:#003F8A;margin-top:0">📊 Tipo de Saber</h3>
-                <p style="font-size:0.88em;color:#444">Distribución de <b>Saber</b>, <b>SaberHacer</b>
-                y <b>SaberSer</b> por semestre, programa y asignatura. Diagnóstico de balance.</p>
-            </div>
-            <div class="section-card" style="margin-top:10px">
-                <h3 style="color:#003F8A;margin-top:0">🗂️ Cobertura Temática</h3>
-                <p style="font-size:0.88em;color:#444">Núcleos temáticos: diversidad,
-                densidad y solapamiento entre programas. Matriz de núcleos.</p>
-            </div>
-            """, unsafe_allow_html=True)
-
-        with col2:
-            st.markdown("""
             <div class="section-card">
-                <h3 style="color:#0077C8;margin-top:0">🌍 Tendencias Globales</h3>
-                <p style="font-size:0.88em;color:#444">Alineación del currículo con tendencias como
-                Sostenibilidad, IA, Transformación Digital, Innovación y Ética.</p>
+                {render_icon_svg('grid', '#0f3460', 24)}
+                <h3>Tipo de Saber</h3>
+                <p>Balance entre Saber, SaberHacer y SaberSer por semestre, programa y asignatura.</p>
             </div>
-            <div class="section-card" style="margin-top:10px">
-                <h3 style="color:#0077C8;margin-top:0">🔍 Minería de Texto</h3>
-                <p style="font-size:0.88em;color:#444">Análisis TF-IDF de términos relevantes,
-                n-gramas frecuentes y similitud entre asignaturas para detectar redundancias.</p>
+            <div class="section-card">
+                {render_icon_svg('trend', '#0f3460', 24)}
+                <h3>Cobertura Temática</h3>
+                <p>Diversidad y densidad de núcleos temáticos en la malla curricular institucional.</p>
             </div>
-            <div class="section-card" style="margin-top:10px">
-                <h3 style="color:#0077C8;margin-top:0">📄 Explorar Datos</h3>
-                <p style="font-size:0.88em;color:#444">Filtrar y explorar todos los registros
-                cargados por programa, tipo de saber y semestre. Exportar a CSV.</p>
+            <div class="section-card">
+                {render_icon_svg('trend', '#0f3460', 24)}
+                <h3>Tendencias Globales</h3>
+                <p>Alineación del currículo con sostenibilidad, IA, transformación digital e innovación.</p>
             </div>
-            """, unsafe_allow_html=True)
-
-        with col3:
-            st.markdown("""
-            <div class="section-card" style="border-left:4px solid #1FB2DE">
-                <h3 style="color:#003F8A;margin-top:0">🎓 Bloom & Integración</h3>
-                <p style="font-size:0.88em;color:#444"><b>Taxonomía de Bloom:</b> clasificación cognitiva
-                de RAs (Recordar→Crear) y progresión por semestre.<br>
-                <b>Mapa de integración:</b> red que muestra qué asignaturas comparten núcleos temáticos.</p>
+            <div class="section-card">
+                {render_icon_svg('search', '#0f3460', 24)}
+                <h3>Minería de Texto</h3>
+                <p>Términos relevantes, n-gramas frecuentes y similitud entre asignaturas.</p>
             </div>
-            <div class="section-card" style="margin-top:10px;border-left:4px solid #1FB2DE">
-                <h3 style="color:#003F8A;margin-top:0">⚙️ Configurar Tendencias</h3>
-                <p style="font-size:0.88em;color:#444">Personaliza las tendencias globales a detectar:
-                agrega, edita o elimina tendencias con sus palabras clave. Exporta/importa en JSON.</p>
+            <div class="section-card">
+                {render_icon_svg('bloom', '#0f3460', 24)}
+                <h3>Bloom e Integración</h3>
+                <p>Taxonomía cognitiva de RA y mapa de integración de núcleos temáticos.</p>
             </div>
-            """, unsafe_allow_html=True)
+        </div>
+        """, unsafe_allow_html=True)
 
         st.markdown("---")
-
-        # ── Cómo empezar ──────────────────────────────────────────────────
         col_how, col_struct = st.columns([1, 1])
         with col_how:
             st.markdown("""
             <div class="section-card">
-            <h3 style="color:#003F8A;margin-top:0">🚀 Cómo empezar</h3>
-
-            1. Sube uno o más archivos **Excel (.xlsx)** abajo
-            2. Los archivos deben contener la hoja **'Paso 5 Estrategias micro'** con encabezados en la **fila 2**
-            3. El análisis se ejecuta automáticamente al cargar los archivos
-            4. Navega por las secciones usando el menú lateral
-
-            > **Puedes cargar varios programas a la vez** para análisis comparativos.
+                <h3>Cómo empezar</h3>
+                <ol class="steps-list">
+                    <li><strong>1.</strong> Sube uno o más archivos Excel (.xlsx) en el cargador.</li>
+                    <li><strong>2.</strong> El archivo debe contener la hoja 'Paso 5 Estrategias micro' con encabezados en la fila 2.</li>
+                    <li><strong>3.</strong> El análisis se ejecuta automáticamente al cargar los archivos.</li>
+                    <li><strong>4.</strong> Navega por las secciones usando el menú lateral.</li>
+                    <li><strong>5.</strong> Puedes cargar varios programas a la vez para análisis comparativos.</li>
+                </ol>
             </div>
             """, unsafe_allow_html=True)
-
         with col_struct:
             st.markdown("""
             <div class="section-card">
-            <h3 style="color:#003F8A;margin-top:0">📋 Estructura esperada del Excel</h3>
+                <h3>Estructura esperada del Excel</h3>
             </div>
             """, unsafe_allow_html=True)
             st.table(pd.DataFrame({
@@ -3534,9 +3589,9 @@ def main():
     col_files, col_btn = st.columns([4, 1])
     with col_files:
         num_archivos = len(uploaded_files)
-        st.success(f"✅ **{num_archivos}** archivo(s) cargados — {num_archivos} programa(s)/modalidad(es)")
+        st.success(f"**{num_archivos}** archivo(s) cargados — {num_archivos} programa(s)/modalidad(es)")
     with col_btn:
-        if st.button("🔄 Cambiar archivos", use_container_width=True):
+        if st.button("Cambiar archivos", use_container_width=True):
             st.session_state['archivos_subidos'] = None
             st.rerun()
     
@@ -3569,9 +3624,9 @@ def main():
 
     # MOSTRAR ERRORES EN AREA PRINCIPAL (más visible)
     if failed_list:
-        st.error(f"⚠️ **{len(failed_list)}** archivo(s) no se cargaron:")
+        st.error(f"**{len(failed_list)}** archivo(s) no se cargaron:")
         for f_err in failed_list:
-            st.warning(f"❌ **{f_err['nombre']}**: {f_err['causa']}")
+            st.warning(f"{f_err['nombre']}: {f_err['causa']}")
 
     st.sidebar.markdown("---")
     
