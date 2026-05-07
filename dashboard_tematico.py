@@ -3272,8 +3272,18 @@ def main():
     )
     
     # Carga de archivos - collapsible después de cargar
+    # Usar markdown con color para el expander
+    st.sidebar.markdown("""
+    <style>
+    [data-testid="stExpander"] summary {
+        color: #003F8A !important;
+        font-weight: 600;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
     with st.sidebar.expander("📂 Cargar Archivos Excel", expanded=bool(uploaded_files)):
-        st.info("Arrastra archivos Excel (.xlsx) aquí")
+        st.info("Arrastra o selecciona archivos Excel (.xlsx)")
 
     if not uploaded_files:
         # ── Banner institucional ───────────────────────────────────────────
