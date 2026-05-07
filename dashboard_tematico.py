@@ -3402,16 +3402,19 @@ def main():
         .hero-btn.secondary { background:transparent; border:1.5px solid #7dd3f0 !important; color:#fff; }
         .hero-btn.secondary:hover { background:rgba(31,178,222,.15); border-color:#fff !important; }
         .hero-right {
-            border:2px dashed rgba(31,178,222,.45) !important; border-radius:18px !important;
-            padding:20px 16px !important; background:rgba(31,178,222,.08) !important;
+            border:1.5px solid rgba(125,211,240,.5) !important;
+            border-bottom: none !important;
+            border-radius:14px 14px 0 0 !important;
+            padding:14px 14px 10px !important;
+            background:linear-gradient(180deg, rgba(19,77,120,.85) 0%, rgba(16,66,104,.9) 100%) !important;
             display:flex !important; flex-direction:column !important;
             align-items:center !important; justify-content:center !important; gap:8px !important; text-align:center !important;
         }
         .upload-icon-box { width:48px; height:48px; border-radius:12px; background:rgba(31,178,222,.22); display:flex; align-items:center; justify-content:center; }
-        .hero-right h4 { margin:6px 0 2px; font-size:.97rem; font-weight:700; color:#fff !important; }
-        .hero-right span { color:rgba(255,255,255,.65); font-size:.82rem; }
+        .hero-right h4 { margin:6px 0 2px; font-size:.97rem; font-weight:700; color:#ffffff !important; }
+        .hero-right span { color:#d6eeff; font-size:.82rem; }
         .st-key-uploader_main {
-            margin-top: 8px;
+            margin-top: 0;
             width: 100%;
             max-width: 100%;
         }
@@ -3425,10 +3428,11 @@ def main():
             background: transparent !important;
         }
         .st-key-uploader_main [data-testid="stFileUploader"] > div {
-            border: 1.5px solid rgba(125,211,240,.6) !important;
-            background: rgba(17,66,103,.65) !important;
-            border-radius: 12px !important;
-            padding: 8px !important;
+            border: 1.5px solid rgba(125,211,240,.65) !important;
+            border-top: none !important;
+            background: linear-gradient(180deg, rgba(19,77,120,.85) 0%, rgba(16,66,104,.9) 100%) !important;
+            border-radius: 0 0 12px 12px !important;
+            padding: 8px 8px 10px !important;
         }
         .st-key-uploader_main [data-testid="stFileUploader"] label,
         .st-key-uploader_main [data-testid="stFileUploader"] small,
@@ -3450,7 +3454,7 @@ def main():
             color: #e0f2fe !important;
         }
         .st-key-btn_estructura_archivo {
-            margin-top: 6px;
+            margin-top: 8px;
             width: 100%;
             max-width: 100%;
             margin-left: auto;
@@ -3462,7 +3466,7 @@ def main():
             min-height: 40px !important;
             font-weight: 700 !important;
             border: 1.5px solid #7dd3f0 !important;
-            background: rgba(17,66,103,.65) !important;
+            background: linear-gradient(180deg, rgba(19,77,120,.85) 0%, rgba(16,66,104,.9) 100%) !important;
             color: #ffffff !important;
         }
         .st-key-btn_estructura_archivo button:hover {
@@ -3473,7 +3477,7 @@ def main():
             margin-top: 6px;
             border: 1px solid rgba(125,211,240,.35);
             border-radius: 10px;
-            background: rgba(15,52,96,.32);
+            background: rgba(11,45,74,.88);
             color: #eaf6ff;
             padding: 8px;
             font-size: .82rem;
