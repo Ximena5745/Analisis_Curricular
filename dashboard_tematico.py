@@ -3372,24 +3372,24 @@ def main():
     if not uploaded_files:
         st.markdown("""
         <style>
-        .page-header { margin-bottom: 20px; }
-        .page-header h1 { margin: 0; font-size: 2.6rem; color: #0f3460; line-height: 1.05; }
+        .page-header { margin-bottom: 14px; }
+        .page-header h1 { margin: 0; font-size: 2.25rem; color: #0f3460; line-height: 1.05; }
         .page-header p  { margin: 10px 0 0; color: #475569; font-size: 0.98rem; line-height: 1.7; max-width: 800px; }
         .hero-area {
             background: linear-gradient(135deg, #1a3a52 0%, #1e5080 60%, #2a6494 100%) !important;
-            border-radius: 22px !important; padding: 44px 52px 40px !important; color: #fff !important;
-            display: grid !important; grid-template-columns: 1.6fr 1fr !important; gap: 40px !important;
+            border-radius: 18px !important; padding: 28px 34px 24px !important; color: #fff !important;
+            display: grid !important; grid-template-columns: 1.6fr 1fr !important; gap: 22px !important;
             align-items: center !important; margin-bottom: 8px !important;
             box-shadow: 0 20px 60px rgba(15,23,42,.2) !important; border: 1px solid rgba(31,178,222,.18) !important;
         }
-        .hero-bar  { width:5px; height:52px; background:#1fb2de; border-radius:3px; margin-bottom:18px; }
+        .hero-bar  { width:5px; height:44px; background:#1fb2de; border-radius:3px; margin-bottom:14px; }
         .hero-label {
             display: block !important; font-size:.75rem !important; font-weight:800 !important;
             text-transform:uppercase !important; letter-spacing:.16em !important;
             color:#9dd3ff !important; margin-bottom:12px !important;
         }
-        .hero-area h2 { margin:0 0 12px !important; font-size:1.85rem !important; line-height:1.15 !important; font-weight:700 !important; color:#fff !important; }
-        .hero-area > div > p { margin:0 0 8px !important; color:#c0d9ff !important; font-size:.94rem !important; line-height:1.65 !important; }
+        .hero-area h2 { margin:0 0 8px !important; font-size:1.5rem !important; line-height:1.15 !important; font-weight:700 !important; color:#fff !important; }
+        .hero-area > div > p { margin:0 0 4px !important; color:#c0d9ff !important; font-size:.9rem !important; line-height:1.55 !important; }
         .hero-btn {
             display:inline-flex; align-items:center; justify-content:center; gap:8px;
             padding:12px 26px; border-radius:10px; font-weight:700; font-size:.92rem;
@@ -3401,26 +3401,40 @@ def main():
         .hero-btn.secondary:hover { background:rgba(31,178,222,.15); border-color:#fff !important; }
         .hero-right {
             border:2px dashed rgba(31,178,222,.45) !important; border-radius:18px !important;
-            padding:32px 20px !important; background:rgba(31,178,222,.08) !important;
+            padding:20px 16px !important; background:rgba(31,178,222,.08) !important;
             display:flex !important; flex-direction:column !important;
-            align-items:center !important; justify-content:center !important; gap:12px !important; text-align:center !important;
+            align-items:center !important; justify-content:center !important; gap:8px !important; text-align:center !important;
         }
-        .upload-icon-box { width:54px; height:54px; border-radius:14px; background:rgba(31,178,222,.22); display:flex; align-items:center; justify-content:center; }
+        .upload-icon-box { width:48px; height:48px; border-radius:12px; background:rgba(31,178,222,.22); display:flex; align-items:center; justify-content:center; }
         .hero-right h4 { margin:6px 0 2px; font-size:.97rem; font-weight:700; color:#fff !important; }
         .hero-right span { color:rgba(255,255,255,.65); font-size:.82rem; }
-        .hero-right-actions { margin-top:16px; width:100%; max-width:260px; display:flex; flex-direction:column; gap:12px; }
-
-        /* Mantener uploader funcional pero oculto para no mostrar Upload files */
-        [data-testid="stFileUploader"] {
-            position:absolute !important;
-            width:1px !important;
-            height:1px !important;
-            margin:0 !important;
-            padding:0 !important;
-            border:0 !important;
-            opacity:0 !important;
-            overflow:hidden !important;
-            z-index:-1 !important;
+        .hero-controls-wrap { margin-top: 2px; margin-bottom: 10px; }
+        .hero-controls-wrap [data-testid="stFileUploaderDropzone"] {
+            min-height: auto !important;
+            padding: 8px !important;
+            border: 0 !important;
+            background: transparent !important;
+        }
+        .hero-controls-wrap [data-testid="stFileUploaderDropzoneInstructions"] {
+            display: none !important;
+        }
+        .hero-controls-wrap [data-testid="stFileUploaderDropzone"] button {
+            width: 100% !important;
+            border-radius: 10px !important;
+            min-height: 40px !important;
+            font-weight: 700 !important;
+            border: none !important;
+            background: #1fb2de !important;
+            color: #0f2d44 !important;
+        }
+        .hero-controls-wrap [data-testid="stButton"] button {
+            width: 100% !important;
+            border-radius: 10px !important;
+            min-height: 40px !important;
+            font-weight: 700 !important;
+            border: 1.5px solid #7dd3f0 !important;
+            background: transparent !important;
+            color: #0f3460 !important;
         }
         .feature-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:18px; }
         .feature-grid.row-2 { grid-template-columns:repeat(2,1fr); max-width:50%; }
@@ -3511,20 +3525,34 @@ def main():
                 <div class="upload-icon-box">{icon_upload}</div>
                 <h4>Selecciona tus archivos</h4>
                 <span>200MB por archivo &middot; XLSX &middot; M&#250;ltiples archivos</span>
-                <div class="hero-right-actions">
-                    <button class="hero-btn primary" id="btnSeleccionar" onclick="var f=document.querySelectorAll('input[type=\'file\']'); var i=f.length ? f[f.length-1] : null; i && i.click();">Seleccionar Archivos</button>
-                    <button class="hero-btn secondary" id="btnEstructura" onclick="var d=document.getElementById('estructuraModal'); d && (d.showModal ? d.showModal() : d.setAttribute('open','open'));">Estructura del archivo</button>
-                </div>
             </div>
         </div>
         """, unsafe_allow_html=True)
 
-        nuevo_upload = st.file_uploader(
-            "Cargar archivos Excel (.xlsx)",
-            type=['xlsx'],
-            accept_multiple_files=True,
-            key="uploader_main"
-        )
+        st.markdown('<div class="hero-controls-wrap">', unsafe_allow_html=True)
+        _c1, _c2 = st.columns([1.6, 1])
+        with _c2:
+            nuevo_upload = st.file_uploader(
+                "Seleccionar Archivos",
+                type=['xlsx'],
+                accept_multiple_files=True,
+                key="uploader_main"
+            )
+            if st.button("Estructura del archivo", key="btn_estructura_archivo", use_container_width=True):
+                st.session_state['mostrar_estructura_archivo'] = not st.session_state.get('mostrar_estructura_archivo', False)
+        st.markdown('</div>', unsafe_allow_html=True)
+
+        if st.session_state.get('mostrar_estructura_archivo', False):
+            st.markdown("""
+            <div style="background:#f8fcff;border:1px solid #dbeafe;border-radius:12px;padding:14px 16px;margin:4px 0 14px 0;">
+                <h4 style="margin:0 0 8px 0;color:#0f3460;">Estructura del archivo Excel</h4>
+                <p style="margin:0;color:#334155;font-size:.92rem;line-height:1.6;">
+                    Hoja requerida: <strong>Paso 5 Estrategias micro</strong> (encabezados en fila 2).<br>
+                    Campos clave: Tipo de Saber, Resultado de aprendizaje, Nombre asignatura o modulo,
+                    Indicadores de logro, Nucleos tematicos, Semestre y Creditos.
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
 
         icon_document = render_icon_svg('document', '#0077C8', 22)
         icon_trend    = render_icon_svg('trend',    '#1fb2de', 22)
