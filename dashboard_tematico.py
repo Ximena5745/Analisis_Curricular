@@ -405,7 +405,7 @@ div[data-baseweb="notification"][kind="negative"] {
 }
 
 /* ── Botones ─────────────────────────────────────────────────────────────── */
-.stButton > button, .stDownloadButton > button {
+.stButton > button, .stButton button, [data-testid="stButton"] button, .stDownloadButton > button {
     background: linear-gradient(135deg, #1FB2DE, #0F385A) !important;
     color: #ffffff !important;
     border: none !important;
@@ -844,6 +844,22 @@ def procesar_archivos(uploaded_files) -> pd.DataFrame:
             )
             if df is not None and not df.empty:
                 df = normalizar_columnas(df)
+                if 'Nivel' in df.columns:
+                    df['Nivel'] = (
+                        df['Nivel']
+                        .astype(str)
+                        .str.strip()
+                        .replace({'nan': 'No identificado', '': 'No identificado'})
+                        .replace('', 'No identificado')
+                        .str.title()
+                    )
+                if 'Componente academico' in df.columns:
+                    df['Componente academico'] = (
+                        df['Componente academico']
+                        .astype(str)
+                        .str.strip()
+                        .replace({'nan': 'No identificado', '': 'No identificado'})
+                    )
                 df['Programa'] = programa_nombre
                 df['Modalidad'] = metadata['modalidad']
                 df['Sede'] = metadata['sede']
@@ -1277,7 +1293,12 @@ def pagina_inicio(df: pd.DataFrame, totales_oficiales: Optional[Dict] = None):
         "Navega por las secciones del menú lateral para explorar cada dimensión."
     )
 
-    unique_programs = df[['Programa', 'Modalidad', 'Sede']].drop_duplicates()
+    if 'Nivel' in df.columns:
+        df = df.copy()
+        df['Nivel'] = df['Nivel'].astype(str).str.strip().replace({'nan': 'No identificado', '': 'No identificado'}).str.title()
+        unique_programs = df[['Programa', 'Modalidad', 'Sede', 'Nivel']].drop_duplicates()
+    else:
+        unique_programs = df[['Programa', 'Modalidad', 'Sede']].drop_duplicates()
     asignaturas = df['Nombre asignatura o modulo'].nunique()
     total_registros = len(df)
     total_palabras = df['Texto_Completo'].str.split().str.len().sum()
@@ -1285,6 +1306,13 @@ def pagina_inicio(df: pd.DataFrame, totales_oficiales: Optional[Dict] = None):
     presencial_count = int(count_modalidad.get('Presencial', 0))
     virtual_count = int(count_modalidad.get('Virtual', 0))
     hibrido_count = int(count_modalidad.get('Híbrido', 0))
+    if 'Nivel' in unique_programs.columns:
+        count_nivel = unique_programs['Nivel'].fillna('No identificado').value_counts()
+        pregrado_count = int(count_nivel.get('Pregrado', 0))
+        posgrado_count = int(count_nivel.get('Posgrado', 0))
+    else:
+        pregrado_count = 0
+        posgrado_count = 0
 
     col1, col2, col3, col4 = st.columns(4)
     col1.metric(
@@ -1304,7 +1332,42 @@ def pagina_inicio(df: pd.DataFrame, totales_oficiales: Optional[Dict] = None):
         help="Cantidad de programas cargados en modalidad híbrida."
     )
 
-    st.markdown("---")
+    if 'Nivel' in unique_programs.columns:
+        col5, col6 = st.columns(2)
+        col5.metric(
+            "Pregrado", pregrado_count,
+            help="Cantidad de programas de nivel Pregrado."
+        )
+        col6.metric(
+            "Posgrado", posgrado_count,
+            help="Cantidad de programas de nivel Posgrado."
+        )
+        st.markdown("---")
+        niveles_df = (
+            unique_programs
+            .groupby('Nivel')
+            .size()
+            .reset_index(name='Programas')
+            .sort_values('Programas', ascending=False)
+        )
+        fig_nivel = px.bar(
+            niveles_df,
+            x='Nivel',
+            y='Programas',
+            color='Nivel',
+            text='Programas',
+            color_discrete_map={
+                'Pregrado': '#0F83FF',
+                'Posgrado': '#0FFF8B',
+                'No identificado': '#8c8c8c'
+            },
+            labels={'Programas': 'N° de programas'}
+        )
+        fig_nivel.update_layout(showlegend=False, height=380)
+        fig_nivel.update_traces(textposition='outside')
+        st.plotly_chart(fig_nivel, use_container_width=True)
+    else:
+        st.markdown("---")
 
     col_a, col_b = st.columns(2)
 
@@ -3781,22 +3844,32 @@ def main():
 
     st.sidebar.markdown("---")
     
-    # FILTROS DE MODALIDAD Y SEDE (usando selectbox si st.pills no disponible)
+    # FILTROS DE MODALIDAD, SEDE y NIVEL
     st.sidebar.subheader("🔍 Filtros")
     
     # Obtener valores únicos
     modalidades = sorted([str(m) for m in df['Modalidad'].unique() if pd.notna(m)])
     sedes = sorted([str(s) for s in df['Sede'].unique() if pd.notna(s)])
     programas = sorted([str(p) for p in df['Programa'].unique() if pd.notna(p)])
+    niveles = sorted([str(n) for n in df['Nivel'].unique() if pd.notna(n)]) if 'Nivel' in df.columns else []
     
-    # Filtros en la misma línea usando columns
-    col_mod, col_sed = st.columns(2)
+    def pills_or_select(label, options, key, default="Todos"):
+        if hasattr(st, 'pills'):
+            return st.pills(label, ["Todos"] + options, default=default, key=key)
+        return st.selectbox(label, ["Todos"] + options, index=0, key=key)
+
+    col_mod, col_sed, col_niv = st.sidebar.columns([1, 1, 1])
     with col_mod:
-        modalidad_sel = st.pills("Modalidad", ["Todos"] + modalidades, default="Todos", key="pills_modalidad")
+        modalidad_sel = pills_or_select("Modalidad", modalidades, "pills_modalidad")
     with col_sed:
-        sede_sel = st.pills("Sede", ["Todos"] + sedes, default="Todos", key="pills_sede")
+        sede_sel = pills_or_select("Sede", sedes, "pills_sede")
+    with col_niv:
+        nivel_sel = pills_or_select("Nivel", niveles, "pills_nivel") if niveles else "Todos"
     
-    prog_sel = st.selectbox("Programa", ["Todos"] + programas, key="sel_prog")
+    if not niveles:
+        st.sidebar.info("El campo 'Nivel' no se detectó en los datos. Agrega la columna Nivel para filtrar entre Pregrado y Posgrado.")
+
+    prog_sel = st.sidebar.selectbox("Programa", ["Todos"] + programas, key="sel_prog")
     
     # Aplicar filtros
     df_filtered = df.copy()
