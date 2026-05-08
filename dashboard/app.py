@@ -393,9 +393,9 @@ def main():
     if modalidad_sel != "Todos" or sede_sel != "Todos":
         st.sidebar.info(f"📊 Mostrando {len(filtered_programs)} de {len(programs)} programas")
 
-    # ========================================================================
+    # =========================================================================
     # PÁGINA: INICIO
-    # ========================================================================
+    # =========================================================================
     if page == "🏠 Inicio":
         st.markdown("""
         <div style="margin-bottom:30px;">
