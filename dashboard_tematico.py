@@ -656,11 +656,20 @@ def normalizar_columnas(df: pd.DataFrame) -> pd.DataFrame:
     return df.rename(columns=nuevos_nombres)
 
 
+def _normalize_column_name(name: str) -> str:
+    """Normaliza un nombre de columna para comparación tolerante."""
+    normalized = unicodedata.normalize('NFKD', str(name))
+    normalized = ''.join(c for c in normalized if not unicodedata.combining(c))
+    normalized = normalized.lower()
+    normalized = re.sub(r'[\s\-_.]+', '', normalized)
+    return normalized
+
+
 def _find_column(df: pd.DataFrame, target: str):
-    """Busca una columna en el DataFrame ignorando mayúsculas, espacios y tildes."""
-    target_norm = unicodedata.normalize('NFKD', str(target)).encode('ascii', 'ignore').decode('ascii').strip().lower()
+    """Busca una columna en el DataFrame ignorando mayúsculas, espacios, tildes y puntuación."""
+    target_norm = _normalize_column_name(target)
     for col in df.columns:
-        col_norm = unicodedata.normalize('NFKD', str(col)).encode('ascii', 'ignore').decode('ascii').strip().lower()
+        col_norm = _normalize_column_name(col)
         if col_norm == target_norm:
             return col
     return None
@@ -817,10 +826,11 @@ def procesar_archivos(uploaded_files) -> pd.DataFrame:
         nombre = uploaded_file.name
         metadata = extract_modality_sede(nombre)
         
-        # Extraer nombre del programa (primero del archivo, luego celda A3 si es vacío)
+        # Extraer nombre del programa (primero del archivo, luego intentar leer celda A3 del perfil)
         programa_nombre = (
             nombre
             .replace("FormatoRA_", "")
+            .replace("FormatoRA-", "")
             .replace("_PBOG", "")
             .replace("_VNAL", "")
             .replace("_PMED", "")
@@ -830,20 +840,24 @@ def procesar_archivos(uploaded_files) -> pd.DataFrame:
             .replace(".xlsx", "")
             .replace(".xls", "")
         )
-        
-        # Sobrescribir solo si el nombre del archivo está vacío o es muy corto
-        if programa_nombre and len(programa_nombre) > 3:
-            try:
-                uploaded_file.seek(0)
-                df_perfil = pd.read_excel(uploaded_file, sheet_name='Paso1 Analisis perfil egreso', 
-                                     header=None, nrows=10, engine='openpyxl')
-                if df_perfil is not None and len(df_perfil) > 2 and len(df_perfil.columns) > 0:
-                    val = df_perfil.iloc[2, 0]
-                    if val is not None and str(val).strip():
-                        programa_nombre = str(val).strip()
-            except:
-                pass  # Mantener nombre del archivo
-        
+        programa_nombre = programa_nombre.strip()
+
+        # Si el archivo contiene la hoja de perfil, usar el valor real del programa si está disponible.
+        try:
+            uploaded_file.seek(0)
+            df_perfil = pd.read_excel(
+                uploaded_file,
+                sheet_name='Paso1 Analisis perfil egreso',
+                header=None,
+                nrows=10,
+                engine='openpyxl'
+            )
+            if df_perfil is not None and len(df_perfil) > 2 and len(df_perfil.columns) > 0:
+                val = df_perfil.iloc[2, 0]
+                if val is not None and str(val).strip():
+                    programa_nombre = str(val).strip()
+        except Exception:
+            pass  # Mantener nombre derivado del archivo si no se puede leer la hoja        
         try:
             uploaded_file.seek(0)
             df = pd.read_excel(
