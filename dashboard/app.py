@@ -71,7 +71,7 @@ st.markdown("""
     }
     .feature-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        grid-template-columns: repeat(3, minmax(240px, 1fr));
         gap: 18px;
     }
     .hero-action {
@@ -393,9 +393,9 @@ def main():
     if modalidad_sel != "Todos" or sede_sel != "Todos":
         st.sidebar.info(f"📊 Mostrando {len(filtered_programs)} de {len(programs)} programas")
 
-    # =========================================================================
+    # ========================================================================
     # PÁGINA: INICIO
-    # =========================================================================
+    # ========================================================================
     if page == "🏠 Inicio":
         st.markdown("""
         <div style="margin-bottom:30px;">

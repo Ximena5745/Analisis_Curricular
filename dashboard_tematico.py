@@ -3590,8 +3590,8 @@ def main():
         .estructura-mini-table th { background: rgba(31,178,222,.18); font-weight: 700; color: #fff; }
 
         /* ── Tarjetas de características ── */
-        .feature-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:18px; }
-        .feature-grid.row-2 { grid-template-columns:repeat(2,1fr); max-width:50%; }
+        .feature-grid { display:grid; grid-template-columns:repeat(3, minmax(240px, 1fr)); gap:16px; margin-bottom:18px; }
+        .feature-grid.row-2 { grid-template-columns:repeat(3, minmax(240px, 1fr)); }
         .feature-card {
             background:#fff; border-radius:18px; padding:20px;
             box-shadow:0 8px 24px rgba(15,23,42,.07);
@@ -3627,10 +3627,10 @@ def main():
                 st.markdown("""
                 <div class="hero-left-panel">
                     <div class="hero-bar"></div>
-                    <span class="hero-label">Sistema de An&#225;lisis Microcurricular</span>
-                    <h2>Cargar Matriz de Resultados de aprendizaje</h2>
-                    <p>Inicia el an&#225;lisis masivo de tu archivo (.XLSX) para obtener m&#233;tricas instant&#225;neas.</p>
-                    <p class="hero-support">Sube tu matriz de resultados de aprendizaje para detectar coherencia curricular, brechas y tendencias clave en minutos.</p>
+                    <span class="hero-label">Sistema de Análisis Microcurricular</span>
+                    <h2>Análisis Microcurricular Basado en Datos</h2>
+                    <p>Optimice los procesos de diseño, actualización y evaluación curricular mediante el uso de analítica avanzada e Inteligencia Artificial.</p>
+                    <p class="hero-support">Permita identificar brechas, tendencias, niveles de alineación y oportunidades de mejora en tiempo real para fortalecer la toma de decisiones académicas y la calidad educativa.</p>
                 </div>
                 """, unsafe_allow_html=True)
 
@@ -3711,8 +3711,6 @@ def main():
                     <p>Descubrimiento de patrones y nubes de palabras clave en el contenido curricular.</p></div>
                 <div class="feature-meta"><span class="status">PROCESADO</span><span class="arrow">&#8250;</span></div>
             </div>
-        </div>
-        <div class="feature-grid row-2">
             <div class="feature-card" style="--card-color:#d97706;--card-bg:#fef3c7;">
                 <div><div class="feature-icon-box">{icon_grid}</div>
                     <h3>Tipo de Saber</h3>
