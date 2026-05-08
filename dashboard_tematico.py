@@ -1269,7 +1269,7 @@ def pagina_inicio(df: pd.DataFrame, totales_oficiales: Optional[Dict] = None):
         "Navega por las secciones del menú lateral para explorar cada dimensión."
     )
 
-    programas = df['Programa'].unique()
+    programas = df[['Programa', 'Modalidad', 'Sede']].drop_duplicates()
     asignaturas = df['Nombre asignatura o modulo'].nunique()
     total_registros = len(df)
     total_palabras = df['Texto_Completo'].str.split().str.len().sum()
@@ -1277,7 +1277,7 @@ def pagina_inicio(df: pd.DataFrame, totales_oficiales: Optional[Dict] = None):
     col1, col2, col3, col4 = st.columns(4)
     col1.metric(
         "Programas Cargados", len(programas),
-        help="Número de programas académicos incluidos en el análisis"
+        help="Número de programas académicos distintos por Programa + Modalidad + Sede incluidos en el análisis"
     )
     col2.metric(
         "Registros Analizados", f"{total_registros:,}",
@@ -1301,17 +1301,24 @@ def pagina_inicio(df: pd.DataFrame, totales_oficiales: Optional[Dict] = None):
     col_a, col_b = st.columns(2)
 
     with col_a:
-        st.subheader("Registros por Programa")
+        st.subheader("Registros por Programa / Modalidad / Sede")
         st.caption(
-            "Número de filas de estrategia microcurricular por programa. "
-            "Programas con más registros tienen mayor detalle de planeación por asignatura."
+            "Número de filas de estrategia microcurricular por combinación Programa + Modalidad + Sede. "
+            "Así se identifican como programas distintos aun cuando comparten nombre." 
         )
-        conteo = df['Programa'].value_counts().reset_index()
-        conteo.columns = ['Programa', 'Registros']
-        fig = px.bar(conteo, x='Programa', y='Registros',
-                     color='Programa', text='Registros',
-                     labels={'Registros': 'N° de registros'})
-        fig.update_layout(showlegend=False, height=400)
+        conteo = (
+            df
+            .groupby(['Programa', 'Modalidad', 'Sede'])
+            .size()
+            .reset_index(name='Registros')
+        )
+        conteo['Etiqueta'] = (
+            conteo['Programa'] + ' (' + conteo['Modalidad'] + ' - ' + conteo['Sede'] + ')'
+        )
+        fig = px.bar(conteo, x='Etiqueta', y='Registros',
+                     color='Modalidad', text='Registros',
+                     labels={'Registros': 'N° de registros', 'Etiqueta': 'Programa'})
+        fig.update_layout(showlegend=True, height=420)
         st.plotly_chart(fig, use_container_width=True)
 
     with col_b:
@@ -1338,9 +1345,7 @@ def pagina_inicio(df: pd.DataFrame, totales_oficiales: Optional[Dict] = None):
     )
 
     resumen_rows = []
-    for prog in df['Programa'].unique():
-        g = df[df['Programa'] == prog]
-
+    for (prog, modalidad, sede), g in df.groupby(['Programa', 'Modalidad', 'Sede']):
         # Totales oficiales del Excel (footer rows)
         of = (totales_oficiales or {}).get(prog, {})
         cr_total   = of.get('total',         0)
@@ -1361,6 +1366,8 @@ def pagina_inicio(df: pd.DataFrame, totales_oficiales: Optional[Dict] = None):
 
         resumen_rows.append({
             'Programa':          prog,
+            'Modalidad':         modalidad,
+            'Sede':              sede,
             'Registros':         len(g),
             'Asignaturas':       g['Nombre asignatura o modulo'].nunique(),
             'Semestres':         g['Semestre'].nunique(),
