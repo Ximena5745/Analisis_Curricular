@@ -894,6 +894,20 @@ def procesar_archivos(uploaded_files) -> pd.DataFrame:
                         .str.strip()
                         .replace({'nan': 'No identificado', '': 'No identificado'})
                     )
+
+                if any(tag in nombre.upper() for tag in ['ECENJA', 'LCS', 'MCE']):
+                    st.write('DEBUG FILE:', nombre)
+                    st.write('DEBUG columns:', list(df.columns))
+                    st.write('DEBUG normalized columns:', [_normalize_column_name(c) for c in df.columns])
+                    st.write('DEBUG nivel_col:', nivel_col, 'componente_col:', componente_col)
+                    sample_cols = []
+                    if nivel_col is not None:
+                        sample_cols.append(nivel_col)
+                    if componente_col is not None:
+                        sample_cols.append(componente_col)
+                    if sample_cols:
+                        st.write('DEBUG sample values:', df[sample_cols].head(10))
+
                 df['Programa'] = programa_nombre
                 df['Modalidad'] = metadata['modalidad']
                 df['Sede'] = metadata['sede']
@@ -1273,8 +1287,15 @@ def _detectar_nivel(grupo: pd.DataFrame) -> str:
             return False
         return grupo[col_real].astype(str).apply(_normalize_value).isin(marcadores).any()
 
-    tiene_b = any(_tiene_datos(c) for c in ['B.Institucional', 'B.Disciplinar', 'B.Electivo'])
-    tiene_c = any(_tiene_datos(c) for c in ['C.Fundamentacion', 'C.Profundizacion'])
+    tiene_b = any(_tiene_datos(c) for c in [
+        'B.Institucional', 'Institucional',
+        'B.Disciplinar', 'Disciplinar',
+        'B.Electivo', 'Electivo'
+    ])
+    tiene_c = any(_tiene_datos(c) for c in [
+        'C.Fundamentacion', 'Fundamentacion',
+        'C.Profundizacion', 'Profundizacion'
+    ])
 
     if tiene_b and not tiene_c:
         return 'Pregrado'
@@ -1306,8 +1327,14 @@ def _creditos_por_componente(grupo: pd.DataFrame) -> Dict[str, int]:
         .first()
     )
 
-    def _sum_componente(col_alias: str) -> int:
-        col_real = _find_column(asig_df, col_alias)
+    def _sum_componente(col_aliases) -> int:
+        if isinstance(col_aliases, str):
+            col_aliases = [col_aliases]
+        col_real = None
+        for alias in col_aliases:
+            col_real = _find_column(asig_df, alias)
+            if col_real is not None:
+                break
         if col_real is None:
             return 0
         mask = asig_df[col_real].astype(str).apply(_normalize_value).isin(
@@ -1320,8 +1347,8 @@ def _creditos_por_componente(grupo: pd.DataFrame) -> Dict[str, int]:
             credits_by_assignment[credits_by_assignment[asig_col_real].isin(asignaturas_validas)][cred_col].sum()
         )
 
-    fund  = _sum_componente('C.Fundamentacion')
-    prof  = _sum_componente('C.Profundizacion')
+    fund  = _sum_componente(['C.Fundamentacion', 'Fundamentacion'])
+    prof  = _sum_componente(['C.Profundizacion', 'Profundizacion'])
     total = int(credits_by_assignment[credits_by_assignment[cred_col] > 0][cred_col].sum())
     return {'Fundamentacion': fund, 'Profundizacion': prof, 'Total': total}
 
