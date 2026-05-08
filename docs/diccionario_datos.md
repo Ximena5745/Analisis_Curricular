@@ -58,6 +58,14 @@ Este documento describe la estructura de datos utilizada en el Sistema de Análi
 | Horas de trabajo presencial | Número | Horas en clase | 2 | ⚠️ |
 | Criterios de evaluación | Texto | Qué se evalúa | Solución correcta del problema | ⚠️ |
 | Acciones de retroalimentación | Texto | Cómo se retroalimenta | Revisión grupal de soluciones | ⚠️ |
+| Nivel | Texto | Identifica el tipo de formación | Pregrado, Posgrado | ✅ |
+| Componente académico | Texto | Clasificación del componente según nivel | B. Institucional, C. Fundamentación | ⚠️ |
+
+**Clasificación por nivel de formación:**
+- Programas de Pregrado: `B. Institucional`, `B. Disciplinar`, `B. Electivo`
+- Programas de Posgrado: `C. Fundamentación`, `C. Profundización`
+
+**Recomendación:** usar el campo `Nivel` para filtrar y agrupar en reportes, y mantener estas definiciones en la misma tabla de estrategias microcurriculares. La separación de tablas por Pregrado/Posgrado no es necesaria si se dispone de la columna `Nivel`.
 
 **Leyenda:**
 - ✅ Requerido: Campo obligatorio para análisis

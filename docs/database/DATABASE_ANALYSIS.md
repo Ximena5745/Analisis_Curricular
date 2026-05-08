@@ -36,12 +36,26 @@ Tablas conceptuales (si se usa SQLite):
 │   ├── verbo
 │   ├── resultado
 │   └── tipo_saber
-└── métricas
+├── métricas
+│   ├── id (PRIMARY KEY)
+│   ├── programa_id (FK)
+│   ├── completeness
+│   ├── distribution
+│   └── score
+└── estrategias_micro
     ├── id (PRIMARY KEY)
     ├── programa_id (FK)
-    ├── completeness
-    ├── distribution
-    └── score
+    ├── tipo_de_saber
+    ├── estrategia
+    ├── recursos
+    ├── horas_autonomo
+    ├── horas_presencial
+    ├── criterios_evaluacion
+    ├── acciones_retroalimentacion
+    ├── nivel
+    ├── componente_academico
+    ├── modalidad
+    └── sede
 ```
 
 ### Excel: data/raw/*.xlsx
@@ -83,7 +97,15 @@ FormatoRA_*.xlsx
     ├── Horas de trabajo autónomo
     ├── Horas de trabajo presencial
     ├── Criterios de evaluación
-    └── Acciones de retroalimentación
+    ├── Acciones de retroalimentación
+    ├── Nivel
+    └── Componente académico
+
+**Clasificación de componentes académicos por nivel:**
+- Programas de Pregrado: `B. Institucional`, `B. Disciplinar`, `B. Electivo`
+- Programas de Posgrado: `C. Fundamentación`, `C. Profundización`
+
+**Nota de diseño:** Se recomienda guardar estos atributos en la misma tabla `estrategias_micro` y usar filtros sobre `Nivel` en lugar de dividir la estructura de tablas por nivel académico.
 ```
 
 ## Índices
