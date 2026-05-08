@@ -3959,11 +3959,27 @@ def main():
         st.stop()
 
 
-    # Procesar archivos
-    df, failed_list = procesar_archivos(uploaded_files)
+    # Procesar archivos (usar caché de session_state para evitar reprocesar en cada rerun)
+    cache_key = tuple(f.name for f in uploaded_files)
+    
+    if 'proc_cache_key' in st.session_state and st.session_state['proc_cache_key'] == cache_key:
+        # Usar datos cacheados
+        df = st.session_state['cached_df']
+        failed_list = st.session_state['cached_failed_list']
+        totales_oficiales = st.session_state['cached_totales_oficiales']
+    else:
+        # Procesar archivos y cachear
+        df, failed_list = procesar_archivos(uploaded_files)
+        totales_oficiales = leer_totales_programa(uploaded_files)
+        
+        st.session_state['proc_cache_key'] = cache_key
+        st.session_state['cached_df'] = df
+        st.session_state['cached_failed_list'] = failed_list
+        st.session_state['cached_totales_oficiales'] = totales_oficiales
+    
     for f in uploaded_files:
         f.seek(0)
-    
+
     # Barra compacta de archivos cargados + boton cambiar
     col_files, col_btn = st.columns([4, 1])
     with col_files:
@@ -3972,6 +3988,7 @@ def main():
     with col_btn:
         if st.button("Cambiar archivos", use_container_width=True):
             st.session_state['archivos_subidos'] = None
+            st.session_state['proc_cache_key'] = None
             st.rerun()
     
     # Mostrar errores SIEMPRE visibles (después de procesar)
@@ -3979,7 +3996,6 @@ def main():
         st.sidebar.error(f"⚠️ {len(failed_list)} archivo(s) con error:")
         for f_err in failed_list:
             st.sidebar.warning(f"❌ {f_err['nombre']}: {f_err['causa']}")
-    totales_oficiales = leer_totales_programa(uploaded_files)
 
     if df.empty:
         st.error(
