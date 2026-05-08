@@ -675,6 +675,15 @@ def _find_column(df: pd.DataFrame, target: str):
     return None
 
 
+def _normalize_value(value: str) -> str:
+    """Normaliza valores de celda para comparación tolerante."""
+    normalized = unicodedata.normalize('NFKD', str(value))
+    normalized = ''.join(c for c in normalized if not unicodedata.combining(c))
+    normalized = normalized.lower()
+    normalized = re.sub(r'[\s\-_.]+', '', normalized)
+    return normalized
+
+
 _TAXONOMIAS_MATRIZ_PATH = "data/raw/Taxonomias_MatrizBD.xlsx"
 
 # ── Dominio de cada subcategoría (clave normalizada sin acentos) ──────────────
@@ -1211,7 +1220,7 @@ def _creditos_por_bloque(grupo: pd.DataFrame) -> Dict[str, int]:
     """
     asig_col_real = _find_column(grupo, 'Nombre asignatura o modulo')
     cred_col = next(
-        (c for c in grupo.columns if unicodedata.normalize('NFKD', c.lower()).encode('ascii','ignore').decode('ascii').strip() in ('creditos', 'credito')),
+        (c for c in grupo.columns if _normalize_column_name(c) in ('creditos', 'credito')),
         None
     )
     if asig_col_real is None or cred_col is None:
@@ -1230,7 +1239,7 @@ def _creditos_por_bloque(grupo: pd.DataFrame) -> Dict[str, int]:
         col_real = _find_column(asig_df, col_alias)
         if col_real is None:
             return 0
-        mask = asig_df[col_real].astype(str).str.strip().str.upper().isin(['X', 'SI', 'SI', '1', 'TRUE'])
+        mask = asig_df[col_real].astype(str).apply(_normalize_value).isin({'x', 'si', 's', 'sí', '1', 'true', 't', 'v', 'verdadero'})
         return int(asig_df.loc[mask, cred_col].sum())
 
     inst  = _sum_bloque('B.Institucional')
@@ -1249,13 +1258,13 @@ def _detectar_nivel(grupo: pd.DataFrame) -> str:
     - Columnas C.Fundamentacion/C.Profundizacion con datos → Posgrado
     - Ambos → Mixto
     """
-    marcadores = ['X', 'SI', 'SI', '1', 'TRUE']
+    marcadores = {'x', 'si', 'sí', 's', '1', 'true', 't', 'v', 'verdadero'}
 
     def _tiene_datos(col_alias: str) -> bool:
         col_real = _find_column(grupo, col_alias)
         if col_real is None:
             return False
-        return grupo[col_real].astype(str).str.strip().str.upper().isin(marcadores).any()
+        return grupo[col_real].astype(str).apply(_normalize_value).isin(marcadores).any()
 
     tiene_b = any(_tiene_datos(c) for c in ['B.Institucional', 'B.Disciplinar', 'B.Electivo'])
     tiene_c = any(_tiene_datos(c) for c in ['C.Fundamentacion', 'C.Profundizacion'])
@@ -1276,7 +1285,7 @@ def _creditos_por_componente(grupo: pd.DataFrame) -> Dict[str, int]:
     """
     asig_col_real = _find_column(grupo, 'Nombre asignatura o modulo')
     cred_col = next(
-        (c for c in grupo.columns if unicodedata.normalize('NFKD', c.lower()).encode('ascii','ignore').decode('ascii').strip() in ('creditos', 'credito')),
+        (c for c in grupo.columns if _normalize_column_name(c) in ('creditos', 'credito')),
         None
     )
     if asig_col_real is None or cred_col is None:
@@ -1294,7 +1303,7 @@ def _creditos_por_componente(grupo: pd.DataFrame) -> Dict[str, int]:
         col_real = _find_column(asig_df, col_alias)
         if col_real is None:
             return 0
-        mask = asig_df[col_real].astype(str).str.strip().str.upper().isin(['X', 'SI', 'SI', '1', 'TRUE'])
+        mask = asig_df[col_real].astype(str).apply(_normalize_value).isin({'x', 'si', 'sí', '1', 'true', 't', 'v', 'verdadero'})
         return int(asig_df.loc[mask, cred_col].sum())
 
     fund  = _sum_componente('C.Fundamentacion')
