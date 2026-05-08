@@ -1227,25 +1227,32 @@ def _creditos_por_bloque(grupo: pd.DataFrame) -> Dict[str, int]:
         return {'Institucional': 0, 'Disciplinar': 0, 'Electivo': 0, 'Total': 0}
 
     # Una fila por asignatura única (toma la primera fila con nombre)
-    asig_df = (
-        grupo.dropna(subset=[asig_col_real])
-        .groupby(asig_col_real, as_index=False)
+    asig_df = grupo.dropna(subset=[asig_col_real]).copy()
+    asig_df[cred_col] = pd.to_numeric(asig_df[cred_col], errors='coerce').fillna(0)
+
+    credits_by_assignment = (
+        asig_df.groupby(asig_col_real, as_index=False)[cred_col]
         .first()
     )
-    asig_df = asig_df.copy()
-    asig_df[cred_col] = pd.to_numeric(asig_df[cred_col], errors='coerce').fillna(0)
 
     def _sum_bloque(col_alias: str) -> int:
         col_real = _find_column(asig_df, col_alias)
         if col_real is None:
             return 0
-        mask = asig_df[col_real].astype(str).apply(_normalize_value).isin({'x', 'si', 's', 'sí', '1', 'true', 't', 'v', 'verdadero'})
-        return int(asig_df.loc[mask, cred_col].sum())
+        mask = asig_df[col_real].astype(str).apply(_normalize_value).isin(
+            {'x', 'si', 's', 'sí', '1', 'true', 't', 'v', 'verdadero'}
+        )
+        asignaturas_validas = asig_df.loc[mask, asig_col_real].dropna().unique()
+        if len(asignaturas_validas) == 0:
+            return 0
+        return int(
+            credits_by_assignment[credits_by_assignment[asig_col_real].isin(asignaturas_validas)][cred_col].sum()
+        )
 
     inst  = _sum_bloque('B.Institucional')
     disc  = _sum_bloque('B.Disciplinar')
     elec  = _sum_bloque('B.Electivo')
-    total = int(asig_df[asig_df[cred_col] > 0][cred_col].sum())
+    total = int(credits_by_assignment[credits_by_assignment[cred_col] > 0][cred_col].sum())
     return {'Institucional': inst, 'Disciplinar': disc, 'Electivo': elec, 'Total': total}
 
 
@@ -1291,24 +1298,31 @@ def _creditos_por_componente(grupo: pd.DataFrame) -> Dict[str, int]:
     if asig_col_real is None or cred_col is None:
         return {'Fundamentacion': 0, 'Profundizacion': 0, 'Total': 0}
 
-    asig_df = (
-        grupo.dropna(subset=[asig_col_real])
-        .groupby(asig_col_real, as_index=False)
+    asig_df = grupo.dropna(subset=[asig_col_real]).copy()
+    asig_df[cred_col] = pd.to_numeric(asig_df[cred_col], errors='coerce').fillna(0)
+
+    credits_by_assignment = (
+        asig_df.groupby(asig_col_real, as_index=False)[cred_col]
         .first()
     )
-    asig_df = asig_df.copy()
-    asig_df[cred_col] = pd.to_numeric(asig_df[cred_col], errors='coerce').fillna(0)
 
     def _sum_componente(col_alias: str) -> int:
         col_real = _find_column(asig_df, col_alias)
         if col_real is None:
             return 0
-        mask = asig_df[col_real].astype(str).apply(_normalize_value).isin({'x', 'si', 'sí', '1', 'true', 't', 'v', 'verdadero'})
-        return int(asig_df.loc[mask, cred_col].sum())
+        mask = asig_df[col_real].astype(str).apply(_normalize_value).isin(
+            {'x', 'si', 's', 'sí', '1', 'true', 't', 'v', 'verdadero'}
+        )
+        asignaturas_validas = asig_df.loc[mask, asig_col_real].dropna().unique()
+        if len(asignaturas_validas) == 0:
+            return 0
+        return int(
+            credits_by_assignment[credits_by_assignment[asig_col_real].isin(asignaturas_validas)][cred_col].sum()
+        )
 
     fund  = _sum_componente('C.Fundamentacion')
     prof  = _sum_componente('C.Profundizacion')
-    total = int(asig_df[asig_df[cred_col] > 0][cred_col].sum())
+    total = int(credits_by_assignment[credits_by_assignment[cred_col] > 0][cred_col].sum())
     return {'Fundamentacion': fund, 'Profundizacion': prof, 'Total': total}
 
 
