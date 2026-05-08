@@ -656,6 +656,16 @@ def normalizar_columnas(df: pd.DataFrame) -> pd.DataFrame:
     return df.rename(columns=nuevos_nombres)
 
 
+def _find_column(df: pd.DataFrame, target: str):
+    """Busca una columna en el DataFrame ignorando mayúsculas, espacios y tildes."""
+    target_norm = unicodedata.normalize('NFKD', str(target)).encode('ascii', 'ignore').decode('ascii').strip().lower()
+    for col in df.columns:
+        col_norm = unicodedata.normalize('NFKD', str(col)).encode('ascii', 'ignore').decode('ascii').strip().lower()
+        if col_norm == target_norm:
+            return col
+    return None
+
+
 _TAXONOMIAS_MATRIZ_PATH = "data/raw/Taxonomias_MatrizBD.xlsx"
 
 # ── Dominio de cada subcategoría (clave normalizada sin acentos) ──────────────
@@ -844,18 +854,19 @@ def procesar_archivos(uploaded_files) -> pd.DataFrame:
             )
             if df is not None and not df.empty:
                 df = normalizar_columnas(df)
-                if 'Nivel' in df.columns:
+                nivel_col = _find_column(df, 'Nivel')
+                if nivel_col is not None:
                     df['Nivel'] = (
-                        df['Nivel']
+                        df[nivel_col]
                         .astype(str)
                         .str.strip()
                         .replace({'nan': 'No identificado', '': 'No identificado'})
-                        .replace('', 'No identificado')
                         .str.title()
                     )
-                if 'Componente academico' in df.columns:
+                componente_col = _find_column(df, 'Componente academico')
+                if componente_col is not None:
                     df['Componente academico'] = (
-                        df['Componente academico']
+                        df[componente_col]
                         .astype(str)
                         .str.strip()
                         .replace({'nan': 'No identificado', '': 'No identificado'})
@@ -1421,7 +1432,14 @@ def pagina_inicio(df: pd.DataFrame, totales_oficiales: Optional[Dict] = None):
     )
 
     resumen_rows = []
-    for (prog, modalidad, sede), g in df.groupby(['Programa', 'Modalidad', 'Sede']):
+    grupos_resumen = ['Programa', 'Modalidad', 'Sede']
+    if 'Nivel' in df.columns:
+        grupos_resumen.append('Nivel')
+
+    for key, g in df.groupby(grupos_resumen):
+        prog, modalidad, sede = key[:3]
+        nivel = key[3] if len(key) == 4 else None
+
         # Totales oficiales del Excel (footer rows)
         of = (totales_oficiales or {}).get(prog, {})
         cr_total   = of.get('total',         0)
@@ -1440,7 +1458,7 @@ def pagina_inicio(df: pd.DataFrame, totales_oficiales: Optional[Dict] = None):
         suma_bloques = cr_inst + cr_disc + cr_elec
         diferencia   = cr_total - suma_bloques
 
-        resumen_rows.append({
+        row = {
             'Programa':          prog,
             'Modalidad':         modalidad,
             'Sede':              sede,
@@ -1453,7 +1471,11 @@ def pagina_inicio(df: pd.DataFrame, totales_oficiales: Optional[Dict] = None):
             'Cr. Electivo':      cr_elec,
             'Suma bloques':      suma_bloques,
             'Diferencia':        diferencia,
-        })
+        }
+        if nivel is not None:
+            row['Nivel'] = nivel
+
+        resumen_rows.append(row)
 
     resumen = pd.DataFrame(resumen_rows)
 
@@ -3879,6 +3901,8 @@ def main():
         df_filtered = df_filtered[df_filtered['Sede'] == sede_sel]
     if prog_sel != "Todos":
         df_filtered = df_filtered[df_filtered['Programa'] == prog_sel]
+    if nivel_sel != "Todos" and 'Nivel' in df_filtered.columns:
+        df_filtered = df_filtered[df_filtered['Nivel'] == nivel_sel]
     
     # Guardar en session_state
     st.session_state['df'] = df
