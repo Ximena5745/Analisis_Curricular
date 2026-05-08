@@ -3413,40 +3413,55 @@ def main():
             flex: 1 1 auto !important;
         }
         .hero-left-panel {
-            color: #ffffff;
-            padding: 26px 28px 24px;
+            color: #ffffff !important;
+            padding: 30px 32px 28px;
             display: flex;
             flex-direction: column;
             justify-content: center;
             min-height: 245px;
-            gap: 16px;
+            gap: 18px;
+            position: relative;
+            z-index: 1;
+        }
+        .hero-left-panel:before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at top left, rgba(31,178,222,.14), transparent 32%);
+            pointer-events: none;
+        }
+        .hero-left-panel > * {
+            position: relative;
+            z-index: 2;
         }
         .hero-left-panel .hero-bar {
             width: 5px; height: 44px; background:#1fb2de;
             border-radius: 3px;
         }
         .hero-left-panel .hero-label {
-            display:block; font-size:.75rem; font-weight:800;
-            text-transform:uppercase; letter-spacing:.16em;
-            color:#9dd3ff;
+            display:block; font-size:.78rem; font-weight:800;
+            text-transform:uppercase; letter-spacing:.18em;
+            color:#b6e5ff !important;
         }
         .hero-left-panel h2 {
-            margin:0; font-size:1.62rem; line-height:1.15;
-            font-weight:700; color:#fff;
+            margin:0; font-size:1.9rem; line-height:1.12;
+            font-weight:800; color:#ffffff !important;
+            text-shadow: 0 2px 18px rgba(0,0,0,.18);
         }
         .hero-left-panel p {
-            margin:0; color:#c0d9ff; font-size:.99rem; line-height:1.7;
+            margin:0; color: rgba(255,255,255,.92) !important;
+            font-size:1.02rem; line-height:1.75;
             max-width: 520px;
         }
         .hero-left-panel .hero-support {
-            color: rgba(255,255,255,.78);
-            font-size: .94rem;
+            color: rgba(255,255,255,.85) !important;
+            font-size: 0.95rem;
             line-height: 1.7;
             max-width: 520px;
         }
         .st-key-hero_right_card {
-            background: rgba(255,255,255,.08);
-            border: 1px solid rgba(255,255,255,.16);
+            background: rgba(255,255,255,.12);
+            border: 1px solid rgba(255,255,255,.18);
             border-radius: 22px;
             padding: 22px 20px;
             min-height: 260px;
@@ -3455,6 +3470,10 @@ def main():
             justify-content: space-between;
             gap: 18px;
             backdrop-filter: blur(18px);
+            color: #ffffff !important;
+        }
+        .st-key-hero_right_card * {
+            color: #ffffff !important;
         }
         .upload-panel-deco {
             text-align: center;
@@ -3468,11 +3487,11 @@ def main():
             display: inline-flex; align-items: center; justify-content: center;
             margin: 0 auto 12px;
         }
-        .upload-panel-deco h4 { margin: 0 0 6px; font-size: 1.02rem; font-weight: 700; color: #fff; }
-        .upload-panel-deco span { color: #d6eeff; font-size: .84rem; }
+        .upload-panel-deco h4 { margin: 0 0 6px; font-size: 1.02rem; font-weight: 700; color: #ffffff !important; }
+        .upload-panel-deco span { color: #e6f7ff !important; font-size: .84rem; }
         .upload-help {
-            color: rgba(255,255,255,.78);
-            font-size: .82rem;
+            color: rgba(255,255,255,.86) !important;
+            font-size: .84rem;
             margin-top: 4px;
         }
         .st-key-hero_right_card [data-testid="stFileUploaderDropzone"] button {
