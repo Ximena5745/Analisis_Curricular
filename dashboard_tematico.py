@@ -781,7 +781,7 @@ def extract_modality_sede(filename):
         'PBOG': 'Bogotá', 'PMED': 'Medellín', 'VNAL': 'Nacional',
         'HBOG': 'Bogotá', 'HMED': 'Medellín', 'HVAL': 'Virtual',
     }
-    modalidad_map = {'P': 'Presencial', 'V': 'Virtual'}
+    modalidad_map = {'P': 'Presencial', 'V': 'Virtual', 'H': 'Híbrido'}
     
     modalidad_codigo = codigo[0] if codigo else ""
     modalidad = modalidad_map.get(modalidad_codigo, 'No identificado')
