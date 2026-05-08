@@ -1224,6 +1224,65 @@ def _creditos_por_bloque(grupo: pd.DataFrame) -> Dict[str, int]:
     return {'Institucional': inst, 'Disciplinar': disc, 'Electivo': elec, 'Total': total}
 
 
+def _detectar_nivel(grupo: pd.DataFrame) -> str:
+    """Detecta automáticamente Pregrado o Posgrado según las columnas de bloque/componente
+    presentes en el DataFrame. No requiere columna 'Nivel' explícita.
+
+    - Columnas B.Institucional/B.Disciplinar/B.Electivo con datos → Pregrado
+    - Columnas C.Fundamentación/C.Profundización con datos → Posgrado
+    - Ambos → Mixto
+    """
+    marcadores = ['X', 'SI', 'SÍ', '1', 'TRUE']
+
+    def _tiene_datos(col: str) -> bool:
+        if col not in grupo.columns:
+            return False
+        return grupo[col].astype(str).str.strip().str.upper().isin(marcadores).any()
+
+    tiene_b = any(_tiene_datos(c) for c in ['B.Institucional', 'B.Disciplinar', 'B.Electivo'])
+    tiene_c = any(_tiene_datos(c) for c in ['C.Fundamentación', 'C.Profundización'])
+
+    if tiene_b and not tiene_c:
+        return 'Pregrado'
+    elif tiene_c and not tiene_b:
+        return 'Posgrado'
+    elif tiene_b and tiene_c:
+        return 'Mixto'
+    return 'No identificado'
+
+
+def _creditos_por_componente(grupo: pd.DataFrame) -> Dict[str, int]:
+    """Desglosa créditos únicos por componente (Fundamentación, Profundización).
+    Usado para programas de Posgrado. Cada asignatura se cuenta una sola vez.
+    """
+    asig_col = 'Nombre asignatura o modulo'
+    cred_col = next(
+        (c for c in grupo.columns if c.lower().replace('é', 'e') in ('creditos', 'credito')),
+        None
+    )
+    if asig_col not in grupo.columns or cred_col is None:
+        return {'Fundamentación': 0, 'Profundización': 0, 'Total': 0}
+
+    asig_df = (
+        grupo.dropna(subset=[asig_col])
+        .groupby(asig_col, as_index=False)
+        .first()
+    )
+    asig_df = asig_df.copy()
+    asig_df[cred_col] = pd.to_numeric(asig_df[cred_col], errors='coerce').fillna(0)
+
+    def _sum_componente(col_name: str) -> int:
+        if col_name not in asig_df.columns:
+            return 0
+        mask = asig_df[col_name].astype(str).str.strip().str.upper().isin(['X', 'SI', 'SÍ', '1', 'TRUE'])
+        return int(asig_df.loc[mask, cred_col].sum())
+
+    fund  = _sum_componente('C.Fundamentación')
+    prof  = _sum_componente('C.Profundización')
+    total = int(asig_df[asig_df[cred_col] > 0][cred_col].sum())
+    return {'Fundamentación': fund, 'Profundización': prof, 'Total': total}
+
+
 def leer_totales_programa(uploaded_files) -> Dict[str, Dict[str, int]]:
     """
     Lee los totales OFICIALES de créditos desde las filas de resumen declaradas
@@ -1438,46 +1497,84 @@ def pagina_inicio(df: pd.DataFrame, totales_oficiales: Optional[Dict] = None):
 
     for key, g in df.groupby(grupos_resumen):
         prog, modalidad, sede = key[:3]
-        nivel = key[3] if len(key) == 4 else None
+        nivel_col = key[3] if len(key) == 4 else None
+
+        # Detectar nivel automáticamente según columnas presentes en los datos
+        nivel_detectado = nivel_col if nivel_col else _detectar_nivel(g)
 
         # Totales oficiales del Excel (footer rows)
         of = (totales_oficiales or {}).get(prog, {})
-        cr_total   = of.get('total',         0)
-        cr_inst    = of.get('institucional',  0)
-        cr_disc    = of.get('disciplinar',    0)
-        cr_elec    = of.get('electivo',       0)
+        cr_total = of.get('total', 0)
 
-        # Si no hay totales oficiales, caer al cálculo propio
-        if cr_total == 0:
-            bl = _creditos_por_bloque(g)
-            cr_total = bl['Total']
-            cr_inst  = bl['Institucional']
-            cr_disc  = bl['Disciplinar']
-            cr_elec  = bl['Electivo']
+        if nivel_detectado == 'Posgrado':
+            # ── Posgrado: usar componentes C.* ──────────────────────────────
+            cr_fund = of.get('fundamentacion', 0)
+            cr_prof = of.get('profundizacion', 0)
 
-        suma_bloques = cr_inst + cr_disc + cr_elec
-        diferencia   = cr_total - suma_bloques
+            if cr_total == 0:
+                cp = _creditos_por_componente(g)
+                cr_total = cp['Total']
+                cr_fund  = cp['Fundamentación']
+                cr_prof  = cp['Profundización']
 
-        row = {
-            'Programa':          prog,
-            'Modalidad':         modalidad,
-            'Sede':              sede,
-            'Registros':         len(g),
-            'Asignaturas':       g['Nombre asignatura o modulo'].nunique(),
-            'Semestres':         g['Semestre'].nunique(),
-            'Cr. Total':         cr_total,
-            'Cr. Institucional': cr_inst,
-            'Cr. Disciplinar':   cr_disc,
-            'Cr. Electivo':      cr_elec,
-            'Suma bloques':      suma_bloques,
-            'Diferencia':        diferencia,
-        }
-        if nivel is not None:
-            row['Nivel'] = nivel
+            suma_componentes = cr_fund + cr_prof
+            diferencia = cr_total - suma_componentes
+
+            row = {
+                'Programa':             prog,
+                'Modalidad':            modalidad,
+                'Sede':                 sede,
+                'Nivel':                nivel_detectado,
+                'Asignaturas':          g['Nombre asignatura o modulo'].nunique(),
+                'Semestres':            g['Semestre'].nunique(),
+                'Cr. Total':            cr_total,
+                'Cr. Fundamentación':   cr_fund,
+                'Cr. Profundización':   cr_prof,
+                'Suma componentes':     suma_componentes,
+                'Diferencia':           diferencia,
+            }
+        else:
+            # ── Pregrado (o No identificado/Mixto): usar bloques B.* ─────────
+            cr_inst = of.get('institucional', 0)
+            cr_disc = of.get('disciplinar',   0)
+            cr_elec = of.get('electivo',      0)
+
+            if cr_total == 0:
+                bl = _creditos_por_bloque(g)
+                cr_total = bl['Total']
+                cr_inst  = bl['Institucional']
+                cr_disc  = bl['Disciplinar']
+                cr_elec  = bl['Electivo']
+
+            suma_bloques = cr_inst + cr_disc + cr_elec
+            diferencia   = cr_total - suma_bloques
+
+            row = {
+                'Programa':          prog,
+                'Modalidad':         modalidad,
+                'Sede':              sede,
+                'Nivel':             nivel_detectado,
+                'Asignaturas':       g['Nombre asignatura o modulo'].nunique(),
+                'Semestres':         g['Semestre'].nunique(),
+                'Cr. Total':         cr_total,
+                'Cr. Institucional': cr_inst,
+                'Cr. Disciplinar':   cr_disc,
+                'Cr. Electivo':      cr_elec,
+                'Suma bloques':      suma_bloques,
+                'Diferencia':        diferencia,
+            }
 
         resumen_rows.append(row)
 
     resumen = pd.DataFrame(resumen_rows)
+
+    # Reordenar columnas: columnas comunes primero, luego las específicas por nivel
+    cols_comunes = ['Programa', 'Modalidad', 'Sede', 'Nivel', 'Asignaturas', 'Semestres', 'Cr. Total']
+    cols_pregrado = ['Cr. Institucional', 'Cr. Disciplinar', 'Cr. Electivo', 'Suma bloques']
+    cols_posgrado = ['Cr. Fundamentación', 'Cr. Profundización', 'Suma componentes']
+    cols_extra = ['Diferencia']
+    cols_presentes = [c for c in cols_comunes + cols_pregrado + cols_posgrado + cols_extra if c in resumen.columns]
+    resumen = resumen[cols_presentes]
 
     def _color_dif(val):
         if val == 0:
@@ -1489,9 +1586,9 @@ def pagina_inicio(df: pd.DataFrame, totales_oficiales: Optional[Dict] = None):
         use_container_width=True, hide_index=True
     )
     st.caption(
-        "**Cr. Total** = declarado en el Excel (fila 'Total créditos programa'). "
-        "**Suma bloques** = Institucional + Disciplinar + Electivo. "
-        "**Diferencia = 0** coincide | **≠ 0** revisar el Excel."
+        "**Pregrado** → columnas Cr. Institucional / Disciplinar / Electivo.  "
+        "**Posgrado** → columnas Cr. Fundamentación / Profundización.  "
+        "**Diferencia = 0** ✅ coincide | **≠ 0** ⚠️ revisar el Excel."
     )
 
 

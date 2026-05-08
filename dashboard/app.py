@@ -437,10 +437,9 @@ def main():
         filtered_programs = [p for p in filtered_programs if p['sede'] == sede_sel]
     if nivel_sel != "Todos":
         filtered_programs = [p for p in filtered_programs if p.get('nivel') == nivel_sel]
-        filtered_programs = [p for p in filtered_programs if p['sede'] == sede_sel]
     
     # Indicador de filtros activos
-    if modalidad_sel != "Todos" or sede_sel != "Todos":
+    if modalidad_sel != "Todos" or sede_sel != "Todos" or nivel_sel != "Todos":
         st.sidebar.info(f"📊 Mostrando {len(filtered_programs)} de {len(programs)} programas")
 
     # ========================================================================
