@@ -1193,28 +1193,30 @@ def _creditos_por_bloque(grupo: pd.DataFrame) -> Dict[str, int]:
     """
     Desglosa créditos únicos por bloque (Institucional, Disciplinar, Electivo).
     Cada subject se cuenta una sola vez (primer valor no nulo de créditos).
+    Usa _find_column para tolerar variaciones de tildes y espacios.
     """
-    asig_col = 'Nombre asignatura o modulo'
+    asig_col_real = _find_column(grupo, 'Nombre asignatura o modulo')
     cred_col = next(
-        (c for c in grupo.columns if c.lower().replace('é', 'e') in ('creditos', 'credito')),
+        (c for c in grupo.columns if unicodedata.normalize('NFKD', c.lower()).encode('ascii','ignore').decode('ascii').strip() in ('creditos', 'credito')),
         None
     )
-    if asig_col not in grupo.columns or cred_col is None:
+    if asig_col_real is None or cred_col is None:
         return {'Institucional': 0, 'Disciplinar': 0, 'Electivo': 0, 'Total': 0}
 
     # Una fila por asignatura única (toma la primera fila con nombre)
     asig_df = (
-        grupo.dropna(subset=[asig_col])
-        .groupby(asig_col, as_index=False)
+        grupo.dropna(subset=[asig_col_real])
+        .groupby(asig_col_real, as_index=False)
         .first()
     )
     asig_df = asig_df.copy()
     asig_df[cred_col] = pd.to_numeric(asig_df[cred_col], errors='coerce').fillna(0)
 
-    def _sum_bloque(col_name: str) -> int:
-        if col_name not in asig_df.columns:
+    def _sum_bloque(col_alias: str) -> int:
+        col_real = _find_column(asig_df, col_alias)
+        if col_real is None:
             return 0
-        mask = asig_df[col_name].astype(str).str.strip().str.upper().isin(['X', 'SI', 'SÍ', '1', 'TRUE'])
+        mask = asig_df[col_real].astype(str).str.strip().str.upper().isin(['X', 'SI', 'SI', '1', 'TRUE'])
         return int(asig_df.loc[mask, cred_col].sum())
 
     inst  = _sum_bloque('B.Institucional')
@@ -1227,20 +1229,22 @@ def _creditos_por_bloque(grupo: pd.DataFrame) -> Dict[str, int]:
 def _detectar_nivel(grupo: pd.DataFrame) -> str:
     """Detecta automáticamente Pregrado o Posgrado según las columnas de bloque/componente
     presentes en el DataFrame. No requiere columna 'Nivel' explícita.
+    Usa _find_column para tolerar variaciones de tildes, espacios y mayúsculas.
 
     - Columnas B.Institucional/B.Disciplinar/B.Electivo con datos → Pregrado
-    - Columnas C.Fundamentación/C.Profundización con datos → Posgrado
+    - Columnas C.Fundamentacion/C.Profundizacion con datos → Posgrado
     - Ambos → Mixto
     """
-    marcadores = ['X', 'SI', 'SÍ', '1', 'TRUE']
+    marcadores = ['X', 'SI', 'SI', '1', 'TRUE']
 
-    def _tiene_datos(col: str) -> bool:
-        if col not in grupo.columns:
+    def _tiene_datos(col_alias: str) -> bool:
+        col_real = _find_column(grupo, col_alias)
+        if col_real is None:
             return False
-        return grupo[col].astype(str).str.strip().str.upper().isin(marcadores).any()
+        return grupo[col_real].astype(str).str.strip().str.upper().isin(marcadores).any()
 
     tiene_b = any(_tiene_datos(c) for c in ['B.Institucional', 'B.Disciplinar', 'B.Electivo'])
-    tiene_c = any(_tiene_datos(c) for c in ['C.Fundamentación', 'C.Profundización'])
+    tiene_c = any(_tiene_datos(c) for c in ['C.Fundamentacion', 'C.Profundizacion'])
 
     if tiene_b and not tiene_c:
         return 'Pregrado'
@@ -1252,35 +1256,37 @@ def _detectar_nivel(grupo: pd.DataFrame) -> str:
 
 
 def _creditos_por_componente(grupo: pd.DataFrame) -> Dict[str, int]:
-    """Desglosa créditos únicos por componente (Fundamentación, Profundización).
+    """Desglosa créditos únicos por componente (Fundamentacion, Profundizacion).
     Usado para programas de Posgrado. Cada asignatura se cuenta una sola vez.
+    Usa _find_column para tolerar variaciones de tildes y espacios.
     """
-    asig_col = 'Nombre asignatura o modulo'
+    asig_col_real = _find_column(grupo, 'Nombre asignatura o modulo')
     cred_col = next(
-        (c for c in grupo.columns if c.lower().replace('é', 'e') in ('creditos', 'credito')),
+        (c for c in grupo.columns if unicodedata.normalize('NFKD', c.lower()).encode('ascii','ignore').decode('ascii').strip() in ('creditos', 'credito')),
         None
     )
-    if asig_col not in grupo.columns or cred_col is None:
-        return {'Fundamentación': 0, 'Profundización': 0, 'Total': 0}
+    if asig_col_real is None or cred_col is None:
+        return {'Fundamentacion': 0, 'Profundizacion': 0, 'Total': 0}
 
     asig_df = (
-        grupo.dropna(subset=[asig_col])
-        .groupby(asig_col, as_index=False)
+        grupo.dropna(subset=[asig_col_real])
+        .groupby(asig_col_real, as_index=False)
         .first()
     )
     asig_df = asig_df.copy()
     asig_df[cred_col] = pd.to_numeric(asig_df[cred_col], errors='coerce').fillna(0)
 
-    def _sum_componente(col_name: str) -> int:
-        if col_name not in asig_df.columns:
+    def _sum_componente(col_alias: str) -> int:
+        col_real = _find_column(asig_df, col_alias)
+        if col_real is None:
             return 0
-        mask = asig_df[col_name].astype(str).str.strip().str.upper().isin(['X', 'SI', 'SÍ', '1', 'TRUE'])
+        mask = asig_df[col_real].astype(str).str.strip().str.upper().isin(['X', 'SI', 'SI', '1', 'TRUE'])
         return int(asig_df.loc[mask, cred_col].sum())
 
-    fund  = _sum_componente('C.Fundamentación')
-    prof  = _sum_componente('C.Profundización')
+    fund  = _sum_componente('C.Fundamentacion')
+    prof  = _sum_componente('C.Profundizacion')
     total = int(asig_df[asig_df[cred_col] > 0][cred_col].sum())
-    return {'Fundamentación': fund, 'Profundización': prof, 'Total': total}
+    return {'Fundamentacion': fund, 'Profundizacion': prof, 'Total': total}
 
 
 def leer_totales_programa(uploaded_files) -> Dict[str, Dict[str, int]]:
@@ -1514,8 +1520,8 @@ def pagina_inicio(df: pd.DataFrame, totales_oficiales: Optional[Dict] = None):
             if cr_total == 0:
                 cp = _creditos_por_componente(g)
                 cr_total = cp['Total']
-                cr_fund  = cp['Fundamentación']
-                cr_prof  = cp['Profundización']
+                cr_fund  = cp['Fundamentacion']
+                cr_prof  = cp['Profundizacion']
 
             suma_componentes = cr_fund + cr_prof
             diferencia = cr_total - suma_componentes
@@ -1528,8 +1534,8 @@ def pagina_inicio(df: pd.DataFrame, totales_oficiales: Optional[Dict] = None):
                 'Asignaturas':          g['Nombre asignatura o modulo'].nunique(),
                 'Semestres':            g['Semestre'].nunique(),
                 'Cr. Total':            cr_total,
-                'Cr. Fundamentación':   cr_fund,
-                'Cr. Profundización':   cr_prof,
+                'Cr. Fundamentacion':   cr_fund,
+                'Cr. Profundizacion':   cr_prof,
                 'Suma componentes':     suma_componentes,
                 'Diferencia':           diferencia,
             }
@@ -1571,7 +1577,7 @@ def pagina_inicio(df: pd.DataFrame, totales_oficiales: Optional[Dict] = None):
     # Reordenar columnas: columnas comunes primero, luego las específicas por nivel
     cols_comunes = ['Programa', 'Modalidad', 'Sede', 'Nivel', 'Asignaturas', 'Semestres', 'Cr. Total']
     cols_pregrado = ['Cr. Institucional', 'Cr. Disciplinar', 'Cr. Electivo', 'Suma bloques']
-    cols_posgrado = ['Cr. Fundamentación', 'Cr. Profundización', 'Suma componentes']
+    cols_posgrado = ['Cr. Fundamentacion', 'Cr. Profundizacion', 'Suma componentes']
     cols_extra = ['Diferencia']
     cols_presentes = [c for c in cols_comunes + cols_pregrado + cols_posgrado + cols_extra if c in resumen.columns]
     resumen = resumen[cols_presentes]
@@ -1587,7 +1593,7 @@ def pagina_inicio(df: pd.DataFrame, totales_oficiales: Optional[Dict] = None):
     )
     st.caption(
         "**Pregrado** → columnas Cr. Institucional / Disciplinar / Electivo.  "
-        "**Posgrado** → columnas Cr. Fundamentación / Profundización.  "
+        "**Posgrado** → columnas Cr. Fundamentacion / Profundizacion.  "
         "**Diferencia = 0** ✅ coincide | **≠ 0** ⚠️ revisar el Excel."
     )
 
@@ -3962,33 +3968,30 @@ def main():
             st.warning(f"{f_err['nombre']}: {f_err['causa']}")
 
     st.sidebar.markdown("---")
-    
-    # FILTROS DE MODALIDAD, SEDE y NIVEL
-    st.sidebar.subheader("🔍 Filtros")
-    
+    prog_sel_sidebar = sorted([str(p) for p in df['Programa'].unique() if pd.notna(p)])
+    prog_sel = st.sidebar.selectbox("Programa", ["Todos"] + prog_sel_sidebar, key="sel_prog")
+
+    # ── FILTROS GLOBALES en área principal ───────────────────────────────────
+    st.markdown("---")
+    st.markdown("**🔍 Filtros**")
+
     # Obtener valores únicos
     modalidades = sorted([str(m) for m in df['Modalidad'].unique() if pd.notna(m)])
     sedes = sorted([str(s) for s in df['Sede'].unique() if pd.notna(s)])
     programas = sorted([str(p) for p in df['Programa'].unique() if pd.notna(p)])
     niveles = sorted([str(n) for n in df['Nivel'].unique() if pd.notna(n)]) if 'Nivel' in df.columns else []
-    
-    def pills_or_select(label, options, key, default="Todos"):
-        if hasattr(st, 'pills'):
-            return st.pills(label, ["Todos"] + options, default=default, key=key)
-        return st.selectbox(label, ["Todos"] + options, index=0, key=key)
 
-    col_mod, col_sed, col_niv = st.sidebar.columns([1, 1, 1])
+    col_mod, col_sed, col_niv = st.columns([1, 1, 1])
     with col_mod:
-        modalidad_sel = pills_or_select("Modalidad", modalidades, "pills_modalidad")
+        modalidad_sel = st.selectbox("Modalidad", ["Todos"] + modalidades, key="sel_modalidad")
     with col_sed:
-        sede_sel = pills_or_select("Sede", sedes, "pills_sede")
+        sede_sel = st.selectbox("Sede", ["Todos"] + sedes, key="sel_sede")
     with col_niv:
-        nivel_sel = pills_or_select("Nivel", niveles, "pills_nivel") if niveles else "Todos"
-    
-    if not niveles:
-        st.sidebar.info("El campo 'Nivel' no se detectó en los datos. Agrega la columna Nivel para filtrar entre Pregrado y Posgrado.")
+        nivel_options = niveles if niveles else []
+        nivel_detectado_lista = sorted(set(_detectar_nivel(df[df['Programa'] == p].iloc[:1] if p != 'Todos' else df) for p in programas)) if not nivel_options else nivel_options
+        nivel_sel = st.selectbox("Nivel", ["Todos"] + nivel_options, key="sel_nivel")
 
-    prog_sel = st.sidebar.selectbox("Programa", ["Todos"] + programas, key="sel_prog")
+    st.markdown("---")
     
     # Aplicar filtros
     df_filtered = df.copy()
