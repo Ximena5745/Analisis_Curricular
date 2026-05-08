@@ -3613,8 +3613,7 @@ def main():
         # ── Encabezado ──
         st.markdown("""
         <div class="page-header">
-            <h1>An&#225;lisis Microcurricular basada en datos</h1>
-            <p>Optimice sus procesos de dise&#241;o curricular a trav&#233;s del uso de herramientas avanzadas de Inteligencia Artificial para visualizar brechas y tendencias en tiempo real.</p>
+            <h1>Análisis Microcurricular Basado en Datos</h1>
         </div>
         """, unsafe_allow_html=True)
 
@@ -3628,7 +3627,6 @@ def main():
                 <div class="hero-left-panel">
                     <div class="hero-bar"></div>
                     <span class="hero-label">Sistema de Análisis Microcurricular</span>
-                    <h2>Análisis Microcurricular Basado en Datos</h2>
                     <p>Optimice los procesos de diseño, actualización y evaluación curricular mediante el uso de analítica avanzada e Inteligencia Artificial.</p>
                     <p class="hero-support">Permita identificar brechas, tendencias, niveles de alineación y oportunidades de mejora en tiempo real para fortalecer la toma de decisiones académicas y la calidad educativa.</p>
                 </div>
