@@ -3435,33 +3435,54 @@ def main():
             font-weight:700; color:#fff;
         }
         .hero-left-panel p {
-            margin:0; color:#c0d9ff; font-size:.95rem; line-height:1.65;
-            max-width: 460px;
+            margin:0; color:#c0d9ff; font-size:.99rem; line-height:1.7;
+            max-width: 520px;
         }
-        .upload-panel-card {
+        .hero-left-panel .hero-support {
+            color: rgba(255,255,255,.78);
+            font-size: .94rem;
+            line-height: 1.7;
+            max-width: 520px;
+        }
+        .st-key-hero_right_card {
             background: rgba(255,255,255,.08);
             border: 1px solid rgba(255,255,255,.16);
-            border-radius: 20px;
-            padding: 20px;
-            min-height: 245px;
+            border-radius: 22px;
+            padding: 22px 20px;
+            min-height: 260px;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
-            gap: 16px;
+            gap: 18px;
+            backdrop-filter: blur(18px);
         }
         .upload-panel-deco {
             text-align: center;
-            padding: 14px 0 12px;
+            padding: 18px 0 16px;
             border-bottom: 1px solid rgba(255,255,255,.16);
+            margin-bottom: 10px;
         }
         .upload-icon-box {
-            width: 54px; height: 54px; border-radius: 14px;
+            width: 56px; height: 56px; border-radius: 16px;
             background: rgba(31,178,222,.22);
             display: inline-flex; align-items: center; justify-content: center;
-            margin: 0 auto 10px;
+            margin: 0 auto 12px;
         }
-        .upload-panel-deco h4 { margin: 0 0 4px; font-size: 1rem; font-weight: 700; color: #fff; }
-        .upload-panel-deco span { color: #d6eeff; font-size: .82rem; }
+        .upload-panel-deco h4 { margin: 0 0 6px; font-size: 1.02rem; font-weight: 700; color: #fff; }
+        .upload-panel-deco span { color: #d6eeff; font-size: .84rem; }
+        .upload-help {
+            color: rgba(255,255,255,.78);
+            font-size: .82rem;
+            margin-top: 4px;
+        }
+        .st-key-hero_right_card [data-testid="stFileUploaderDropzone"] button {
+            box-shadow: 0 14px 30px rgba(31,178,222,.18) !important;
+            transition: transform .18s ease, box-shadow .18s ease !important;
+        }
+        .st-key-hero_right_card [data-testid="stFileUploaderDropzone"] button:hover {
+            transform: translateY(-1px) !important;
+            box-shadow: 0 18px 34px rgba(31,178,222,.26) !important;
+        }
 
         /* ── File uploader dentro del panel derecho ── */
         .st-key-hero_section [data-testid="stFileUploaderDropzone"] {
@@ -3570,32 +3591,36 @@ def main():
                     <span class="hero-label">Sistema de An&#225;lisis Microcurricular</span>
                     <h2>Cargar Matriz de Resultados de aprendizaje</h2>
                     <p>Inicia el an&#225;lisis masivo de tu archivo (.XLSX) para obtener m&#233;tricas instant&#225;neas.</p>
+                    <p class="hero-support">Sube tu matriz de resultados de aprendizaje para detectar coherencia curricular, brechas y tendencias clave en minutos.</p>
                 </div>
                 """, unsafe_allow_html=True)
 
             with _c2:
-                st.markdown(f"""
-                <div class="upload-panel-deco">
-                    <div class="upload-icon-box">{icon_upload}</div>
-                    <h4>Selecciona tus archivos</h4>
-                    <span>200MB por archivo &middot; XLSX &middot; M&#250;ltiples archivos</span>
-                </div>
-                """, unsafe_allow_html=True)
+                with st.container(key="hero_right_card"):
+                    st.markdown(f"""
+                    <div class="upload-panel-deco">
+                        <div class="upload-icon-box">{icon_upload}</div>
+                        <h4>Selecciona tus archivos</h4>
+                        <span>200MB por archivo &middot; XLSX &middot; M&#250;ltiples archivos</span>
+                    </div>
+                    """, unsafe_allow_html=True)
 
-                nuevo_upload = st.file_uploader(
-                    "Seleccionar archivos",
-                    type=['xlsx'],
-                    accept_multiple_files=True,
-                    key="uploader_main",
-                    label_visibility="collapsed"
-                )
+                    nuevo_upload = st.file_uploader(
+                        "Seleccionar archivos",
+                        type=['xlsx'],
+                        accept_multiple_files=True,
+                        key="uploader_main",
+                        label_visibility="collapsed"
+                    )
 
-                if st.button("Estructura del archivo", key="btn_estructura_archivo", use_container_width=True):
-                    st.session_state['mostrar_estructura_archivo'] = not st.session_state.get('mostrar_estructura_archivo', False)
+                    st.markdown('<p class="upload-help">Máx 200MB por archivo · XLSX · Multiples archivos</p>', unsafe_allow_html=True)
 
-                if st.session_state.get('mostrar_estructura_archivo', False):
-                    st.markdown("""
-                    <div class="estructura-card">
+                    if st.button("Estructura del archivo", key="btn_estructura_archivo", use_container_width=True):
+                        st.session_state['mostrar_estructura_archivo'] = not st.session_state.get('mostrar_estructura_archivo', False)
+
+                    if st.session_state.get('mostrar_estructura_archivo', False):
+                        st.markdown("""
+                        <div class="estructura-card">
                         <h5>Estructura del archivo Excel</h5>
                         <ul>
                             <li><strong>Hoja:</strong> Paso 5 Estrategias micro</li>
