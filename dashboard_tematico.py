@@ -933,6 +933,29 @@ def procesar_archivos(uploaded_files) -> pd.DataFrame:
 
     df_consolidado = pd.concat(all_data, ignore_index=True)
 
+    # Derivar Nivel cuando no exista como columna explícita
+    if 'Nivel' not in df_consolidado.columns:
+        niveles_por_programa = {
+            prog: _detectar_nivel(g)
+            for prog, g in df_consolidado.groupby('Programa', sort=False)
+        }
+        df_consolidado['Nivel'] = df_consolidado['Programa'].map(niveles_por_programa)
+    else:
+        df_consolidado['Nivel'] = (
+            df_consolidado['Nivel'].astype(str)
+            .str.strip()
+            .replace({'nan': 'No identificado', '': 'No identificado'})
+            .str.title()
+        )
+        # Rellenar niveles no identificados con detección automática
+        mask_no_id = df_consolidado['Nivel'].isin(['No identificado', 'nan', ''])
+        if mask_no_id.any():
+            niveles_por_programa = {
+                prog: _detectar_nivel(g)
+                for prog, g in df_consolidado[mask_no_id].groupby('Programa', sort=False)
+            }
+            df_consolidado.loc[mask_no_id, 'Nivel'] = df_consolidado.loc[mask_no_id, 'Programa'].map(niveles_por_programa)
+
     # Filtrar Tipo de Saber vacio
     df_consolidado = df_consolidado[df_consolidado['Tipo de Saber'].notna()]
     df_consolidado = df_consolidado[
