@@ -119,6 +119,14 @@ st.markdown("""
         font-weight: 700;
         text-align: center;
     }
+    .stButton > button, .stButton button, .stDownloadButton > button {
+        background: linear-gradient(135deg, #1FB2DE, #0F385A) !important;
+        color: #ffffff !important;
+        border: none !important;
+        border-radius: 8px !important;
+        padding: 10px 20px !important;
+        font-weight: 700 !important;
+    }
     .content-block {
         display: grid;
         grid-template-columns: 1.2fr 1fr;
@@ -227,7 +235,7 @@ def load_all_programs():
                         creditos_col = col
                     if 'Nombre' in col and 'asignatura' in col.lower():
                         nombre_col = col
-                
+
                 # Primero: buscar fila con "Total" in Semestre
                 if semestre_col and creditos_col:
                     try:
@@ -243,13 +251,46 @@ def load_all_programs():
                             creditos_total = float(creditos_validos.sum() or 0)
                     except Exception:
                         creditos_total = 0.0
-            
+
+                # Nivel y componentes académicos (cuando están presentes en Paso 5)
+                nivel = 'No identificado'
+                componentes_academicos = []
+                if 'Nivel' in estrategias.columns:
+                    niveles_raw = estrategias['Nivel'].astype(str).str.strip().replace({'nan': ''})
+                    niveles_clean = niveles_raw[niveles_raw != ''].str.title().unique().tolist()
+                    if len(niveles_clean) == 1:
+                        nivel = niveles_clean[0]
+                    elif len(niveles_clean) > 1:
+                        nivel = 'Mixto'
+                elif 'nivel' in [c.lower() for c in estrategias.columns]:
+                    col_name = next(c for c in estrategias.columns if c.lower() == 'nivel')
+                    niveles_raw = estrategias[col_name].astype(str).str.strip().replace({'nan': ''})
+                    niveles_clean = niveles_raw[niveles_raw != ''].str.title().unique().tolist()
+                    if len(niveles_clean) == 1:
+                        nivel = niveles_clean[0]
+                    elif len(niveles_clean) > 1:
+                        nivel = 'Mixto'
+
+                componente_col = next((c for c in estrategias.columns if 'componente' in c.lower()), None)
+                if componente_col is not None:
+                    componentes_academicos = sorted(
+                        set(
+                            estrategias[componente_col].fillna('').astype(str)
+                            .str.strip()
+                            .replace({'nan': ''})
+                            .loc[estrategias[componente_col].astype(str).str.strip() != '']
+                            .tolist()
+                        )
+                    )
+
             programs.append({
                 'nombre': data['metadata']['programa'],
                 'archivo': file_path.name,
                 'modalidad': metadata['modalidad'],
                 'sede': metadata['sede'],
                 'codigo': metadata['codigo'],
+                'nivel': nivel,
+                'componentes_academicos': componentes_academicos,
                 'data': data,
                 'indicadores': indicadores,
                 'tematicas': tematicas,
@@ -362,7 +403,7 @@ def main():
     )
 
     # ========================================================================
-    # FILTROS DE MODALIDAD Y SEDE
+    # FILTROS DE MODALIDAD, SEDE Y NIVEL
     # ========================================================================
     st.sidebar.markdown("---")
     st.sidebar.subheader("🔍 Filtros")
@@ -370,6 +411,7 @@ def main():
     # Obtener valores únicos
     modalidades = sorted(list(set(p['modalidad'] for p in programs)))
     sedes = sorted(list(set(p['sede'] for p in programs)))
+    niveles = sorted(list(set(p.get('nivel', 'No identificado') for p in programs)))
     
     # Agregar opción "Todos"
     modalidad_sel = st.sidebar.selectbox(
@@ -382,11 +424,19 @@ def main():
         ["Todos"] + sedes
     )
     
+    nivel_sel = st.sidebar.selectbox(
+        "Nivel",
+        ["Todos"] + niveles
+    )
+    
     # Aplicar filtros
     filtered_programs = programs
     if modalidad_sel != "Todos":
         filtered_programs = [p for p in filtered_programs if p['modalidad'] == modalidad_sel]
     if sede_sel != "Todos":
+        filtered_programs = [p for p in filtered_programs if p['sede'] == sede_sel]
+    if nivel_sel != "Todos":
+        filtered_programs = [p for p in filtered_programs if p.get('nivel') == nivel_sel]
         filtered_programs = [p for p in filtered_programs if p['sede'] == sede_sel]
     
     # Indicador de filtros activos
@@ -463,6 +513,23 @@ def main():
                 <p>Detección de redundancias o vacíos temáticos en la malla curricular institucional.</p>
             </div>
         </div>
+        <div class="feature-grid" style="margin-bottom:34px;">
+            <div class="feature-card">
+                <div>{render_icon_svg('document', '#0f3460', 28)}</div>
+                <h3>Programas de Pregrado</h3>
+                <p>B. Institucional, B. Disciplinar, B. Electivo</p>
+            </div>
+            <div class="feature-card">
+                <div>{render_icon_svg('trend', '#0f3460', 28)}</div>
+                <h3>Programas de Posgrado</h3>
+                <p>C. Fundamentación, C. Profundización</p>
+            </div>
+            <div class="feature-card">
+                <div>{render_icon_svg('bloom', '#0f3460', 28)}</div>
+                <h3>Componentes Académicos</h3>
+                <p>Incluye clasificación por Nivel y los bloques que identifican cada programa.</p>
+            </div>
+        </div>
 
         <div class="content-block">
             <div>
@@ -519,6 +586,14 @@ def main():
         # Obtener programa seleccionado
         selected_program = next(p for p in filtered_programs if p['nombre'] == selected_program_name)
         ind = selected_program['indicadores']
+
+        # Nivel académico y componentes detectados
+        nivel_text = selected_program.get('nivel', 'No identificado')
+        componentes = selected_program.get('componentes_academicos', [])
+        detalles = f"**Nivel académico:** {nivel_text}"
+        if componentes:
+            detalles += "  \n**Componentes académicos:** " + ", ".join(componentes)
+        st.markdown(detalles)
 
         # Score de calidad
         st.subheader(f"🎯 Score de Calidad: {ind['score_calidad']}/100")
@@ -1074,28 +1149,6 @@ def main():
                     for tipo, count in tipo_saber_counts.items():
                         if pd.notna(tipo):
                             datos_tipo_saber.append({
-                                'Programa': f"{nombre_prog} ({modalidad} - {sede})",
-                                'Tipo de Saber': tipo,
-                                'Cantidad': count
-                            })
-                    
-                    # Tipología (omitir vacíos)
-                    tipologia = estrategias_micro['Tipología'].dropna()
-                    if len(tipologia) > 0:
-                        tipologia_counts = tipologia.value_counts()
-                        for tipo, count in tipologia_counts.items():
-                            datos_tipologia.append({
-                                'Programa': nombre_prog,
-                                'Tipología': tipo,
-                                'Cantidad': count
-                            })
-                
-                if not estrategias_micro.empty:
-                    # Tipo de Saber
-                    tipo_saber_counts = estrategias_micro['Tipo de Saber'].value_counts()
-                    for tipo, count in tipo_saber_counts.items():
-                        if pd.notna(tipo):
-                            datos_tipo_saber.append({
                                 'Programa': nombre_prog,
                                 'Tipo de Saber': tipo,
                                 'Cantidad': count
@@ -1155,7 +1208,7 @@ def main():
                             })
                             
             except Exception as e:
-                st.warning(f"Error procesando {file_path.name}: {str(e)}")
+                st.warning(f"Error procesando {p.get('archivo', 'desconocido')}: {str(e)}")
 
         # 1. Gráfico Tipo de Saber por Programa
         if datos_tipo_saber:
