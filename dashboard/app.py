@@ -443,7 +443,7 @@ def main():
         st.sidebar.info(f"📊 Mostrando {len(filtered_programs)} de {len(programs)} programas")
 
     # ========================================================================
-    # PÁGINA: INICIO
+    # PÁGINA:  INICIO
     # ========================================================================
     if page == "🏠 Inicio":
         st.markdown("""
