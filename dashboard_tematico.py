@@ -1269,31 +1269,31 @@ def pagina_inicio(df: pd.DataFrame, totales_oficiales: Optional[Dict] = None):
         "Navega por las secciones del menú lateral para explorar cada dimensión."
     )
 
-    programas = df[['Programa', 'Modalidad', 'Sede']].drop_duplicates()
+    unique_programs = df[['Programa', 'Modalidad', 'Sede']].drop_duplicates()
     asignaturas = df['Nombre asignatura o modulo'].nunique()
     total_registros = len(df)
     total_palabras = df['Texto_Completo'].str.split().str.len().sum()
+    count_modalidad = unique_programs['Modalidad'].fillna('No identificado').value_counts()
+    presencial_count = int(count_modalidad.get('Presencial', 0))
+    virtual_count = int(count_modalidad.get('Virtual', 0))
+    hibrido_count = int(count_modalidad.get('Híbrido', 0))
 
     col1, col2, col3, col4 = st.columns(4)
     col1.metric(
-        "Programas Cargados", len(programas),
-        help="Número de programas académicos distintos por Programa + Modalidad + Sede incluidos en el análisis"
+        "Programas cargados", len(unique_programs),
+        help="Número de programas distintos considerando Programa + Modalidad + Sede."
     )
     col2.metric(
-        "Registros Analizados", f"{total_registros:,}",
-        help=(
-            "Cada registro corresponde a una fila de estrategia microcurricular "
-            "(un Resultado de Aprendizaje de una asignatura). "
-            "Una asignatura puede tener varios registros."
-        )
+        "Presenciales", presencial_count,
+        help="Cantidad de programas cargados en modalidad presencial."
     )
     col3.metric(
-        "Asignaturas Únicas", asignaturas,
-        help="Número de asignaturas o módulos distintos en todos los programas"
+        "Virtuales", virtual_count,
+        help="Cantidad de programas cargados en modalidad virtual."
     )
     col4.metric(
-        "Palabras Analizadas", f"{int(total_palabras):,}",
-        help="Total de palabras en los textos de RA, núcleos temáticos e indicadores de logro"
+        "Híbridos", hibrido_count,
+        help="Cantidad de programas cargados en modalidad híbrida."
     )
 
     st.markdown("---")
@@ -1301,24 +1301,28 @@ def pagina_inicio(df: pd.DataFrame, totales_oficiales: Optional[Dict] = None):
     col_a, col_b = st.columns(2)
 
     with col_a:
-        st.subheader("Registros por Programa / Modalidad / Sede")
+        st.subheader("Programas por sede")
         st.caption(
-            "Número de filas de estrategia microcurricular por combinación Programa + Modalidad + Sede. "
-            "Así se identifican como programas distintos aun cuando comparten nombre." 
+            "Cantidad de programas distintos por sede y modalidad. Cada programa es una combinación "
+            "única de Programa + Modalidad + Sede."
         )
-        conteo = (
-            df
-            .groupby(['Programa', 'Modalidad', 'Sede'])
+        programas_x_sede = (
+            unique_programs
+            .groupby(['Sede', 'Modalidad'])
             .size()
-            .reset_index(name='Registros')
+            .reset_index(name='Programas')
         )
-        conteo['Etiqueta'] = (
-            conteo['Programa'] + ' (' + conteo['Modalidad'] + ' - ' + conteo['Sede'] + ')'
+        fig = px.bar(
+            programas_x_sede,
+            x='Sede',
+            y='Programas',
+            color='Modalidad',
+            text='Programas',
+            labels={'Programas': 'N° de programas', 'Sede': 'Sede'},
+            category_orders={'Sede': ['Bogotá', 'Medellín', 'Nacional']}
         )
-        fig = px.bar(conteo, x='Etiqueta', y='Registros',
-                     color='Modalidad', text='Registros',
-                     labels={'Registros': 'N° de registros', 'Etiqueta': 'Programa'})
-        fig.update_layout(showlegend=True, height=420)
+        fig.update_layout(showlegend=True, height=420, barmode='stack')
+        fig.update_traces(textposition='inside')
         st.plotly_chart(fig, use_container_width=True)
 
     with col_b:
