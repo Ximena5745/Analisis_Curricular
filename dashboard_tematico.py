@@ -4161,37 +4161,37 @@ def main():
         height=0
     )
 
-    # Renderizar pagina
+    # Renderizar pagina usando datos filtrados para que los filtros afecten todos los artefactos
     if pagina == "Inicio":
-        pagina_inicio(df, totales_oficiales)
+        pagina_inicio(df_filtered, totales_oficiales)
 
     elif pagina == "Tipo de Saber":
-        pagina_tipo_saber(df)
+        pagina_tipo_saber(df_filtered)
 
     elif pagina == "Cobertura Temática":
         with st.spinner("Analizando cobertura temática..."):
-            resultados_cob = analizar_cobertura(df)
-        pagina_cobertura(df, resultados_cob)
+            resultados_cob = analizar_cobertura(df_filtered)
+        pagina_cobertura(df_filtered, resultados_cob)
 
     elif pagina == "Tendencias Globales":
         with st.spinner("Detectando tendencias globales..."):
-            resultados_tend = analizar_tendencias(df, tendencias)
-        pagina_tendencias(df, tendencias, resultados_tend)
+            resultados_tend = analizar_tendencias(df_filtered, tendencias)
+        pagina_tendencias(df_filtered, tendencias, resultados_tend)
 
     elif pagina == "Minería de Texto":
         with st.spinner("Ejecutando análisis de texto..."):
-            resultados_nlp = analizar_nlp(df)
-        pagina_nlp(df, resultados_nlp)
+            resultados_nlp = analizar_nlp(df_filtered)
+        pagina_nlp(df_filtered, resultados_nlp)
 
     elif pagina == "Bloom & Integración":
         taxonomias_bloom = leer_taxonomias_bloom(uploaded_files)
-        pagina_bloom_integracion(df, taxonomias_bloom)
+        pagina_bloom_integracion(df_filtered, taxonomias_bloom)
 
     elif pagina == "Configurar Tendencias":
         pagina_config_tendencias()
 
     elif pagina == "Explorar Datos":
-        pagina_datos(df)
+        pagina_datos(df_filtered)
 
 
 if __name__ == '__main__':
