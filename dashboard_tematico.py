@@ -25,6 +25,14 @@ from scipy.stats import entropy
 import warnings
 warnings.filterwarnings('ignore')
 
+PALETA_DOUBLE_SPLIT = ['#0FFF8B', '#0FBFFF', '#0F83FF', '#FF0F83', '#FF8B0F']
+PALETA_AZUL = ['#092196', '#1A2663', '#748BFC', '#A8B7FF', '#DBE1FF']
+COLORES_MODALIDAD = {
+    'Presencial': '#0F83FF',
+    'Virtual': '#748BFC',
+    'Híbrido': '#0FFF8B'
+}
+
 
 # Patrones que NO son núcleos temáticos (encabezados de sección, instrucciones, etc.)
 _PATRON_NO_NUCLEO = re.compile(
@@ -1320,11 +1328,7 @@ def pagina_inicio(df: pd.DataFrame, totales_oficiales: Optional[Dict] = None):
             text='Programas',
             labels={'Programas': 'N° de programas', 'Sede': 'Sede'},
             category_orders={'Sede': ['Bogotá', 'Medellín', 'Nacional']},
-            color_discrete_map={
-                'Presencial': '#1f77b4',
-                'Virtual': '#8c8c8c',
-                'Híbrido': '#2ca02c'
-            }
+            color_discrete_map=COLORES_MODALIDAD
         )
         fig.update_layout(showlegend=True, height=420, barmode='stack')
         fig.update_traces(textposition='inside')
@@ -1341,7 +1345,7 @@ def pagina_inicio(df: pd.DataFrame, totales_oficiales: Optional[Dict] = None):
         tipo_saber = df['Tipo de Saber'].value_counts().reset_index()
         tipo_saber.columns = ['Tipo', 'Cantidad']
         fig = px.pie(tipo_saber, values='Cantidad', names='Tipo',
-                     color_discrete_sequence=px.colors.qualitative.Set2)
+                     color_discrete_sequence=PALETA_AZUL)
         fig.update_layout(height=400)
         st.plotly_chart(fig, use_container_width=True)
 
@@ -1688,7 +1692,7 @@ def pagina_tendencias(df: pd.DataFrame, tendencias: Dict, resultados: Dict):
                 df_bar_global,
                 x='Tendencia', y='Asignaturas', color='Programa',
                 barmode='group',
-                color_discrete_sequence=['#0F385A', '#1FB2DE', '#42F2F2', '#FBAF17', '#EC0677'],
+                color_discrete_sequence=PALETA_DOUBLE_SPLIT,
                 labels={'Asignaturas': 'N° Asignaturas únicas'},
                 category_orders={'Tendencia': orden}
             )
@@ -2119,9 +2123,9 @@ def pagina_tipo_saber(df: pd.DataFrame):
     )
 
     COLORES_SABER = {
-        'Saber': '#1FB2DE',
-        'SaberHacer': '#0F385A',
-        'SaberSer': '#42F2F2'
+        'Saber': '#092196',
+        'SaberHacer': '#748BFC',
+        'SaberSer': '#A8B7FF'
     }
     REFS_SABER = {
         'Saber':     (25, 45),
@@ -2206,7 +2210,7 @@ def pagina_tipo_saber(df: pd.DataFrame):
     with tab_radar:
         tipos_disp = [t for t in ['Saber', 'SaberHacer', 'SaberSer'] if t in pivot_wide.columns]
         fig_radar = go.Figure()
-        palette_radar = ['#0F385A', '#1FB2DE', '#42F2F2', '#FBAF17', '#EC0677']
+        palette_radar = PALETA_DOUBLE_SPLIT
         for i, row in pivot_wide.iterrows():
             vals = [row.get(t, 0) for t in tipos_disp]
             vals_closed = vals + [vals[0]]
