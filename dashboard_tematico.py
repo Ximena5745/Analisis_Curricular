@@ -1587,13 +1587,48 @@ def pagina_inicio(df: pd.DataFrame, totales_oficiales: Optional[Dict] = None):
     cols_presentes = [c for c in cols_comunes + cols_pregrado + cols_posgrado + cols_extra if c in resumen.columns]
     resumen = resumen[cols_presentes]
 
+    # ── Ordenar por Nivel (Pregrado primero, luego Posgrado) ────────────────────
+    nivel_order = {'Pregrado': 0, 'Posgrado': 1, 'Mixto': 2, 'No identificado': 3}
+    resumen['_nivel_sort'] = resumen['Nivel'].map(nivel_order).fillna(4)
+    resumen = resumen.sort_values(['_nivel_sort', 'Programa', 'Modalidad', 'Sede']).drop('_nivel_sort', axis=1)
+    resumen = resumen.reset_index(drop=True)
+
+    # ── Paginación ────────────────────────────────────────────────────────────────
+    rows_per_page = 10
+    total_rows = len(resumen)
+    total_pages = (total_rows + rows_per_page - 1) // rows_per_page
+
+    # Inicializar session_state para página actual
+    if 'tabla_pagina' not in st.session_state:
+        st.session_state.tabla_pagina = 0
+
+    # Controles de paginación
+    col_prev, col_info, col_next = st.columns([1, 2, 1])
+    with col_prev:
+        if st.button("⬅️ Anterior", disabled=st.session_state.tabla_pagina == 0, key="btn_prev_tabla"):
+            st.session_state.tabla_pagina -= 1
+            st.rerun()
+
+    with col_info:
+        st.markdown(f"<div style='text-align:center'><b>Página {st.session_state.tabla_pagina + 1} de {total_pages}</b> ({total_rows} registros)</div>", unsafe_allow_html=True)
+
+    with col_next:
+        if st.button("Siguiente ➡️", disabled=st.session_state.tabla_pagina >= total_pages - 1, key="btn_next_tabla"):
+            st.session_state.tabla_pagina += 1
+            st.rerun()
+
+    # Obtener datos de la página actual
+    start_idx = st.session_state.tabla_pagina * rows_per_page
+    end_idx = start_idx + rows_per_page
+    resumen_pagina = resumen.iloc[start_idx:end_idx]
+
     def _color_dif(val):
         if val == 0:
             return 'background-color:#d4edda;color:#155724'
         return 'background-color:#f8d7da;color:#721c24'
 
     st.dataframe(
-        resumen.style.map(_color_dif, subset=['Diferencia']),
+        resumen_pagina.style.map(_color_dif, subset=['Diferencia']),
         use_container_width=True, hide_index=True
     )
     st.caption(
