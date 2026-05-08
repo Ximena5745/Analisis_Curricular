@@ -407,7 +407,7 @@ div[data-baseweb="notification"][kind="negative"] {
 /* ── Botones ─────────────────────────────────────────────────────────────── */
 .stButton > button, .stDownloadButton > button {
     background: linear-gradient(135deg, #1FB2DE, #0F385A) !important;
-    color: white !important;
+    color: #ffffff !important;
     border: none !important;
     border-radius: 8px !important;
     padding: 8px 22px !important;

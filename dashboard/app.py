@@ -401,9 +401,9 @@ def main():
         <div style="margin-bottom:30px;">
             <div style="display:flex; flex-wrap:wrap; gap:28px; align-items:flex-start;">
                 <div style="flex:1; min-width:320px; max-width:720px;">
-                    <div style="font-size:3.2rem; font-weight:700; line-height:1.02; color:#0f3460; margin-bottom:14px;">Análisis Microcurricular basada en datos</div>
+                    <div style="font-size:3.2rem; font-weight:700; line-height:1.02; color:#0f3460; margin-bottom:14px;">Análisis Microcurricular Basado en Datos</div>
                     <div style="font-size:1.05rem; color:#475569; max-width:740px; line-height:1.75;">
-                        Optimice sus procesos de diseño curricular a través del uso de herramientas avanzadas de inteligencia artificial para visualizar brechas y tendencias en tiempo real.
+                        Optimice los procesos de diseño, actualización y evaluación curricular mediante el uso de analítica avanzada e Inteligencia Artificial, permitiendo identificar brechas, tendencias, niveles de alineación y oportunidades de mejora en tiempo real para fortalecer la toma de decisiones académicas y la calidad educativa.
                     </div>
                 </div>
                 <div style="flex:0 0 380px; min-width:300px;">
