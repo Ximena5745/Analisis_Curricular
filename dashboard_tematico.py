@@ -1319,7 +1319,12 @@ def pagina_inicio(df: pd.DataFrame, totales_oficiales: Optional[Dict] = None):
             color='Modalidad',
             text='Programas',
             labels={'Programas': 'N° de programas', 'Sede': 'Sede'},
-            category_orders={'Sede': ['Bogotá', 'Medellín', 'Nacional']}
+            category_orders={'Sede': ['Bogotá', 'Medellín', 'Nacional']},
+            color_discrete_map={
+                'Presencial': '#1f77b4',
+                'Virtual': '#8c8c8c',
+                'Híbrido': '#2ca02c'
+            }
         )
         fig.update_layout(showlegend=True, height=420, barmode='stack')
         fig.update_traces(textposition='inside')
