@@ -1574,10 +1574,10 @@ def pagina_inicio(df: pd.DataFrame, totales_oficiales: Optional[Dict] = None):
 
     resumen = pd.DataFrame(resumen_rows)
 
-    # Convertir columnas numéricas a int para mostrar sin decimales
+    # Convertir columnas numéricas a int (llenar NaNs con 0 primero)
     for col in resumen.columns:
         if col not in ['Programa', 'Modalidad', 'Sede', 'Nivel']:
-            resumen[col] = resumen[col].astype(int)
+            resumen[col] = resumen[col].fillna(0).astype(int)
 
     # Reordenar columnas: columnas comunes primero, luego las específicas por nivel
     cols_comunes = ['Programa', 'Modalidad', 'Sede', 'Nivel', 'Asignaturas', 'Semestres', 'Cr. Total']
