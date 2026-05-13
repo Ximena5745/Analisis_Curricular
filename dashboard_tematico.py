@@ -1444,6 +1444,18 @@ def leer_totales_programa(uploaded_files) -> Dict[str, Dict[str, int]]:
                     if not pd.notna(cell):
                         continue
                     cn = _norm(str(cell))
+                    
+                    # Para "total asignaturas" usar la siguiente columna (no Credits)
+                    if 'total asignaturas' in cn:
+                        asig_col_idx = cred_col_idx + 1 if cred_col_idx + 1 < ncols else cred_col_idx
+                        raw_val = raw.iloc[r, asig_col_idx] if asig_col_idx < ncols else None
+                        try:
+                            val = int(float(raw_val)) if pd.notna(raw_val) else 0
+                        except:
+                            val = 0
+                        pt['asignaturas'] = val
+                        continue
+                    
                     # Leer el crédito de la misma fila en la columna de Créditos
                     raw_val = (raw.iloc[r, cred_col_idx]
                                if cred_col_idx < ncols else None)
@@ -1464,8 +1476,6 @@ def leer_totales_programa(uploaded_files) -> Dict[str, Dict[str, int]]:
                         pt['fundamentacion'] = val
                     elif 'componente prof' in cn or 'profundizacion' in cn:
                         pt['profundizacion'] = val
-                    elif 'total asignaturas' in cn:
-                        pt['asignaturas'] = val
 
             for clave in claves_programa:
                 totales[clave] = pt
@@ -1718,7 +1728,20 @@ def pagina_inicio(df: pd.DataFrame, totales_oficiales: Optional[Dict] = None):
             suma_bloques = cr_inst + cr_disc + cr_elec
             diferencia   = cr_total - suma_bloques
 
-            asigs_calc = g['Nombre asignatura o modulo'].dropna().nunique()
+            # Debug: contar asignaturas con más detalle
+            asig_col = _find_column(g, 'Nombre asignatura o modulo')
+            total_filas = len(g)
+            filas_con_nombre = g[asig_col].notna().sum() if asig_col else 0
+            asigs_unicas = g[asig_col].dropna().nunique() if asig_col else 0
+            
+            # Contar también las que tienen cadena vacía
+            asigs_no_vacias = g[g[asig_col].astype(str).str.strip() != ''][asig_col].nunique() if asig_col else 0
+            
+            # Debug específico para AdmonHotelGastro
+            if 'AdmonHotelGastro' in prog or 'Hoteleria' in prog:
+                st.write(f"DEBUG {prog}: total_filas={total_filas}, filas_con_nombre={filas_con_nombre}, asigs_unicas={asigs_unicas}, asigs_no_vacias={asigs_no_vacias}")
+            
+            asigs_calc = asigs_no_vacias
             diferencia_asigs = asigs_calc - asigs_oficial if asigs_oficial else 0
             row = {
                 'Programa':          prog,
