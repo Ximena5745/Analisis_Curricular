@@ -1538,16 +1538,16 @@ def pagina_inicio(df: pd.DataFrame, totales_oficiales: Optional[Dict] = None):
             color_discrete_map=COLORES_SEDE
         )
         fig.update_layout(showlegend=True, height=320, barmode='stack')
-        fig.update_traces(textposition='inside')
+        fig.update_traces(textposition='inside', textfont=dict(size=11, color='white'), textangle=0)
         totales = programas_x_modalidad.groupby('Modalidad')['Programas'].sum().reset_index()
         max_val = totales['Programas'].max()
         for i, row in totales.iterrows():
             fig.add_annotation(
                 x=row['Modalidad'],
-                y=row['Programas'] + max_val * 0.08,
+                y=row['Programas'] + max_val * 0.1,
                 text=f"<b>{row['Programas']}</b>",
                 showarrow=False,
-                font=dict(size=12, color='#0F83FF')
+                font=dict(size=14, color='#0F83FF')
             )
         st.plotly_chart(fig, use_container_width=True)
 
