@@ -405,7 +405,7 @@ div[data-baseweb="notification"][kind="negative"] {
 }
 
 /* ── Botones ─────────────────────────────────────────────────────────────── */
-.stButton > button, .stButton button, [data-testid="stButton"] button, .stDownloadButton > button {
+.stButton > button, .stButton button, [data-testid="stButton"] button, .stDownloadButton > button, button[data-testid="stBaseButton-secondary"] {
     background: linear-gradient(135deg, #1976D2, #1565C0) !important;
     color: #ffffff !important;
     border: none !important;
@@ -414,6 +414,12 @@ div[data-baseweb="notification"][kind="negative"] {
     font-weight: 600 !important;
     box-shadow: 0 3px 8px rgba(15,56,90,0.22) !important;
     transition: transform 0.15s, box-shadow 0.15s !important;
+}
+.stButton > button p, .stButton button p, [data-testid="stButton"] button p, button[data-testid="stBaseButton-secondary"] p {
+    color: #ffffff !important;
+}
+.stButton > button span, .stButton button span {
+    color: #ffffff !important;
 }
 .stButton > button:hover, .stDownloadButton > button:hover {
     transform: translateY(-1px) !important;
