@@ -1510,29 +1510,31 @@ def pagina_inicio(df: pd.DataFrame, totales_oficiales: Optional[Dict] = None):
             help="Cantidad de programas de nivel Posgrado."
         )
         st.markdown("---")
-        niveles_df = (
-            unique_programs
-            .groupby('Nivel')
-            .size()
-            .reset_index(name='Programas')
-            .sort_values('Programas', ascending=False)
-        )
-        fig_nivel = px.bar(
-            niveles_df,
-            x='Nivel',
-            y='Programas',
-            color='Nivel',
-            text='Programas',
-            color_discrete_map={
-                'Pregrado': '#0F83FF',
-                'Posgrado': '#0FFF8B',
-                'No identificado': '#8c8c8c'
-            },
-            labels={'Programas': 'N° de programas'}
-        )
-        fig_nivel.update_layout(showlegend=False, height=250)
-        fig_nivel.update_traces(textposition='outside')
-        st.plotly_chart(fig_nivel, use_container_width=True)
+        col_g1, col_g2, col_g3 = st.columns(3)
+        with col_g1:
+            niveles_df = (
+                unique_programs
+                .groupby('Nivel')
+                .size()
+                .reset_index(name='Programas')
+                .sort_values('Programas', ascending=False)
+            )
+            fig_nivel = px.bar(
+                niveles_df,
+                x='Nivel',
+                y='Programas',
+                color='Nivel',
+                text='Programas',
+                color_discrete_map={
+                    'Pregrado': '#0F83FF',
+                    'Posgrado': '#0FFF8B',
+                    'No identificado': '#8c8c8c'
+                },
+                labels={'Programas': 'N° de programas'}
+            )
+            fig_nivel.update_layout(showlegend=False, height=320)
+            fig_nivel.update_traces(textposition='outside')
+            st.plotly_chart(fig_nivel, use_container_width=True)
     else:
         st.markdown("---")
 
