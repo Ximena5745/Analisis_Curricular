@@ -1460,6 +1460,10 @@ def leer_totales_programa(uploaded_files) -> Dict[str, Dict[str, int]]:
                         pt['disciplinar'] = val
                     elif 'bloque elec' in cn:
                         pt['electivo'] = val
+                    elif 'componente fund' in cn or 'fundamentacion' in cn:
+                        pt['fundamentacion'] = val
+                    elif 'componente prof' in cn or 'profundizacion' in cn:
+                        pt['profundizacion'] = val
 
             for clave in claves_programa:
                 totales[clave] = pt
@@ -1658,6 +1662,11 @@ def pagina_inicio(df: pd.DataFrame, totales_oficiales: Optional[Dict] = None):
 
         # Totales oficiales del Excel (footer rows)
         of = (totales_oficiales or {}).get(prog, {})
+        if not of:
+            for k in (totales_oficiales or {}).keys():
+                if prog.lower() in k.lower() or k.lower() in prog.lower():
+                    of = totales_oficiales[k]
+                    break
         cr_total = of.get('total', 0)
 
         if nivel_detectado == 'Posgrado':
