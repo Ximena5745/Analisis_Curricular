@@ -1510,35 +1510,10 @@ def pagina_inicio(df: pd.DataFrame, totales_oficiales: Optional[Dict] = None):
             help="Cantidad de programas de nivel Posgrado."
         )
         st.markdown("---")
-        col_g1, col_g2, col_g3 = st.columns(3)
-        with col_g1:
-            niveles_df = (
-                unique_programs
-                .groupby('Nivel')
-                .size()
-                .reset_index(name='Programas')
-                .sort_values('Programas', ascending=False)
-            )
-            fig_nivel = px.bar(
-                niveles_df,
-                x='Nivel',
-                y='Programas',
-                color='Nivel',
-                text='Programas',
-                color_discrete_map={
-                    'Pregrado': '#0F83FF',
-                    'Posgrado': '#0FFF8B',
-                    'No identificado': '#8c8c8c'
-                },
-                labels={'Programas': 'N° de programas'}
-            )
-            fig_nivel.update_layout(showlegend=False, height=320)
-            fig_nivel.update_traces(textposition='outside')
-            st.plotly_chart(fig_nivel, use_container_width=True)
+    if 'Nivel' in unique_programs.columns:
+        col_a, col_b, col_c = st.columns(3)
     else:
-        st.markdown("---")
-
-    col_a, col_b = st.columns(2)
+        col_a, col_b = st.columns(2)
 
     with col_a:
         st.subheader("Programas por modalidad")
@@ -1576,19 +1551,62 @@ def pagina_inicio(df: pd.DataFrame, totales_oficiales: Optional[Dict] = None):
         st.plotly_chart(fig, use_container_width=True)
 
     with col_b:
-        st.subheader("Distribución Tipo de Saber (todos los programas)")
-        st.caption(
-            "**Saber** = conocimiento teórico/conceptual. "
-            "**SaberHacer** = habilidades prácticas y procedimentales. "
-            "**SaberSer** = actitudes, valores y dimensión ética. "
-            "Un currículo equilibrado debería contemplar los tres tipos."
-        )
-        tipo_saber = df['Tipo de Saber'].value_counts().reset_index()
-        tipo_saber.columns = ['Tipo', 'Cantidad']
-        fig = px.pie(tipo_saber, values='Cantidad', names='Tipo',
-                     color_discrete_sequence=PALETA_AZUL)
-        fig.update_layout(height=400)
-        st.plotly_chart(fig, use_container_width=True)
+        if 'Nivel' in unique_programs.columns:
+            st.subheader("Programas por Nivel")
+            st.caption("Distribución de programas por nivel académico.")
+            niveles_df = (
+                unique_programs
+                .groupby('Nivel')
+                .size()
+                .reset_index(name='Programas')
+                .sort_values('Programas', ascending=False)
+            )
+            fig_nivel = px.bar(
+                niveles_df,
+                x='Nivel',
+                y='Programas',
+                color='Nivel',
+                text='Programas',
+                color_discrete_map={
+                    'Pregrado': '#0F83FF',
+                    'Posgrado': '#0FFF8B',
+                    'No identificado': '#8c8c8c'
+                },
+                labels={'Programas': 'N° de programas'}
+            )
+            fig_nivel.update_layout(showlegend=False, height=320)
+            fig_nivel.update_traces(textposition='outside')
+            st.plotly_chart(fig_nivel, use_container_width=True)
+        else:
+            st.subheader("Distribución Tipo de Saber (todos los programas)")
+            st.caption(
+                "**Saber** = conocimiento teórico/conceptual. "
+                "**SaberHacer** = habilidades prácticas y procedimentales. "
+                "**SaberSer** = actitudes, valores y dimensión ética. "
+                "Un currículo equilibrado debería contemplar los tres tipos."
+            )
+            tipo_saber = df['Tipo de Saber'].value_counts().reset_index()
+            tipo_saber.columns = ['Tipo', 'Cantidad']
+            fig = px.pie(tipo_saber, values='Cantidad', names='Tipo',
+                         color_discrete_sequence=PALETA_AZUL)
+            fig.update_layout(height=320)
+            st.plotly_chart(fig, use_container_width=True)
+
+    with col_c:
+        if 'Nivel' in unique_programs.columns:
+            st.subheader("Distribución Tipo de Saber (todos los programas)")
+            st.caption(
+                "**Saber** = conocimiento teórico/conceptual. "
+                "**SaberHacer** = habilidades prácticas y procedimentales. "
+                "**SaberSer** = actitudes, valores y dimensión ética. "
+                "Un currículo equilibrado debería contemplar los tres tipos."
+            )
+            tipo_saber = df['Tipo de Saber'].value_counts().reset_index()
+            tipo_saber.columns = ['Tipo', 'Cantidad']
+            fig = px.pie(tipo_saber, values='Cantidad', names='Tipo',
+                         color_discrete_sequence=PALETA_AZUL)
+            fig.update_layout(height=320)
+            st.plotly_chart(fig, use_container_width=True)
 
     st.markdown("---")
     st.subheader("Resumen por Programa")
