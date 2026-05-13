@@ -1540,13 +1540,14 @@ def pagina_inicio(df: pd.DataFrame, totales_oficiales: Optional[Dict] = None):
         fig.update_layout(showlegend=True, height=320, barmode='stack')
         fig.update_traces(textposition='inside')
         totales = programas_x_modalidad.groupby('Modalidad')['Programas'].sum().reset_index()
+        max_val = totales['Programas'].max()
         for i, row in totales.iterrows():
             fig.add_annotation(
                 x=row['Modalidad'],
-                y=row['Programas'] + 0.5,
-                text=f"<b>Total: {row['Programas']}</b>",
+                y=row['Programas'] + max_val * 0.08,
+                text=f"<b>{row['Programas']}</b>",
                 showarrow=False,
-                font=dict(size=12, color='black')
+                font=dict(size=12, color='#0F83FF')
             )
         st.plotly_chart(fig, use_container_width=True)
 
@@ -1574,7 +1575,12 @@ def pagina_inicio(df: pd.DataFrame, totales_oficiales: Optional[Dict] = None):
                 },
                 labels={'Programas': 'N° de programas'}
             )
-            fig_nivel.update_layout(showlegend=False, height=320)
+            max_val = niveles_df['Programas'].max()
+            fig_nivel.update_layout(
+                showlegend=False, 
+                height=320,
+                yaxis=dict(range=[0, max_val * 1.3])
+            )
             fig_nivel.update_traces(textposition='outside')
             st.plotly_chart(fig_nivel, use_container_width=True)
         else:
