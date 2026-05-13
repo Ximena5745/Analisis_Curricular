@@ -1474,11 +1474,11 @@ def leer_totales_programa(uploaded_files) -> Dict[str, Dict[str, int]]:
                         pt['electivo'] = val
                     elif 'componente fund' in cn or 'fundamentacion' in cn:
                         pt['fundamentacion'] = val
-                    elif 'componente prof' in cn or 'profundizacion' in cn:
+elif 'componente prof' in cn or 'profundizacion' in cn:
                         pt['profundizacion'] = val
 
-for clave in claves_programa:
-                totales[clave] = pt
+                for clave in claves_programa:
+                    totales[clave] = pt
         except Exception:
             for clave in claves_programa:
                 totales[clave] = {}
