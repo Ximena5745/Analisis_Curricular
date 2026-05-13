@@ -1530,7 +1530,7 @@ def pagina_inicio(df: pd.DataFrame, totales_oficiales: Optional[Dict] = None):
             },
             labels={'Programas': 'N° de programas'}
         )
-        fig_nivel.update_layout(showlegend=False, height=380)
+        fig_nivel.update_layout(showlegend=False, height=250)
         fig_nivel.update_traces(textposition='outside')
         st.plotly_chart(fig_nivel, use_container_width=True)
     else:
@@ -1560,8 +1560,17 @@ def pagina_inicio(df: pd.DataFrame, totales_oficiales: Optional[Dict] = None):
             category_orders={'Modalidad': ['Presencial', 'Virtual', 'Híbrido']},
             color_discrete_map=COLORES_SEDE
         )
-        fig.update_layout(showlegend=True, height=420, barmode='stack')
+        fig.update_layout(showlegend=True, height=320, barmode='stack')
         fig.update_traces(textposition='inside')
+        totales = programas_x_modalidad.groupby('Modalidad')['Programas'].sum().reset_index()
+        for i, row in totales.iterrows():
+            fig.add_annotation(
+                x=row['Modalidad'],
+                y=row['Programas'] + 0.5,
+                text=f"<b>Total: {row['Programas']}</b>",
+                showarrow=False,
+                font=dict(size=12, color='black')
+            )
         st.plotly_chart(fig, use_container_width=True)
 
     with col_b:
