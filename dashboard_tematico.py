@@ -4071,6 +4071,15 @@ def main():
         else:
             st.success(f"{num_cargados} archivos cargados correctamente")
     with col_btn:
+        st.markdown("""
+        <style>
+        div.stButton > button {
+            background: linear-gradient(90deg, #1E88E5, #1565C0);
+            color: white;
+            border: none;
+        }
+        </style>
+        """, unsafe_allow_html=True)
         if st.button("Cambiar archivos", use_container_width=True):
             st.session_state['archivos_subidos'] = None
             st.session_state['proc_cache_key'] = None
