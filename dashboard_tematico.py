@@ -406,7 +406,7 @@ div[data-baseweb="notification"][kind="negative"] {
 
 /* ── Botones ─────────────────────────────────────────────────────────────── */
 .stButton > button, .stButton button, [data-testid="stButton"] button, .stDownloadButton > button {
-    background: linear-gradient(135deg, #1FB2DE, #0F385A) !important;
+    background: linear-gradient(135deg, #1976D2, #1565C0) !important;
     color: #ffffff !important;
     border: none !important;
     border-radius: 8px !important;
@@ -4071,18 +4071,6 @@ def main():
         else:
             st.success(f"{num_cargados} archivos cargados correctamente")
     with col_btn:
-        st.markdown("""
-        <style>
-        div[data-testid="stButton"] > button {
-            background: linear-gradient(90deg, #1E88E5, #1565C0) !important;
-            color: white !important;
-            border: none !important;
-        }
-        div[data-testid="stButton"] > button > p {
-            color: white !important;
-        }
-        </style>
-        """, unsafe_allow_html=True)
         if st.button("Cambiar archivos", use_container_width=True):
             st.session_state['archivos_subidos'] = None
             st.session_state['proc_cache_key'] = None
