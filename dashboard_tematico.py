@@ -899,7 +899,7 @@ def procesar_archivos(uploaded_files) -> pd.DataFrame:
                 found_cols = {col: _find_column(df, col) for col in required_fields}
                 missing_fields = [col for col, found in found_cols.items() if found is None]
                 if missing_fields:
-                    st.warning(f"⚠️ {nombre}: Faltan columnas requeridas - {', '.join(missing_fields)}")
+                    st.warning(f"{nombre}: Faltan columnas requeridas - {', '.join(missing_fields)}")
 
                 df['Programa'] = programa_nombre
                 df['Modalidad'] = metadata['modalidad']
@@ -4065,7 +4065,11 @@ def main():
     with col_files:
         num_cargados = len(uploaded_files) - len(failed_list)
         num_total = len(uploaded_files)
-        st.success(f"**{num_cargados}** archivo(s) cargados — {num_total} programa(s)/modalidad(es)")
+        num_fallidos = len(failed_list)
+        if num_fallidos > 0:
+            st.success(f"{num_cargados} archivos cargados correctamente, {num_fallidos} archivo(s) no se pudieron cargar de {num_total} archivos seleccionados")
+        else:
+            st.success(f"{num_cargados} archivos cargados correctamente")
     with col_btn:
         if st.button("Cambiar archivos", use_container_width=True):
             st.session_state['archivos_subidos'] = None
@@ -4074,9 +4078,9 @@ def main():
     
     # Mostrar errores SIEMPRE visibles (después de procesar)
     if failed_list:
-        st.sidebar.error(f"⚠️ {len(failed_list)} archivo(s) con error:")
+        st.sidebar.error(f"{len(failed_list)} archivo(s) con error:")
         for f_err in failed_list:
-            st.sidebar.warning(f"❌ {f_err['nombre']}: {f_err['causa']}")
+            st.sidebar.warning(f"{f_err['nombre']}: {f_err['causa']}")
 
     if df.empty:
         st.error(
