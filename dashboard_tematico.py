@@ -1464,6 +1464,8 @@ def leer_totales_programa(uploaded_files) -> Dict[str, Dict[str, int]]:
                         pt['fundamentacion'] = val
                     elif 'componente prof' in cn or 'profundizacion' in cn:
                         pt['profundizacion'] = val
+                    elif 'total asignaturas' in cn:
+                        pt['asignaturas'] = val
 
             for clave in claves_programa:
                 totales[clave] = pt
@@ -1668,6 +1670,7 @@ def pagina_inicio(df: pd.DataFrame, totales_oficiales: Optional[Dict] = None):
                     of = totales_oficiales[k]
                     break
         cr_total = of.get('total', 0)
+        asigs_oficial = of.get('asignaturas', 0)
 
         if nivel_detectado == 'Posgrado':
             # ── Posgrado: usar componentes C.* ──────────────────────────────
@@ -1683,13 +1686,16 @@ def pagina_inicio(df: pd.DataFrame, totales_oficiales: Optional[Dict] = None):
             suma_componentes = cr_fund + cr_prof
             diferencia = cr_total - suma_componentes
 
+            asigs_calc = g['Nombre asignatura o modulo'].dropna().nunique()
+            diferencia_asigs = asigs_calc - asigs_oficial if asigs_oficial else 0
             row = {
                 'Programa':             prog,
                 'Modalidad':            modalidad,
                 'Sede':                 sede,
                 'Nivel':                nivel_detectado,
-                'Asignaturas':          g['Nombre asignatura o modulo'].nunique(),
-                'Semestres':            g['Semestre'].nunique(),
+                'Asignaturas':          asigs_calc,
+                'Asig. Oficial':       asigs_oficial if asigs_oficial else None,
+                'Semestres':            g['Semestre'].dropna().nunique(),
                 'Cr. Total':            cr_total,
                 'Cr. Fundamentacion':   cr_fund,
                 'Cr. Profundizacion':   cr_prof,
@@ -1712,13 +1718,16 @@ def pagina_inicio(df: pd.DataFrame, totales_oficiales: Optional[Dict] = None):
             suma_bloques = cr_inst + cr_disc + cr_elec
             diferencia   = cr_total - suma_bloques
 
+            asigs_calc = g['Nombre asignatura o modulo'].dropna().nunique()
+            diferencia_asigs = asigs_calc - asigs_oficial if asigs_oficial else 0
             row = {
                 'Programa':          prog,
                 'Modalidad':         modalidad,
                 'Sede':              sede,
                 'Nivel':             nivel_detectado,
-                'Asignaturas':       g['Nombre asignatura o modulo'].nunique(),
-                'Semestres':         g['Semestre'].nunique(),
+                'Asignaturas':       asigs_calc,
+                'Asig. Oficial':     asigs_oficial if asigs_oficial else None,
+                'Semestres':         g['Semestre'].dropna().nunique(),
                 'Cr. Total':         cr_total,
                 'B. Institucional': cr_inst,
                 'B. Disciplinar':   cr_disc,
@@ -1733,11 +1742,11 @@ def pagina_inicio(df: pd.DataFrame, totales_oficiales: Optional[Dict] = None):
 
     # Convertir columnas numéricas a int (llenar NaNs con 0 primero)
     for col in resumen.columns:
-        if col not in ['Programa', 'Modalidad', 'Sede', 'Nivel']:
+        if col not in ['Programa', 'Modalidad', 'Sede', 'Nivel', 'Asig. Oficial']:
             resumen[col] = resumen[col].fillna(0).astype(int)
 
     # Reordenar columnas: columnas comunes primero, luego las específicas por nivel
-    cols_comunes = ['Programa', 'Modalidad', 'Sede', 'Nivel', 'Asignaturas', 'Semestres', 'Cr. Total']
+    cols_comunes = ['Programa', 'Modalidad', 'Sede', 'Nivel', 'Asignaturas', 'Asig. Oficial', 'Semestres', 'Cr. Total']
     cols_pregrado = ['B. Institucional', 'B. Disciplinar', 'B. Electivo', 'Suma bloques']
     cols_posgrado = ['Cr. Fundamentacion', 'Cr. Profundizacion', 'Suma componentes']
     cols_extra = ['Diferencia']
