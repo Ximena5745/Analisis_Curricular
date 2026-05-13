@@ -34,7 +34,7 @@ COLORES_MODALIDAD = {
 }
 COLORES_SEDE = {
     'Bogotá': '#0F83FF',
-    'Medellín': '#FF8B0F',
+    'Medellín': '#1565C0',
     'Nacional': '#0FFF8B'
 }
 
