@@ -4073,10 +4073,13 @@ def main():
     with col_btn:
         st.markdown("""
         <style>
-        div.stButton > button {
-            background: linear-gradient(90deg, #1E88E5, #1565C0);
-            color: white;
-            border: none;
+        div[data-testid="stButton"] > button {
+            background: linear-gradient(90deg, #1E88E5, #1565C0) !important;
+            color: white !important;
+            border: none !important;
+        }
+        div[data-testid="stButton"] > button > p {
+            color: white !important;
         }
         </style>
         """, unsafe_allow_html=True)
