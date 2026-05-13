@@ -895,18 +895,11 @@ def procesar_archivos(uploaded_files) -> pd.DataFrame:
                         .replace({'nan': 'No identificado', '': 'No identificado'})
                     )
 
-                if any(tag in nombre.upper() for tag in ['ECENJA', 'LCS', 'MCE']):
-                    st.write('DEBUG FILE:', nombre)
-                    st.write('DEBUG columns:', list(df.columns))
-                    st.write('DEBUG normalized columns:', [_normalize_column_name(c) for c in df.columns])
-                    st.write('DEBUG nivel_col:', nivel_col, 'componente_col:', componente_col)
-                    sample_cols = []
-                    if nivel_col is not None:
-                        sample_cols.append(nivel_col)
-                    if componente_col is not None:
-                        sample_cols.append(componente_col)
-                    if sample_cols:
-                        st.write('DEBUG sample values:', df[sample_cols].head(10))
+                required_fields = ['Tipo de Saber', 'Resultado de aprendizaje', 'Nombre asignatura o modulo', 'Indicadores de logro asignatura o modulo', 'Creditos', 'Semestre']
+                found_cols = {col: _find_column(df, col) for col in required_fields}
+                missing_fields = [col for col, found in found_cols.items() if found is None]
+                if missing_fields:
+                    st.warning(f"⚠️ {nombre}: Faltan columnas requeridas - {', '.join(missing_fields)}")
 
                 df['Programa'] = programa_nombre
                 df['Modalidad'] = metadata['modalidad']
@@ -4106,9 +4099,9 @@ def main():
 
     # MOSTRAR ERRORES EN AREA PRINCIPAL (más visible)
     if failed_list:
-        st.error(f"**{len(failed_list)}** archivo(s) no se cargaron:")
+        st.error(f"❌ **{len(failed_list)}** archivo(s) no se cargaron:")
         for f_err in failed_list:
-            st.warning(f"{f_err['nombre']}: {f_err['causa']}")
+            st.warning(f"• {f_err['nombre']}: {f_err['causa']}")
 
     st.sidebar.markdown("---")
     prog_sel_sidebar = sorted([str(p) for p in df['Programa'].unique() if pd.notna(p)])
