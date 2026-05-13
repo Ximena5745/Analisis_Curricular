@@ -1393,14 +1393,34 @@ def leer_totales_programa(uploaded_files) -> Dict[str, Dict[str, int]]:
     def _norm(s: str) -> str:
         return unicodedata.normalize('NFKD', str(s).strip().lower()).encode('ascii', 'ignore').decode('ascii')
 
+    def _leer_nombre_programa(f):
+        """Lee el nombre del programa desde la hoja de perfil."""
+        try:
+            f.seek(0)
+            df_perfil = pd.read_excel(f, sheet_name='Paso1 Analisis perfil egreso', header=None, nrows=10, engine='openpyxl')
+            if df_perfil is not None and len(df_perfil) > 2 and len(df_perfil.columns) > 0:
+                val = df_perfil.iloc[2, 0]
+                if val is not None and str(val).strip():
+                    return str(val).strip()
+        except:
+            pass
+        return None
+
     totales: Dict[str, Dict[str, int]] = {}
 
     for f in uploaded_files:
         nombre = f.name
-        prog = (nombre
-                .replace("FormatoRA_", "").replace("_PBOG", "")
-                .replace("_VNAL", "").replace("_PMED", "")
-                .replace(".xlsx", "").replace(".xls", ""))
+        prog_key = (nombre
+                .replace("FormatoRA_", "").replace("FormatoRA-", "")
+                .replace("_PBOG", "").replace("_VNAL", "").replace("_PMED", "")
+                .replace("_HBOG", "").replace("_HMED", "").replace("_HVAL", "")
+                .replace(".xlsx", "").replace(".xls", "")).strip()
+        
+        prog_real = _leer_nombre_programa(f)
+        claves_programa = [prog_key]
+        if prog_real and prog_real not in claves_programa:
+            claves_programa.append(prog_real)
+        
         try:
             f.seek(0)
             raw = pd.read_excel(
@@ -1441,9 +1461,11 @@ def leer_totales_programa(uploaded_files) -> Dict[str, Dict[str, int]]:
                     elif 'bloque elec' in cn:
                         pt['electivo'] = val
 
-            totales[prog] = pt
+            for clave in claves_programa:
+                totales[clave] = pt
         except Exception:
-            totales[prog] = {}
+            for clave in claves_programa:
+                totales[clave] = {}
 
     return totales
 
@@ -1689,9 +1711,9 @@ def pagina_inicio(df: pd.DataFrame, totales_oficiales: Optional[Dict] = None):
                 'Asignaturas':       g['Nombre asignatura o modulo'].nunique(),
                 'Semestres':         g['Semestre'].nunique(),
                 'Cr. Total':         cr_total,
-                'Cr. Institucional': cr_inst,
-                'Cr. Disciplinar':   cr_disc,
-                'Cr. Electivo':      cr_elec,
+                'B. Institucional': cr_inst,
+                'B. Disciplinar':   cr_disc,
+                'B. Electivo':      cr_elec,
                 'Suma bloques':      suma_bloques,
                 'Diferencia':        diferencia,
             }
@@ -1707,7 +1729,7 @@ def pagina_inicio(df: pd.DataFrame, totales_oficiales: Optional[Dict] = None):
 
     # Reordenar columnas: columnas comunes primero, luego las específicas por nivel
     cols_comunes = ['Programa', 'Modalidad', 'Sede', 'Nivel', 'Asignaturas', 'Semestres', 'Cr. Total']
-    cols_pregrado = ['Cr. Institucional', 'Cr. Disciplinar', 'Cr. Electivo', 'Suma bloques']
+    cols_pregrado = ['B. Institucional', 'B. Disciplinar', 'B. Electivo', 'Suma bloques']
     cols_posgrado = ['Cr. Fundamentacion', 'Cr. Profundizacion', 'Suma componentes']
     cols_extra = ['Diferencia']
     cols_presentes = [c for c in cols_comunes + cols_pregrado + cols_posgrado + cols_extra if c in resumen.columns]
