@@ -32,6 +32,11 @@ COLORES_MODALIDAD = {
     'Virtual': '#748BFC',
     'Híbrido': '#0FFF8B'
 }
+COLORES_SEDE = {
+    'Bogotá': '#0F83FF',
+    'Medellín': '#FF8B0F',
+    'Nacional': '#0FFF8B'
+}
 
 
 # Patrones que NO son núcleos temáticos (encabezados de sección, instrucciones, etc.)
@@ -1534,26 +1539,26 @@ def pagina_inicio(df: pd.DataFrame, totales_oficiales: Optional[Dict] = None):
     col_a, col_b = st.columns(2)
 
     with col_a:
-        st.subheader("Programas por sede")
+        st.subheader("Programas por modalidad")
         st.caption(
-            "Cantidad de programas distintos por sede y modalidad. Cada programa es una combinación "
+            "Cantidad de programas distintos por modalidad y sede. Cada programa es una combinación "
             "única de Programa + Modalidad + Sede."
         )
-        programas_x_sede = (
+        programas_x_modalidad = (
             unique_programs
-            .groupby(['Sede', 'Modalidad'])
+            .groupby(['Modalidad', 'Sede'])
             .size()
             .reset_index(name='Programas')
         )
         fig = px.bar(
-            programas_x_sede,
-            x='Sede',
+            programas_x_modalidad,
+            x='Modalidad',
             y='Programas',
-            color='Modalidad',
+            color='Sede',
             text='Programas',
-            labels={'Programas': 'N° de programas', 'Sede': 'Sede'},
-            category_orders={'Sede': ['Bogotá', 'Medellín', 'Nacional']},
-            color_discrete_map=COLORES_MODALIDAD
+            labels={'Programas': 'N° de programas', 'Modalidad': 'Modalidad'},
+            category_orders={'Modalidad': ['Presencial', 'Virtual', 'Híbrido']},
+            color_discrete_map=COLORES_SEDE
         )
         fig.update_layout(showlegend=True, height=420, barmode='stack')
         fig.update_traces(textposition='inside')
