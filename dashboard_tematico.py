@@ -4063,8 +4063,9 @@ def main():
     # Barra compacta de archivos cargados + boton cambiar
     col_files, col_btn = st.columns([4, 1])
     with col_files:
-        num_archivos = len(uploaded_files)
-        st.success(f"**{num_archivos}** archivo(s) cargados — {num_archivos} programa(s)/modalidad(es)")
+        num_cargados = len(uploaded_files) - len(failed_list)
+        num_total = len(uploaded_files)
+        st.success(f"**{num_cargados}** archivo(s) cargados — {num_total} programa(s)/modalidad(es)")
     with col_btn:
         if st.button("Cambiar archivos", use_container_width=True):
             st.session_state['archivos_subidos'] = None
