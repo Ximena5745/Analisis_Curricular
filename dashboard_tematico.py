@@ -1784,14 +1784,42 @@ def pagina_inicio(df: pd.DataFrame, totales_oficiales: Optional[Dict] = None):
             return 'background-color:#d4edda;color:#155724'
         return 'background-color:#f8d7da;color:#721c24'
 
+    st.markdown("""
+    <style>
+    .Resumen por Programa .stDataFrame thead th {
+        background-color: #1E88E5 !important;
+        color: white !important;
+        font-weight: bold !important;
+        font-size: 14px !important;
+    }
+    .Resumen por Programa .stDataFrame tbody td {
+        font-size: 13px !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
     st.dataframe(
         resumen_pagina.style.map(_color_dif, subset=['Diferencia']),
-        use_container_width=True, hide_index=True
+        use_container_width=True, 
+        hide_index=True,
+        column_config={
+            "Programa": st.column_config.TextColumn(
+                "Programa",
+                pinned=True
+            )
+        }
     )
+    
+    programas_con_dif = resumen[resumen['Diferencia'] != 0][['Programa', 'Modalidad', 'Sede', 'Diferencia']].sort_values('Diferencia', key=abs, ascending=False)
+    if not programas_con_dif.empty:
+        st.warning(f"**{len(programas_con_dif)} programa(s) con diferencias que deben validarse:**")
+        for _, row in programas_con_dif.iterrows():
+            st.caption(f"• {row['Programa']} ({row['Modalidad']} - {row['Sede']}): Diferencia = {row['Diferencia']}")
+    
     st.caption(
-        "**Pregrado** → columnas Cr. Institucional / Disciplinar / Electivo.  "
+        "**Pregrado** → columnas B. Institucional / Disciplinar / Electivo.  "
         "**Posgrado** → columnas Cr. Fundamentacion / Profundizacion.  "
-        "**Diferencia = 0** ✅ coincide | **≠ 0** ⚠️ revisar el Excel."
+        "**Diferencia = 0** coincide | **≠ 0** revisar el Excel."
     )
 
 
