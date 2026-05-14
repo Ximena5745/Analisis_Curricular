@@ -1445,12 +1445,12 @@ def leer_totales_programa(uploaded_files) -> Dict[str, Dict[str, int]]:
                         continue
                     cn = _norm(str(cell))
                     
-                    # Para "total asignaturas" usar la siguiente columna (no Credits)
-                    if 'total asignaturas' in cn or 'total de asignaturas' in cn or 'total asignatur' in cn:
-                        asig_col_idx = cred_col_idx + 1 if cred_col_idx + 1 < ncols else cred_col_idx
-                        raw_val = raw.iloc[r, asig_col_idx] if asig_col_idx < ncols else None
+                    # Buscar "total asignaturas" - leer la siguiente celda a la derecha
+                    if 'total' in cn and 'asignatura' in cn and 'credito' not in cn:
+                        next_col = c + 1 if c + 1 < ncols else c
+                        raw_val = raw.iloc[r, next_col] if next_col < ncols else None
                         try:
-                            val = int(float(raw_val)) if pd.notna(raw_val) else 0
+                            val = int(float(raw_val)) if pd.notna(raw_val) and str(raw_val).strip() else 0
                         except:
                             val = 0
                         pt['asignaturas'] = val
@@ -1479,7 +1479,10 @@ def leer_totales_programa(uploaded_files) -> Dict[str, Dict[str, int]]:
 
             for clave in claves_programa:
                 totales[clave] = pt
-        except Exception:
+                # Debug: mostrar qué se leyó
+                print(f"LEER_TOTALES: clave={clave}, pt={pt}")
+        except Exception as e:
+            print(f"LEER_TOTALES ERROR: {e}")
             for clave in claves_programa:
                 totales[clave] = {}
 
