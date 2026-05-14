@@ -1739,6 +1739,7 @@ def pagina_inicio(df: pd.DataFrame, totales_oficiales: Optional[Dict] = None):
                         asigs_limpios.append(v)
                 asigs_normalizadas = pd.Series(asigs_limpios).apply(_normalize_value)
                 asigs_calc = asigs_normalizadas.nunique()
+                st.session_state[f'debug_asigs_{prog}_{modalidad}_{sede}'] = f"{prog}: total={len(all_vals)}, limpios={len(asigs_limpios)}, unicos={asigs_calc}"
             else:
                 asigs_calc = 0
             diferencia_asigs = asigs_calc - asigs_oficial if asigs_oficial else 0
@@ -1774,23 +1775,18 @@ def pagina_inicio(df: pd.DataFrame, totales_oficiales: Optional[Dict] = None):
 
             asig_col = _find_column(g, 'Nombre asignatura o modulo')
             if asig_col:
-                # Obtener todos los valores no nulos
                 all_vals = g[asig_col].dropna()
-                # Filtrar: excluir valores que sean números puros (filas de totales)
                 asigs_limpios = []
                 for v in all_vals:
                     v_str = str(v).strip()
-                    # Verificar si es un número (con o sin decimales)
                     try:
                         float(v_str)
-                        # Es número - excluirlo (es fila de totales)
                         continue
                     except:
-                        # No es número, es asignatura real
                         asigs_limpios.append(v)
-                # Normalizar y contar únicos
                 asigs_normalizadas = pd.Series(asigs_limpios).apply(_normalize_value)
                 asigs_calc = asigs_normalizadas.nunique()
+                st.session_state[f'debug_asigs_{prog}_{modalidad}_{sede}'] = f"{prog}: total={len(all_vals)}, limpios={len(asigs_limpios)}, unicos={asigs_calc}"
             else:
                 asigs_calc = 0
             diferencia_asigs = asigs_calc - asigs_oficial if asigs_oficial else 0
@@ -1904,6 +1900,12 @@ def pagina_inicio(df: pd.DataFrame, totales_oficiales: Optional[Dict] = None):
         "**Posgrado** → columnas Cr. Fundamentacion / Profundizacion.  "
         "**Diferencia = 0** coincide | **≠ 0** revisar el Excel."
     )
+
+    debug_keys = [k for k in st.session_state.keys() if k.startswith('debug_asigs_')]
+    if debug_keys:
+        with st.expander("DEBUG: Conteo de Asignaturas"):
+            for k in sorted(debug_keys):
+                st.code(st.session_state[k])
 
 
 def pagina_cobertura(df: pd.DataFrame, resultados: Dict):
