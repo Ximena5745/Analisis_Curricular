@@ -1445,15 +1445,19 @@ def leer_totales_programa(uploaded_files) -> Dict[str, Dict[str, int]]:
                         continue
                     cn = _norm(str(cell))
                     
-                    # Buscar "total asignaturas" - leer la siguiente celda a la derecha
-                    if 'total' in cn and 'asignatura' in cn and 'credito' not in cn:
+                    # Buscar "Total modulos del programa" o "Total Asignaturas del programa" o "Total materias"
+                    if ('total modulos del programa' in cn or 
+                        'total modulos' in cn or
+                        'total asignaturas del programa' in cn or 
+                        'total materias' in cn and 'asignatura' in cn):
                         next_col = c + 1 if c + 1 < ncols else c
                         raw_val = raw.iloc[r, next_col] if next_col < ncols else None
                         try:
                             val = int(float(raw_val)) if pd.notna(raw_val) and str(raw_val).strip() else 0
                         except:
                             val = 0
-                        pt['asignaturas'] = val
+                        if val > 0 and 'asignaturas' not in pt:
+                            pt['asignaturas'] = val
                         continue
                     
                     # Leer el crédito de la misma fila en la columna de Créditos
@@ -1702,7 +1706,8 @@ def pagina_inicio(df: pd.DataFrame, totales_oficiales: Optional[Dict] = None):
             asig_col = _find_column(g, 'Nombre asignatura o modulo')
             if asig_col:
                 asigs_sin_nulos = g[asig_col].dropna()
-                asigs_normalizadas = asigs_sin_nulos.apply(_normalize_value)
+                asigs_no_total = asigs_sin_nulos[~asigs_sin_nulos.apply(lambda x: str(x).replace('.','').replace('-','').isdigit())]
+                asigs_normalizadas = asigs_no_total.apply(_normalize_value)
                 asigs_calc = asigs_normalizadas.nunique()
             else:
                 asigs_calc = 0
@@ -1740,7 +1745,8 @@ def pagina_inicio(df: pd.DataFrame, totales_oficiales: Optional[Dict] = None):
             asig_col = _find_column(g, 'Nombre asignatura o modulo')
             if asig_col:
                 asigs_sin_nulos = g[asig_col].dropna()
-                asigs_normalizadas = asigs_sin_nulos.apply(_normalize_value)
+                asigs_no_total = asigs_sin_nulos[~asigs_sin_nulos.apply(lambda x: str(x).replace('.','').replace('-','').isdigit())]
+                asigs_normalizadas = asigs_no_total.apply(_normalize_value)
                 asigs_calc = asigs_normalizadas.nunique()
             else:
                 asigs_calc = 0
