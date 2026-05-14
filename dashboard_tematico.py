@@ -1764,9 +1764,16 @@ def pagina_inicio(df: pd.DataFrame, totales_oficiales: Optional[Dict] = None):
 
             asig_col = _find_column(g, 'Nombre asignatura o modulo')
             if asig_col:
-                asigs_sin_nulos = g[asig_col].dropna()
-                asigs_no_total = asigs_sin_nulos[~asigs_sin_nulos.apply(lambda x: str(x).replace('.','').replace('-','').isdigit())]
-                asigs_normalizadas = asigs_no_total.apply(_normalize_value)
+                all_vals = g[asig_col].dropna()
+                asigs_limpios = []
+                for v in all_vals:
+                    v_str = str(v).strip()
+                    try:
+                        float(v_str)
+                        continue
+                    except:
+                        asigs_limpios.append(v)
+                asigs_normalizadas = pd.Series(asigs_limpios).apply(_normalize_value)
                 asigs_calc = asigs_normalizadas.nunique()
             else:
                 asigs_calc = 0
