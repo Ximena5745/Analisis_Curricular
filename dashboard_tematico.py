@@ -691,7 +691,7 @@ def _normalize_value(value: str) -> str:
     normalized = unicodedata.normalize('NFKD', str(value))
     normalized = ''.join(c for c in normalized if not unicodedata.combining(c))
     normalized = normalized.lower()
-    normalized = re.sub(r'[\s\-_.]+', '', normalized)
+    normalized = ''.join(c for c in normalized if c.isalnum())
     return normalized
 
 
