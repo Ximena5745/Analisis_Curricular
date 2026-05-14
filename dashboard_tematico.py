@@ -1380,6 +1380,43 @@ def _creditos_por_componente(grupo: pd.DataFrame) -> Dict[str, int]:
     return {'Fundamentacion': fund, 'Profundizacion': prof, 'Total': total}
 
 
+def _contar_semestres_validos(df_grupo: pd.DataFrame) -> int:
+    """
+    Obtiene el número máximo de semestres desde la columna Semestre.
+    
+    La duración del programa es el valor MÁXIMO encontrado en Semestre,
+    no el conteo de valores únicos.
+    
+    Ejemplo:
+    - Si Semestre tiene [1, 1, 2, 2, 3, 3] → Retorna 3 (máximo)
+    - Si Semestre tiene [1, 2, 4] → Retorna 4 (máximo)
+    
+    Args:
+        df_grupo: dataframe del programa (ya filtrado por programa/modalidad/sede/nivel)
+    
+    Returns:
+        Número máximo de semestres (duración del programa)
+    """
+    if df_grupo.empty:
+        return 0
+    
+    # Buscar columna Semestre
+    sem_col = _find_column(df_grupo, 'Semestre')
+    if sem_col is None:
+        return 0
+    
+    # Obtener valores numéricos de Semestre
+    semestres = pd.to_numeric(df_grupo[sem_col], errors='coerce')
+    semestres = semestres.dropna()
+    
+    if len(semestres) == 0:
+        return 0
+    
+    # Retornar el MÁXIMO
+    max_sem = int(semestres.max())
+    return max_sem
+
+
 def leer_totales_programa(uploaded_files) -> Dict[str, Dict[str, int]]:
     """
     Lee los totales OFICIALES de créditos desde las filas de resumen declaradas
@@ -1739,7 +1776,7 @@ def pagina_inicio(df: pd.DataFrame, totales_oficiales: Optional[Dict] = None):
                 'Nivel':                nivel_detectado,
                 'Asignaturas':          asigs_mostrar,
                 'Asig. Oficial':       asigs_oficial if asigs_oficial else None,
-                'Semestres':            g['Semestre'].dropna().nunique(),
+                'Semestres':            _contar_semestres_validos(g),
                 'Cr. Total':            cr_total,
                 'Cr. Fundamentacion':   cr_fund,
                 'Cr. Profundizacion':   cr_prof,
@@ -1772,7 +1809,7 @@ def pagina_inicio(df: pd.DataFrame, totales_oficiales: Optional[Dict] = None):
                 'Nivel':             nivel_detectado,
                 'Asignaturas':       asigs_mostrar,
                 'Asig. Oficial':     asigs_oficial if asigs_oficial else None,
-                'Semestres':         g['Semestre'].dropna().nunique(),
+                'Semestres':         _contar_semestres_validos(g),
                 'Cr. Total':         cr_total,
                 'B. Institucional': cr_inst,
                 'B. Disciplinar':   cr_disc,

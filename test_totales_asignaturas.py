@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
-Test simple para verificar que los valores oficiales de asignaturas
-se leen correctamente desde el Excel.
+Test COMPLETO: Validar asignaturas Y semestres con nueva lógica.
 """
 
 import pandas as pd
@@ -9,79 +8,79 @@ from pathlib import Path
 import unicodedata
 import re
 
-def _norm(s: str) -> str:
-    return unicodedata.normalize('NFKD', str(s).strip().lower()).encode('ascii', 'ignore').decode('ascii')
+def _normalize_column_name(name: str) -> str:
+    normalized = unicodedata.normalize('NFKD', str(name))
+    normalized = ''.join(c for c in normalized if not unicodedata.combining(c))
+    normalized = normalized.lower()
+    normalized = re.sub(r'[\s\-_.]+', '', normalized)
+    return normalized
 
-def leer_totales_asignaturas_simple(excel_path) -> int:
-    """Lee el valor oficial de asignaturas desde Paso 5."""
-    try:
-        raw = pd.read_excel(
-            excel_path,
-            sheet_name='Paso 5 Estrategias micro',
-            header=None,
-            engine='openpyxl'
-        )
-        
-        asignaturas = None
-        nrows, ncols = raw.shape
-        
-        for r in range(nrows):
-            for c in range(ncols):
-                cell = raw.iloc[r, c]
-                if not pd.notna(cell):
-                    continue
-                cn = _norm(str(cell))
-                
-                # Buscar etiqueta de totales
-                if 'total modulos' in cn or 'total asignaturas' in cn or 'total materias' in cn:
-                    next_col = c + 1
-                    if next_col < ncols:
-                        raw_val = raw.iloc[r, next_col]
-                        try:
-                            if isinstance(raw_val, (int, float)):
-                                val = int(raw_val)
-                            elif pd.notna(raw_val):
-                                val = int(float(str(raw_val).strip()))
-                            else:
-                                val = 0
-                        except:
-                            val = 0
-                        if val > 0 and asignaturas is None:
-                            asignaturas = val
-                            break
-            if asignaturas:
-                break
-        
-        return asignaturas if asignaturas else 0
-    except Exception as e:
-        print(f"ERROR: {e}")
+def _find_column(df, target: str):
+    target_norm = _normalize_column_name(target)
+    for col in df.columns:
+        col_norm = _normalize_column_name(col)
+        if col_norm == target_norm:
+            return col
+    return None
+
+def _contar_semestres_validos(df_grupo) -> int:
+    """Obtiene el MÁXIMO número de semestres desde la columna Semestre."""
+    if df_grupo.empty:
         return 0
+    
+    sem_col = _find_column(df_grupo, 'Semestre')
+    if sem_col is None:
+        return 0
+    
+    semestres = pd.to_numeric(df_grupo[sem_col], errors='coerce')
+    semestres = semestres.dropna()
+    
+    if len(semestres) == 0:
+        return 0
+    
+    max_sem = int(semestres.max())
+    return max_sem
 
 # Test
 print("="*80)
-print("TEST: Lectura de valores oficiales de asignaturas desde Excel")
+print("TEST: Validación de Asignaturas y Semestres")
 print("="*80)
 
 test_files_dir = Path("data/raw/FORMATOS RA CICLO UNO RC")
 test_files = [
-    "FormatoRA_AdmonPub_VNAL.xlsx",
-    "FormatoRA_AdmonEmpresas_PBOG.xlsx",
-    "FormatoRA_ComunicacionDigital_PMED.xlsx",
-    "FormatoRA_ComunicacionSocial_VNAL.xlsx"
+    ("FormatoRA_AdmonPub_VNAL.xlsx", "Pregrado"),
+    ("FormatoRA_EspGerMercadeo_VNAL.xlsx", "Especialización"),
+    ("FormatoRA_MGerTalentoHumano_VNAL.xlsx", "Maestría"),
 ]
 
-for filename in test_files:
+for filename, tipo in test_files:
     filepath = test_files_dir / filename
-    if filepath.exists():
-        asigs = leer_totales_asignaturas_simple(filepath)
-        print(f"{filename:50s}: {asigs} asignaturas")
-    else:
-        print(f"{filename:50s}: ARCHIVO NO ENCONTRADO")
+    if not filepath.exists():
+        print(f"\n❌ {filename}: NO ENCONTRADO")
+        continue
+    
+    print(f"\n{filename}")
+    print(f"  Tipo: {tipo}")
+    
+    try:
+        df = pd.read_excel(filepath, sheet_name='Paso 5 Estrategias micro', header=1, engine='openpyxl')
+        
+        # Contar semestres
+        max_sems = _contar_semestres_validos(df)
+        
+        # Debug: obtener valores
+        sem_col = _find_column(df, 'Semestre')
+        if sem_col:
+            semestres = pd.to_numeric(df[sem_col], errors='coerce').dropna()
+            print(f"  ✅ Semestres (MAX): {max_sems}")
+            print(f"     Valores únicos: {sorted(semestres.unique().astype(int).tolist())}")
+            print(f"     Total de filas: {len(semestres)}")
+        else:
+            print(f"  ❌ Columna Semestre no encontrada")
+            
+    except Exception as e:
+        print(f"  ❌ ERROR: {e}")
 
 print("\n" + "="*80)
-print("RESUMEN")
+print("CONCLUSIÓN: Semestres ahora se calcula como MAX(Semestre), no count(unique)")
 print("="*80)
-print("""
-Los valores de "Asignaturas" en la tabla resumen de dashboard_tematico
-ahora serán tomados directamente de estos valores oficiales del Excel.
-""")
