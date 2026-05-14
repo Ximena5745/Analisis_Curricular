@@ -11,6 +11,7 @@ Calcula indicadores de calidad curricular:
 """
 
 import logging
+import unicodedata
 from typing import Dict, List, Optional, Tuple
 import pandas as pd
 import numpy as np
@@ -161,34 +162,86 @@ class CurricularAnalyzer:
         # Nivel por defecto
         return 2
 
-    def _contar_ra_unicos(self) -> int:
+    def _contar_asignaturas_unicas(self) -> int:
         """
-        Cuenta asignaturas que tienen al menos un RA.
-        Cada RA se cuenta solo una vez por cada asignatura.
+        Cuenta asignaturas únicas del programa desde Paso 5 (Estrategias Micro).
+        
+        Lógica correcta:
+        1. Leer columna "Nombre asignatura o módulo" de Paso 5
+        2. Filtrar valores no nulos
+        3. Excluir filas de totales (valores numéricos)
+        4. Normalizar nombres (acentos, espacios)
+        5. Contar únicos
         
         Returns:
-            int: Número de asignaturas con RA
+            int: Número de asignaturas únicas
         """
-        if self.ra.empty:
+        if self.estrategias_micro.empty:
+            logger.warning("Paso 5 (estrategias_micro) está vacío. Retornando 0.")
             return 0
         
-        # Buscar columnas
-        ra_col = None
-        nombre_col = None
-        for col in self.ra.columns:
-            if 'Resultado de aprendizaje' in col:
-                ra_col = col
-            if 'Competencia' in col and 'desarrollar' in col.lower():
-                nombre_col = col
+        # Función auxiliar para normalizar nombres de columnas
+        def _normalize_column_name(name):
+            """Normaliza nombres de columnas removiendo acentos y espacios."""
+            if pd.isna(name):
+                return ''
+            normalized = unicodedata.normalize('NFKD', str(name))
+            normalized = ''.join(c for c in normalized if not unicodedata.combining(c))
+            return normalized.lower().replace(' ', '').replace('_', '').replace('-', '')
         
-        if ra_col is None or nombre_col is None:
-            return len(self.ra)
+        # Buscar columna de asignaturas en Paso 5
+        nombre_asig_col = None
+        for col in self.estrategias_micro.columns:
+            col_norm = _normalize_column_name(col)
+            if 'nombreasignaturaomodulo' in col_norm:
+                nombre_asig_col = col
+                break
         
-        # Contar asignaturas que tienen al menos un RA
-        df_con_ra = self.ra[self.ra[ra_col].notna()]
-        asignaturas_con_ra = df_con_ra[nombre_col].nunique()
+        if nombre_asig_col is None:
+            logger.warning(f"Columna 'Nombre asignatura o módulo' no encontrada en Paso 5. "
+                           f"Columnas disponibles: {self.estrategias_micro.columns.tolist()}")
+            return 0
         
-        return int(asignaturas_con_ra)
+        # Obtener valores no nulos
+        all_vals = self.estrategias_micro[nombre_asig_col].dropna()
+        
+        if len(all_vals) == 0:
+            logger.warning("No hay valores en columna de asignaturas")
+            return 0
+        
+        # Clasificar: asignaturas vs filas de totales (valores numéricos)
+        asignaturas = []
+        for v in all_vals:
+            v_str = str(v).strip()
+            # Excluir valores que son solo números (filas de totales)
+            try:
+                float(v_str)
+                # Es un número, se excluye
+                continue
+            except ValueError:
+                # No es número, es asignatura válida
+                asignaturas.append(v)
+        
+        if len(asignaturas) == 0:
+            logger.warning("No hay asignaturas válidas después de filtrar totales")
+            return 0
+        
+        # Normalizar nombres (aplicar misma lógica que test_generar_excel.py)
+        def _normalize_value(value):
+            """Normaliza nombres de asignaturas para comparación."""
+            normalized = unicodedata.normalize('NFKD', str(value))
+            normalized = ''.join(c for c in normalized if not unicodedata.combining(c))
+            normalized = normalized.lower()
+            normalized = ''.join(c for c in normalized if c.isalnum())
+            return normalized
+        
+        asigs_normalizadas = pd.Series(asignaturas).apply(_normalize_value)
+        asignaturas_unicas = asigs_normalizadas.nunique()
+        
+        logger.info(f"Conteo de asignaturas: total={len(all_vals)}, "
+                   f"limpios={len(asignaturas)}, unicos={asignaturas_unicas}")
+        
+        return int(asignaturas_unicas)
 
     def calcular_complejidad_cognitiva(self) -> Dict[str, float]:
         """
@@ -490,7 +543,7 @@ class CurricularAnalyzer:
             'completitud': self.calcular_completitud(),
             'resumen': {
                 'total_competencias': len(self.competencias),
-                'total_ra': self._contar_ra_unicos(),
+                'total_ra': self._contar_asignaturas_unicas(),
                 'total_estrategias_meso': len(self.estrategias_meso),
                 'total_estrategias_micro': len(self.estrategias_micro)
             }
