@@ -1472,9 +1472,9 @@ def leer_totales_programa(uploaded_files) -> Dict[str, Dict[str, int]]:
                         pt['disciplinar'] = val
                     elif 'bloque elec' in cn:
                         pt['electivo'] = val
-                    elif 'componente fund' in cn or 'fundamentacion' in cn:
+elif 'componente fund' in cn or 'fundamentacion' in cn:
                         pt['fundamentacion'] = val
-elif 'componente prof' in cn or 'profundizacion' in cn:
+                    elif 'componente prof' in cn or 'profundizacion' in cn:
                         pt['profundizacion'] = val
 
                 for clave in claves_programa:
