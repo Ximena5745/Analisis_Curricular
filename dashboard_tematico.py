@@ -1446,19 +1446,61 @@ def leer_totales_programa(uploaded_files) -> Dict[str, Dict[str, int]]:
                     cn = _norm(str(cell))
                     
                     # Buscar "Total modulos del programa" o "Total Asignaturas del programa" o "Total materias"
-                    if ('total modulos del programa' in cn or 
-                        'total modulos' in cn or
-                        'total asignaturas del programa' in cn or 
-                        'total materias' in cn and 'asignatura' in cn):
-                        next_col = c + 1 if c + 1 < ncols else c
-                        raw_val = raw.iloc[r, next_col] if next_col < ncols else None
-                        try:
-                            val = int(float(raw_val)) if pd.notna(raw_val) and str(raw_val).strip() else 0
-                        except:
-                            val = 0
-                        if val > 0 and 'asignaturas' not in pt:
-                            pt['asignaturas'] = val
-                        continue
+                    # Prioridad: 1) Total modulos, 2) Total materias, 3) Total asignaturas del programa
+                    if 'asignaturas' not in pt:
+                        if ('total modulos del programa' in cn or 
+                            'total modulos' in cn):
+                            next_col = c + 1
+                            if next_col < ncols:
+                                raw_val = raw.iloc[r, next_col]
+                                try:
+                                    if isinstance(raw_val, (int, float)):
+                                        val = int(raw_val)
+                                    elif pd.notna(raw_val):
+                                        val = int(float(str(raw_val).strip()))
+                                    else:
+                                        val = 0
+                                except:
+                                    val = 0
+                                if val > 0:
+                                    pt['asignaturas'] = val
+                            continue
+                    
+                    if 'asignaturas' not in pt:
+                        if 'total materias' in cn and 'asignatura' in cn:
+                            next_col = c + 1
+                            if next_col < ncols:
+                                raw_val = raw.iloc[r, next_col]
+                                try:
+                                    if isinstance(raw_val, (int, float)):
+                                        val = int(raw_val)
+                                    elif pd.notna(raw_val):
+                                        val = int(float(str(raw_val).strip()))
+                                    else:
+                                        val = 0
+                                except:
+                                    val = 0
+                                if val > 0:
+                                    pt['asignaturas'] = val
+                            continue
+                    
+                    if 'asignaturas' not in pt:
+                        if 'total asignaturas del programa' in cn:
+                            next_col = c + 1
+                            if next_col < ncols:
+                                raw_val = raw.iloc[r, next_col]
+                                try:
+                                    if isinstance(raw_val, (int, float)):
+                                        val = int(raw_val)
+                                    elif pd.notna(raw_val):
+                                        val = int(float(str(raw_val).strip()))
+                                    else:
+                                        val = 0
+                                except:
+                                    val = 0
+                                if val > 0:
+                                    pt['asignaturas'] = val
+                            continue
                     
                     # Leer el crédito de la misma fila en la columna de Créditos
                     raw_val = (raw.iloc[r, cred_col_idx]
@@ -1680,14 +1722,31 @@ def pagina_inicio(df: pd.DataFrame, totales_oficiales: Optional[Dict] = None):
         nivel_detectado = nivel_col if nivel_col else _detectar_nivel(g)
 
 # Totales oficiales del Excel (footer rows)
-        of = (totales_oficiales or {}).get(prog, {})
-        if not of:
-            for k in (totales_oficiales or {}).keys():
+        # Buscar en totales_oficiales por coincidencia exacta o parcial del nombre
+        of = None
+        totales_keys = list((totales_oficiales or {}).keys())
+        
+        # Primero buscar coincidencia exacta
+        if prog in totales_keys:
+            of = totales_oficiales[prog]
+        else:
+            # Buscar coincidencia parcial
+            for k in totales_keys:
                 if prog.lower() in k.lower() or k.lower() in prog.lower():
                     of = totales_oficiales[k]
                     break
-        cr_total = of.get('total', 0) if of else 0
-        asigs_oficial = of.get('asignaturas', 0) if of else 0
+                # También verificar coincidencia con palabras clave
+                prog_words = prog.lower().split()
+                k_words = k.lower().split()
+                if any(w in k_words for w in prog_words if len(w) > 3):
+                    of = totales_oficiales[k]
+                    break
+        
+        if not of:
+            of = {}
+        
+        cr_total = int(of.get('total', 0)) if of else 0
+        asigs_oficial = int(of.get('asignaturas', 0)) if of else 0
 
         if nivel_detectado == 'Posgrado':
             # ── Posgrado: usar componentes C.* ──────────────────────────────
@@ -1744,9 +1803,22 @@ def pagina_inicio(df: pd.DataFrame, totales_oficiales: Optional[Dict] = None):
 
             asig_col = _find_column(g, 'Nombre asignatura o modulo')
             if asig_col:
-                asigs_sin_nulos = g[asig_col].dropna()
-                asigs_no_total = asigs_sin_nulos[~asigs_sin_nulos.apply(lambda x: str(x).replace('.','').replace('-','').isdigit())]
-                asigs_normalizadas = asigs_no_total.apply(_normalize_value)
+                # Obtener todos los valores no nulos
+                all_vals = g[asig_col].dropna()
+                # Filtrar: excluir valores que sean números puros (filas de totales)
+                asigs_limpios = []
+                for v in all_vals:
+                    v_str = str(v).strip()
+                    # Verificar si es un número (con o sin decimales)
+                    try:
+                        float(v_str)
+                        # Es número - excluirlo (es fila de totales)
+                        continue
+                    except:
+                        # No es número, es asignatura real
+                        asigs_limpios.append(v)
+                # Normalizar y contar únicos
+                asigs_normalizadas = pd.Series(asigs_limpios).apply(_normalize_value)
                 asigs_calc = asigs_normalizadas.nunique()
             else:
                 asigs_calc = 0
@@ -1773,7 +1845,7 @@ def pagina_inicio(df: pd.DataFrame, totales_oficiales: Optional[Dict] = None):
 
     # Convertir columnas numéricas a int (llenar NaNs con 0 primero)
     for col in resumen.columns:
-        if col not in ['Programa', 'Modalidad', 'Sede', 'Nivel', 'Asig. Oficial']:
+        if col not in ['Programa', 'Modalidad', 'Sede', 'Nivel']:
             resumen[col] = resumen[col].fillna(0).astype(int)
 
     # Reordenar columnas: columnas comunes primero, luego las específicas por nivel

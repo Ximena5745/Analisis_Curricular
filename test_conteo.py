@@ -96,10 +96,9 @@ def analizar_archivo(filepath):
 archivos = glob('data/raw/FORMATOS RA CICLO UNO RC/*.xlsx')
 print(f"Se encontraron {len(archivos)} archivos")
 
-# Analizar solo los archivos con problemas (VNAL)
-archivos_problema = [a for a in archivos if 'VNAL' in a]
+# Analizar solo los primeros 10 archivos
 resultados = []
-for archivo in archivos_problema[:3]:
+for archivo in archivos[:10]:
     resultado = analizar_archivo(archivo)
     if resultado:
         resultados.append(resultado)
