@@ -1913,11 +1913,11 @@ def pagina_inicio(df: pd.DataFrame, totales_oficiales: Optional[Dict] = None):
         "**Diferencia = 0** coincide | **≠ 0** revisar el Excel."
     )
 
-    debug_keys = [k for k in st.session_state.keys() if k.startswith('debug_')]
-    if debug_keys:
-        with st.expander("DEBUG: Conteo de Asignaturas"):
-            for k in sorted(debug_keys):
-                st.code(st.session_state[k])
+    # debug_keys = [k for k in st.session_state.keys() if k.startswith('debug_')]
+    # if debug_keys:
+    #     with st.expander("DEBUG: Conteo de Asignaturas"):
+    #         for k in sorted(debug_keys):
+    #             st.code(st.session_state[k])
 
 
 def pagina_cobertura(df: pd.DataFrame, resultados: Dict):
