@@ -1679,7 +1679,8 @@ def pagina_inicio(df: pd.DataFrame, totales_oficiales: Optional[Dict] = None):
         grupos_resumen.append('Nivel')
 
     asig_col_global = _find_column(df, 'Nombre asignatura o modulo')
-    st.session_state['debug_df_total_rows'] = f"Total filas en df consolidado: {len(df)}, valores en columna '{asig_col_global}': {df[asig_col_global].dropna().len() if asig_col_global else 'N/A'}"
+    valores_col = len(df[asig_col_global].dropna()) if asig_col_global else 0
+    st.session_state['debug_df_total_rows'] = f"Total filas en df consolidado: {len(df)}, valores en columna '{asig_col_global}': {valores_col}"
 
     for key, g in df.groupby(grupos_resumen):
         prog, modalidad, sede = key[:3]
