@@ -1742,7 +1742,7 @@ def pagina_inicio(df: pd.DataFrame, totales_oficiales: Optional[Dict] = None):
                         asigs_limpios.append(v)
                 asigs_normalizadas = pd.Series(asigs_limpios).apply(_normalize_value)
                 asigs_calc = asigs_normalizadas.nunique()
-                st.session_state[f'debug_asigs_{prog}_{modalidad}_{sede}'] = f"{prog}: total={len(all_vals)}, limpios={len(asigs_limpios)}, unicos={asigs_calc}, primer_valor={all_vals.iloc[0] if len(all_vals) > 0 else 'N/A'}, ultimo_valor={all_vals.iloc[-1] if len(all_vals) > 0 else 'N/A'}"
+                st.session_state[f'debug_asigs_{prog}_{modalidad}_{sede}_{nivel_detectado}'] = f"{prog} | {modalidad} | {sede} | {nivel_detectado}: total={len(all_vals)}, limpios={len(asigs_limpios)}, unicos={asigs_calc}, oficial={asigs_oficial}"
             else:
                 asigs_calc = 0
             diferencia_asigs = asigs_calc - asigs_oficial if asigs_oficial else 0
@@ -1789,7 +1789,7 @@ def pagina_inicio(df: pd.DataFrame, totales_oficiales: Optional[Dict] = None):
                         asigs_limpios.append(v)
                 asigs_normalizadas = pd.Series(asigs_limpios).apply(_normalize_value)
                 asigs_calc = asigs_normalizadas.nunique()
-                st.session_state[f'debug_asigs_{prog}_{modalidad}_{sede}'] = f"{prog}: total={len(all_vals)}, limpios={len(asigs_limpios)}, unicos={asigs_calc}, primer_valor={all_vals.iloc[0] if len(all_vals) > 0 else 'N/A'}, ultimo_valor={all_vals.iloc[-1] if len(all_vals) > 0 else 'N/A'}"
+                st.session_state[f'debug_asigs_{prog}_{modalidad}_{sede}_{nivel_detectado}'] = f"{prog} | {modalidad} | {sede} | {nivel_detectado}: total={len(all_vals)}, limpios={len(asigs_limpios)}, unicos={asigs_calc}, oficial={asigs_oficial}"
             else:
                 asigs_calc = 0
             diferencia_asigs = asigs_calc - asigs_oficial if asigs_oficial else 0
