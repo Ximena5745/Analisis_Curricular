@@ -1445,11 +1445,12 @@ def leer_totales_programa(uploaded_files) -> Dict[str, Dict[str, int]]:
                         continue
                     cn = _norm(str(cell))
                     
-                    # Buscar "Total modulos del programa" o "Total Asignaturas del programa" o "Total materias"
-                    # Prioridad: 1) Total modulos, 2) Total materias, 3) Total asignaturas del programa
+                    # Buscar asignaturas: usar misma lógica que test_generar_excel.py
+                    # Prioridad: 1) Total modulos, 2) Total asignaturas del programa, 3) Total materias
                     if 'asignaturas' not in pt:
-                        if ('total modulos del programa' in cn or 
-                            'total modulos' in cn):
+                        if ('total modulos' in cn or 
+                            'total asignaturas del programa' in cn or 
+                            ('total materias' in cn and 'asignatura' in cn)):
                             next_col = c + 1
                             if next_col < ncols:
                                 raw_val = raw.iloc[r, next_col]
@@ -1464,43 +1465,6 @@ def leer_totales_programa(uploaded_files) -> Dict[str, Dict[str, int]]:
                                     val = 0
                                 if val > 0:
                                     pt['asignaturas'] = val
-                            continue
-                    
-                    if 'asignaturas' not in pt:
-                        if 'total materias' in cn and 'asignatura' in cn:
-                            next_col = c + 1
-                            if next_col < ncols:
-                                raw_val = raw.iloc[r, next_col]
-                                try:
-                                    if isinstance(raw_val, (int, float)):
-                                        val = int(raw_val)
-                                    elif pd.notna(raw_val):
-                                        val = int(float(str(raw_val).strip()))
-                                    else:
-                                        val = 0
-                                except:
-                                    val = 0
-                                if val > 0:
-                                    pt['asignaturas'] = val
-                            continue
-                    
-                    if 'asignaturas' not in pt:
-                        if 'total asignaturas del programa' in cn:
-                            next_col = c + 1
-                            if next_col < ncols:
-                                raw_val = raw.iloc[r, next_col]
-                                try:
-                                    if isinstance(raw_val, (int, float)):
-                                        val = int(raw_val)
-                                    elif pd.notna(raw_val):
-                                        val = int(float(str(raw_val).strip()))
-                                    else:
-                                        val = 0
-                                except:
-                                    val = 0
-                                if val > 0:
-                                    pt['asignaturas'] = val
-                            continue
                     
                     # Leer el crédito de la misma fila en la columna de Créditos
                     raw_val = (raw.iloc[r, cred_col_idx]
