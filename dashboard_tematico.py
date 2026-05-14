@@ -1678,8 +1678,11 @@ def pagina_inicio(df: pd.DataFrame, totales_oficiales: Optional[Dict] = None):
     if 'Nivel' in df.columns:
         grupos_resumen.append('Nivel')
 
+    st.session_state['debug_df_total_rows'] = f"Total filas en df consolidado: {len(df)}"
+
     for key, g in df.groupby(grupos_resumen):
         prog, modalidad, sede = key[:3]
+        st.session_state[f'debug_grupo_{prog}_{modalidad}_{sede}_filas'] = f"Grupo {prog}: {len(g)} filas"
         nivel_col = key[3] if len(key) == 4 else None
 
         # Detectar nivel automáticamente según columnas presentes en los datos
@@ -1901,11 +1904,15 @@ def pagina_inicio(df: pd.DataFrame, totales_oficiales: Optional[Dict] = None):
         "**Diferencia = 0** coincide | **≠ 0** revisar el Excel."
     )
 
-    debug_keys = [k for k in st.session_state.keys() if k.startswith('debug_asigs_')]
+    debug_keys = [k for k in st.session_state.keys() if k.startswith('debug_')]
     if debug_keys:
         with st.expander("DEBUG: Conteo de Asignaturas"):
+            df_total = st.session_state.get('debug_df_total_rows', 'N/A')
+            st.code(df_total)
+            st.markdown("---")
             for k in sorted(debug_keys):
-                st.code(st.session_state[k])
+                if k != 'debug_df_total_rows':
+                    st.code(st.session_state[k])
 
 
 def pagina_cobertura(df: pd.DataFrame, resultados: Dict):
