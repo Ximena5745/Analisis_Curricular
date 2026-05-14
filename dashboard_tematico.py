@@ -887,7 +887,7 @@ def procesar_archivos(uploaded_files) -> pd.DataFrame:
                 engine='openpyxl'
             )
             if df is not None and not df.empty:
-                # df = normalizar_columnas(df)  # Quitado para coincidir con test
+                df = normalizar_columnas(df)
                 nivel_col = _find_column(df, 'Nivel')
                 if nivel_col is not None:
                     df['Nivel'] = (
