@@ -1729,29 +1729,15 @@ def pagina_inicio(df: pd.DataFrame, totales_oficiales: Optional[Dict] = None):
             suma_componentes = cr_fund + cr_prof
             diferencia = cr_total - suma_componentes
 
-            asig_col = _find_column(g, 'Nombre asignatura o modulo')
-            if asig_col:
-                all_vals = g[asig_col].dropna()
-                asigs_limpios = []
-                for v in all_vals:
-                    v_str = str(v).strip()
-                    try:
-                        float(v_str)
-                        continue
-                    except:
-                        asigs_limpios.append(v)
-                asigs_normalizadas = pd.Series(asigs_limpios).apply(_normalize_value)
-                asigs_calc = asigs_normalizadas.nunique()
-                st.session_state[f'debug_asigs_{prog}_{modalidad}_{sede}_{nivel_detectado}'] = f"{prog} | {modalidad} | {sede} | {nivel_detectado}: total={len(all_vals)}, limpios={len(asigs_limpios)}, unicos={asigs_calc}, oficial={asigs_oficial}"
-            else:
-                asigs_calc = 0
-            diferencia_asigs = asigs_calc - asigs_oficial if asigs_oficial else 0
+            # Usar asignaturas oficiales del Excel (ya leído desde totales_programa)
+            # NO recalcular aquí porque el dataframe está filtrado por Tipo de Saber
+            asigs_mostrar = asigs_oficial if asigs_oficial else 0
             row = {
                 'Programa':             prog,
                 'Modalidad':            modalidad,
                 'Sede':                 sede,
                 'Nivel':                nivel_detectado,
-                'Asignaturas':          asigs_calc,
+                'Asignaturas':          asigs_mostrar,
                 'Asig. Oficial':       asigs_oficial if asigs_oficial else None,
                 'Semestres':            g['Semestre'].dropna().nunique(),
                 'Cr. Total':            cr_total,
@@ -1776,29 +1762,15 @@ def pagina_inicio(df: pd.DataFrame, totales_oficiales: Optional[Dict] = None):
             suma_bloques = cr_inst + cr_disc + cr_elec
             diferencia   = cr_total - suma_bloques
 
-            asig_col = _find_column(g, 'Nombre asignatura o modulo')
-            if asig_col:
-                all_vals = g[asig_col].dropna()
-                asigs_limpios = []
-                for v in all_vals:
-                    v_str = str(v).strip()
-                    try:
-                        float(v_str)
-                        continue
-                    except:
-                        asigs_limpios.append(v)
-                asigs_normalizadas = pd.Series(asigs_limpios).apply(_normalize_value)
-                asigs_calc = asigs_normalizadas.nunique()
-                st.session_state[f'debug_asigs_{prog}_{modalidad}_{sede}_{nivel_detectado}'] = f"{prog} | {modalidad} | {sede} | {nivel_detectado}: total={len(all_vals)}, limpios={len(asigs_limpios)}, unicos={asigs_calc}, oficial={asigs_oficial}"
-            else:
-                asigs_calc = 0
-            diferencia_asigs = asigs_calc - asigs_oficial if asigs_oficial else 0
+            # Usar asignaturas oficiales del Excel (ya leído desde totales_programa)
+            # NO recalcular aquí porque el dataframe está filtrado por Tipo de Saber
+            asigs_mostrar = asigs_oficial if asigs_oficial else 0
             row = {
                 'Programa':          prog,
                 'Modalidad':         modalidad,
                 'Sede':              sede,
                 'Nivel':             nivel_detectado,
-                'Asignaturas':       asigs_calc,
+                'Asignaturas':       asigs_mostrar,
                 'Asig. Oficial':     asigs_oficial if asigs_oficial else None,
                 'Semestres':         g['Semestre'].dropna().nunique(),
                 'Cr. Total':         cr_total,
