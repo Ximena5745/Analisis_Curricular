@@ -3694,6 +3694,86 @@ def pagina_familias_curriculares(df: pd.DataFrame, resultados_nlp: Dict):
                 st.markdown(f"- {m}")
 
     st.markdown("---")
+    st.subheader("Matriz de Familias Curriculares")
+    st.caption(
+        "Filas = programas (agrupados por cluster). "
+        "Columnas = términos más distintivos de cada familia. "
+        "El color indica peso TF-IDF."
+    )
+
+    n_terms_per_cluster = 8
+    feature_names = vectorizer.get_feature_names_out()
+    top_terms_by_cluster = {}
+    for c in sorted(set(labels)):
+        mask = labels == c
+        cluster_tfidf = tfidf.toarray()[mask]
+        mean_weights = cluster_tfidf.mean(axis=0)
+        top_indices = mean_weights.argsort()[::-1][:n_terms_per_cluster]
+        top_terms_by_cluster[c] = [feature_names[i] for i in top_indices]
+
+    all_top_terms = []
+    for c in sorted(top_terms_by_cluster):
+        all_top_terms.extend(top_terms_by_cluster[c])
+    all_top_terms = list(dict.fromkeys(all_top_terms))
+
+    matrix_data = []
+    for prog, label in zip(prog_names, labels):
+        row_idx = prog_names.index(prog)
+        tfidf_row = tfidf.toarray()[row_idx]
+        feat_idx = [list(feature_names).index(t) for t in all_top_terms if t in feature_names]
+        row_vals = [tfidf_row[i] for i in feat_idx]
+        matrix_data.append(row_vals)
+
+    idx_labels = [f"[C{label}] {prog}" for prog, label in zip(prog_names, labels)]
+    heatmap_df = pd.DataFrame(
+        matrix_data,
+        index=idx_labels,
+        columns=all_top_terms
+    )
+    heatmap_df.index.name = 'Programa'
+
+    fig_heat = px.imshow(
+        heatmap_df,
+        color_continuous_scale='Blues',
+        aspect='auto',
+        labels=dict(x='Término', y='Programa', color='TF-IDF')
+    )
+    fig_heat.update_layout(
+        height=max(300, len(prog_names) * 25),
+        margin=dict(l=160, r=20, t=20, b=100)
+    )
+
+    st.plotly_chart(fig_heat, use_container_width=True)
+
+    st.markdown("---")
+    st.subheader("Matriz Programas × Clusters")
+    crosstab = pd.crosstab(
+        pd.Series(prog_names, name='Programa'),
+        pd.Series(labels, name='Cluster')
+    )
+    crosstab.index = [f"[C{lbl}] {p}" for p, lbl in zip(prog_names, labels)]
+    fig_cross = px.imshow(
+        crosstab,
+        color_continuous_scale='Blues',
+        aspect='auto',
+        labels=dict(x='Cluster', y='Programa', color='Pertenencia')
+    )
+    fig_cross.update_layout(
+        height=max(200, len(prog_names) * 22),
+        margin=dict(l=160, r=20, t=20, b=40)
+    )
+    st.plotly_chart(fig_cross, use_container_width=True)
+
+    st.markdown("---")
+    st.subheader("Firma de cada Familia (términos distintivos por cluster)")
+    cols = st.columns(n_clusters)
+    for c in sorted(set(labels)):
+        with cols[c % n_clusters]:
+            st.markdown(f"**Cluster {c}** ({int((labels == c).sum())} prog.)")
+            for t in top_terms_by_cluster[c]:
+                st.markdown(f"- `{t}`")
+
+    st.markdown("---")
     st.subheader("Silhouette Score")
     try:
         from sklearn.metrics import silhouette_score
