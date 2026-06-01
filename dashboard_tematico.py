@@ -22,7 +22,7 @@ from typing import Dict, Optional
 from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.cluster import AgglomerativeClustering
-from src.nucleos_cleaner import filtrar_nucleos_dataframe
+from src.nucleos_cleaner import filtrar_nucleos_dataframe, limpiar_nucleo, es_nucleo_valido
 from scipy.stats import entropy
 import warnings
 warnings.filterwarnings('ignore')
@@ -1940,8 +1940,8 @@ def pagina_cobertura(df: pd.DataFrame, resultados: Dict):
         programa = row['Programa']
         nucleos_raw = str(row.get('Nucleos tematicos', ''))
         if nucleos_raw and nucleos_raw != 'nan':
-            for nuc in [_limpiar_nucleo(n.strip()) for n in _split_nucleos(nucleos_raw)
-                        if _es_nucleo_valido(n.strip())]:
+            for nuc in [limpiar_nucleo(n.strip()) for n in _split_nucleos(nucleos_raw)
+                        if es_nucleo_valido(n.strip())[0]]:
                 if nuc in top_20_fil and nuc not in excluidos:
                     matriz.loc[programa, nuc] += 1
 
@@ -2074,9 +2074,9 @@ def pagina_cobertura(df: pd.DataFrame, resultados: Dict):
         nucleos_raw = str(row.get('Nucleos tematicos', ''))
         if nucleos_raw and nucleos_raw != 'nan':
             nucleos_prog.extend([
-                _limpiar_nucleo(n.strip())
+                limpiar_nucleo(n.strip())
                 for n in _split_nucleos(nucleos_raw)
-                if _es_nucleo_valido(n.strip()) and _limpiar_nucleo(n.strip()) not in excluidos
+                if es_nucleo_valido(n.strip())[0] and limpiar_nucleo(n.strip()) not in excluidos
             ])
 
     if nucleos_prog:
@@ -2992,7 +2992,7 @@ def pagina_resumen_ejecutivo(df: pd.DataFrame, tendencias: Dict) -> None:
     for _, row in df.iterrows():
         raw = str(row.get('Nucleos tematicos', ''))
         if raw and raw not in ('nan', ''):
-            nucleos_list.extend([_limpiar_nucleo(n.strip()) for n in _split_nucleos(raw) if _es_nucleo_valido(n.strip())])
+            nucleos_list.extend([limpiar_nucleo(n.strip()) for n in _split_nucleos(raw) if es_nucleo_valido(n.strip())[0]])
     n_unicos = len(set(nucleos_list))
     if n_unicos > total_asigs * 2:
         fortalezas.append(f"Alta diversidad temática: **{n_unicos}** núcleos únicos para {total_asigs} asignaturas")
@@ -3416,9 +3416,9 @@ def pagina_bloom_integracion(df: pd.DataFrame, taxonomias_externas: Dict | None 
             raw_nuc = str(row.get('Nucleos tematicos', '')).strip()
             if raw_nuc and raw_nuc not in ('nan', ''):
                 nset = {
-                    unicodedata.normalize('NFKD', _limpiar_nucleo(n.strip()).lower()).encode('ascii', 'ignore').decode('ascii')
+                    unicodedata.normalize('NFKD', limpiar_nucleo(n.strip()).lower()).encode('ascii', 'ignore').decode('ascii')
                     for n in _split_nucleos(raw_nuc)
-                    if _es_nucleo_valido(n.strip())
+                    if es_nucleo_valido(n.strip())[0]
                 }
             else:
                 nset = set()
