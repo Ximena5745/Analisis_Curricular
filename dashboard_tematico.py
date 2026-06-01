@@ -23,6 +23,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.cluster import AgglomerativeClustering
 from src.nucleos_cleaner import filtrar_nucleos_dataframe, limpiar_nucleo, es_nucleo_valido
+from src.perfil_coverage_analyzer import analizar_cobertura_perfil_completa
 from scipy.stats import entropy
 import warnings
 warnings.filterwarnings('ignore')
@@ -3609,6 +3610,151 @@ def pagina_bloom_integracion(df: pd.DataFrame, taxonomias_externas: Dict | None 
                             st.markdown(f"- **{s}** — Programa: {prog_asig.get(s, 'N/A')}")
 
 
+def _cargar_cobertura_perfil_por_programa(uploaded_files) -> Dict:
+    """Lee archivos y ejecuta analisis de cobertura perfil por programa."""
+    import hashlib
+
+    cache_key = 'cobertura_perfil_cache'
+    files_sig = hashlib.md5(
+        ','.join(sorted(f.name for f in uploaded_files)).encode()
+    ).hexdigest()
+
+    if cache_key in st.session_state and st.session_state.get(cache_key + '_sig') == files_sig:
+        return st.session_state[cache_key]
+
+    resultados = {}
+    for f in uploaded_files:
+        try:
+            nombre = f.name
+            programa = (
+                nombre.replace("FormatoRA_", "").replace("FormatoRA-", "")
+                .replace("_PBOG", "").replace("_VNAL", "").replace("_PMED", "")
+                .replace("_HBOG", "").replace("_HMED", "").replace("_HVAL", "")
+                .replace(".xlsx", "").replace(".xls", "").strip()
+            )
+
+            f.seek(0)
+            df_perfil = pd.read_excel(f, sheet_name='Paso1 Analisis perfil egreso', header=1, engine='openpyxl')
+
+            f.seek(0)
+            try:
+                df_ra = pd.read_excel(f, sheet_name='Paso 3 Redacción RA', header=1, engine='openpyxl')
+            except Exception:
+                df_ra = pd.DataFrame()
+
+            f.seek(0)
+            df_micro = pd.read_excel(f, sheet_name='Paso 5 Estrategias micro', header=1, engine='openpyxl')
+
+            f.seek(0)
+
+            if df_perfil.empty:
+                continue
+
+            resultado = analizar_cobertura_perfil_completa(df_perfil, df_micro, df_ra)
+            resultado['programa'] = programa
+            resultado['archivo'] = nombre
+            resultados[programa] = resultado
+        except Exception as e:
+            continue
+
+    st.session_state[cache_key] = resultados
+    st.session_state[cache_key + '_sig'] = files_sig
+    return resultados
+
+
+def pagina_cobertura_perfil(df_micro: pd.DataFrame):
+    """Evalua si las asignaturas cubren las actitudes/aptitudes del perfil de egreso."""
+    st.title("Cobertura de Perfil de Egreso")
+    st.markdown("---")
+    st.info(
+        "**¿Qué mide esta sección?** Compara cada elemento del perfil de egreso "
+        "(Saber, SaberHacer, SaberSer, Áreas profesionales, Tareas profesionales, "
+        "Valor agregado) contra el contenido curricular usando TF-IDF. "
+        "Un elemento se clasifica **CUBIERTO** si su similitud máxima ≥ 0.35."
+    )
+
+    uploaded_files = st.session_state.get('archivos_subidos', [])
+    if not uploaded_files:
+        st.warning("No hay archivos cargados. Sube archivos desde la página de Inicio.")
+        return
+
+    with st.spinner("Analizando cobertura del perfil de egreso por programa..."):
+        resultados = _cargar_cobertura_perfil_por_programa(uploaded_files)
+
+    if not resultados:
+        st.warning("No se pudieron analizar perfiles. Verifica que los archivos tengan la hoja 'Paso1 Analisis perfil egreso'.")
+        return
+
+    # ── Resumen global ──
+    progs_con_perfil = [r for r in resultados.values() if r['total_elementos'] > 0]
+    progs_sin_perfil = [r for r in resultados.values() if r['total_elementos'] == 0]
+
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("Programas con perfil", len(progs_con_perfil))
+    col2.metric("Programas sin perfil", len(progs_sin_perfil))
+    if progs_con_perfil:
+        avg_cob = np.mean([r['cobertura_global'] for r in progs_con_perfil])
+        total_brechas = sum(r['num_brechas'] for r in progs_con_perfil)
+        col3.metric("Cobertura global promedio", f"{avg_cob:.1f}%")
+        col4.metric("Brechas totales", total_brechas)
+
+    st.markdown("---")
+
+    # ── Resultados por programa ──
+    st.subheader("Resultados por Programa")
+    ordenados = sorted(progs_con_perfil, key=lambda r: r['cobertura_global'])
+
+    for r in ordenados:
+        color = "🟢" if r['cobertura_global'] >= 60 else ("🟡" if r['cobertura_global'] >= 35 else "🔴")
+        with st.expander(
+            f"{color} **{r['programa']}** — "
+            f"Cobertura: {r['cobertura_global']}% | "
+            f"{r['total_elementos'] - r['num_brechas']}/{r['total_elementos']} cubiertos | "
+            f"{r['num_brechas']} brecha(s)"
+        ):
+            col_tab, col_rec = st.columns([2, 1])
+            with col_tab:
+                df_elem = pd.DataFrame(r['elementos'])
+                df_elem['score'] = df_elem['score'].apply(lambda x: f"{x:.2%}")
+                df_elem.columns = ['Campo', 'Elemento', 'Score TF-IDF', 'Clasificación']
+                st.dataframe(df_elem, use_container_width=True, hide_index=True)
+
+            with col_rec:
+                if r['recomendaciones']:
+                    st.markdown("**Recomendaciones:**")
+                    for rec in r['recomendaciones']:
+                        st.markdown(f"- {rec}")
+                st.markdown(f"**Corpus:** {r.get('corpus_size', 0)} documentos")
+
+    st.markdown("---")
+
+    # ── Grafico comparativo ──
+    if len(ordenados) >= 2:
+        st.subheader("Comparación de cobertura entre programas")
+        df_chart = pd.DataFrame([
+            {'Programa': r['programa'], 'Cobertura Global (%)': r['cobertura_global'],
+             'Cubiertos': r['total_elementos'] - r['num_brechas'],
+             'Brechas': r['num_brechas']}
+            for r in ordenados
+        ])
+        fig = px.bar(
+            df_chart, x='Programa', y='Cobertura Global (%)',
+            color='Cobertura Global (%)', color_continuous_scale='RdYlGn',
+            text='Cobertura Global (%)', range_color=[0, 100]
+        )
+        fig.update_traces(texttemplate='%{text:.1f}%', textposition='outside')
+        fig.update_layout(height=400, xaxis_tickangle=45)
+        st.plotly_chart(fig, use_container_width=True)
+
+        fig2 = px.bar(
+            df_chart, x='Programa', y=['Cubiertos', 'Brechas'],
+            barmode='group', title='Elementos cubiertos vs. brechas por programa',
+            color_discrete_map={'Cubiertos': '#1fb2de', 'Brechas': '#ec0677'}
+        )
+        fig2.update_layout(height=400, xaxis_tickangle=45)
+        st.plotly_chart(fig2, use_container_width=True)
+
+
 def pagina_familias_curriculares(df: pd.DataFrame, resultados_nlp: Dict):
     """Muestra asignaturas compartidas entre programas (familias curriculares)."""
     st.title("Familias Curriculares")
@@ -3880,6 +4026,7 @@ def main():
     PAGINAS = {
         "Inicio":               ("house",          "Resumen general y métricas clave del currículo"),
         "Tipo de Saber":        ("bar-chart",       "Saber, SaberHacer y SaberSer por semestre y asignatura"),
+        "Cobertura de Perfil":  ("person-check",    "Cobertura del perfil de egreso vs. currículo"),
         "Cobertura Temática":   ("map",             "Núcleos temáticos: diversidad y densidad por programa"),
         "Tendencias Globales":  ("graph-up-arrow",  "Alineación con IA, Sostenibilidad, Innovación, etc."),
         "Minería de Texto":     ("search",          "Términos clave, similitud y frases frecuentes"),
@@ -4416,6 +4563,9 @@ def main():
 
     elif pagina == "Tipo de Saber":
         pagina_tipo_saber(df_filtered)
+
+    elif pagina == "Cobertura de Perfil":
+        pagina_cobertura_perfil(df_filtered)
 
     elif pagina == "Cobertura Temática":
         with st.spinner("Analizando cobertura temática..."):
