@@ -343,10 +343,12 @@ NUCLEOS_CONFIG = {
 # Umbral de similitud TF-IDF para clasificar cobertura
 UMBRAL_COBERTURA = 0.35
 
-# Columnas del perfil de egreso que se analizan
+# Columnas del perfil de egreso que se analizan (todos los campos del perfil)
 COLUMNAS_PERFIL = [
+    'Perfil profesional', 'Perfil ocupacional',
     'Saber', 'SaberHacer', 'SaberSer',
-    'Áreas profesionales', 'Tareas profesionales', 'Valor agregado'
+    'Áreas profesionales', 'Tareas profesionales',
+    'Poblaciones actuación', 'Valor agregado'
 ]
 
 # ============================================================================

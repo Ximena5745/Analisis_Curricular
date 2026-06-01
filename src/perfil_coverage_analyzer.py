@@ -26,9 +26,11 @@ logger = logging.getLogger(__name__)
 COLUMNAS_CURRICULO = {
     'Paso3': ['SaberAsociado'],
     'Paso5': [
+        'Resultado de aprendizaje',
+        'Nombre asignatura o módulo',
         'Indicadores de logro asignatura o módulo',
         'Núcleos temáticos',
-        'Actividades de aprendizaje'
+        'Actividades de evaluación'
     ]
 }
 
