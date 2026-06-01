@@ -126,6 +126,9 @@ class CurricularAnalyzer:
         """
         Determina el nivel taxonómico (1-6) de un verbo.
 
+        ADR-04: Nivel Dominio es la fuente primaria; si no está disponible
+        se usa la taxonomía de Bloom como fallback.
+
         Args:
             verbo (str): Verbo del RA
             nivel_dominio (str): Nivel de dominio declarado
@@ -133,31 +136,30 @@ class CurricularAnalyzer:
         Returns:
             int: Nivel taxonómico (1=Recordar, 6=Crear)
         """
-        if pd.isna(verbo):
-            return 1
-
-        verbo_lower = str(verbo).lower().strip()
-
-        # Buscar en taxonomía de Bloom
-        for nivel_nombre, config in TAXONOMIA_BLOOM.items():
-            verbos_nivel = [v.lower() for v in config['verbos']]
-            if verbo_lower in verbos_nivel:
-                return config['nivel']
-
-        # Si no se encuentra, intentar inferir del nivel_dominio
+        # 1. Intentar inferir del nivel_dominio (fuente primaria)
         if not pd.isna(nivel_dominio):
             nivel_str = str(nivel_dominio).lower()
 
-            if 'analisis' in nivel_str or 'analis' in nivel_str:
-                return 4
+            if 'crea' in nivel_str or 'disena' in nivel_str:
+                return 6
             elif 'evalua' in nivel_str or 'critica' in nivel_str:
                 return 5
-            elif 'crea' in nivel_str or 'diseña' in nivel_str:
-                return 6
+            elif 'analisis' in nivel_str or 'analis' in nivel_str:
+                return 4
             elif 'aplic' in nivel_str:
                 return 3
             elif 'comprend' in nivel_str or 'entiend' in nivel_str:
                 return 2
+            elif 'recuerd' in nivel_str or 'identific' in nivel_str or 'reconoc' in nivel_str:
+                return 1
+
+        # 2. Fallback: buscar en taxonomía de Bloom
+        if not pd.isna(verbo):
+            verbo_lower = str(verbo).lower().strip()
+            for nivel_nombre, config in TAXONOMIA_BLOOM.items():
+                verbos_nivel = [v.lower() for v in config['verbos']]
+                if verbo_lower in verbos_nivel:
+                    return config['nivel']
 
         # Nivel por defecto
         return 2

@@ -92,6 +92,26 @@ class ExcelExtractor:
         # Si no coincide, usar el nombre completo sin extensión
         return filename
 
+    def _extract_sede_modalidad(self) -> dict:
+        """
+        Extrae código de sede y modalidad desde el nombre del archivo.
+
+        FormatoRA_ContPub_PBOG.xlsx -> {'sede': 'Bogotá', 'modalidad': 'Presencial', 'codigo': 'PBOG'}
+
+        Returns:
+            dict: codigo, sede, modalidad
+        """
+        CODIGOS = {
+            'PBOG': {'sede': 'Bogotá', 'modalidad': 'Presencial'},
+            'VNAL': {'sede': 'Nacional', 'modalidad': 'Virtual'},
+            'PMED': {'sede': 'Medellín', 'modalidad': 'Presencial'},
+            'HMED': {'sede': 'Medellín', 'modalidad': 'Híbrido'},
+            'HBOG': {'sede': 'Bogotá', 'modalidad': 'Híbrido'},
+        }
+        match = re.search(r'_([A-Z]{4})(?:\.xlsx)?$', self.file_path.stem)
+        codigo = match.group(1) if match else 'UNKN'
+        return {'codigo': codigo, **CODIGOS.get(codigo, {'sede': 'N/A', 'modalidad': 'N/A'})}
+
     def _normalize_column_name(self, col_name: str) -> str:
         """
         Normaliza nombres de columnas para comparación.
@@ -174,6 +194,27 @@ class ExcelExtractor:
                       f"(score: {best_score}/{len(expected_columns)})")
         return None
 
+    def _find_sheet(self, sheet_name: str) -> str:
+        """
+        Busca una hoja por nombre con tolerancia a trailing spaces.
+
+        Args:
+            sheet_name (str): Nombre configurado de la hoja
+
+        Returns:
+            str: Nombre real de la hoja en el archivo
+
+        Raises:
+            ValueError: Si no se encuentra ninguna coincidencia
+        """
+        if sheet_name in self.workbook.sheetnames:
+            return sheet_name
+        for sn in self.workbook.sheetnames:
+            if sn.strip() == sheet_name.strip() or sn.startswith(sheet_name.strip()):
+                return sn
+        raise ValueError(f"Hoja '{sheet_name}' no encontrada. "
+                        f"Hojas disponibles: {self.workbook.sheetnames}")
+
     def _read_sheet_as_dataframe(self, sheet_name: str,
                                  header_row: Optional[int] = None,
                                  expected_columns: Optional[List[str]] = None) -> pd.DataFrame:
@@ -192,9 +233,7 @@ class ExcelExtractor:
         Raises:
             ValueError: Si la hoja no existe o no se encuentra header
         """
-        if sheet_name not in self.workbook.sheetnames:
-            raise ValueError(f"Hoja '{sheet_name}' no encontrada. "
-                           f"Hojas disponibles: {self.workbook.sheetnames}")
+        sheet_name = self._find_sheet(sheet_name)
 
         sheet = self.workbook[sheet_name]
 
@@ -252,7 +291,11 @@ class ExcelExtractor:
             )
 
             # Agregar metadatos
+            sede_data = self._extract_sede_modalidad()
             df['Programa'] = self.programa_nombre
+            df['Sede'] = sede_data['sede']
+            df['Modalidad'] = sede_data['modalidad']
+            df['Codigo_Sede'] = sede_data['codigo']
             df['Archivo'] = self.file_path.name
 
             logger.info(f"Extraídas {len(df)} competencias")
@@ -288,7 +331,11 @@ class ExcelExtractor:
             )
 
             # Agregar metadatos
+            sede_data = self._extract_sede_modalidad()
             df['Programa'] = self.programa_nombre
+            df['Sede'] = sede_data['sede']
+            df['Modalidad'] = sede_data['modalidad']
+            df['Codigo_Sede'] = sede_data['codigo']
             df['Archivo'] = self.file_path.name
 
             logger.info(f"Extraídos {len(df)} resultados de aprendizaje")
@@ -316,7 +363,11 @@ class ExcelExtractor:
                 expected_columns=expected_cols
             )
 
+            sede_data = self._extract_sede_modalidad()
             df['Programa'] = self.programa_nombre
+            df['Sede'] = sede_data['sede']
+            df['Modalidad'] = sede_data['modalidad']
+            df['Codigo_Sede'] = sede_data['codigo']
             df['Archivo'] = self.file_path.name
 
             logger.info(f"Extraídas {len(df)} estrategias mesocurriculares")
@@ -344,7 +395,11 @@ class ExcelExtractor:
                 expected_columns=expected_cols
             )
 
+            sede_data = self._extract_sede_modalidad()
             df['Programa'] = self.programa_nombre
+            df['Sede'] = sede_data['sede']
+            df['Modalidad'] = sede_data['modalidad']
+            df['Codigo_Sede'] = sede_data['codigo']
             df['Archivo'] = self.file_path.name
 
             logger.info(f"Extraídas {len(df)} estrategias microcurriculares")
@@ -352,6 +407,40 @@ class ExcelExtractor:
 
         except Exception as e:
             logger.error(f"Error extrayendo estrategias micro: {e}")
+            return pd.DataFrame()
+
+    def extract_perfil_egreso(self) -> pd.DataFrame:
+        """
+        Extrae perfil de egreso de la hoja 'Paso1 Analisis perfil egreso'.
+
+        Returns:
+            pd.DataFrame: DataFrame con perfil de egreso
+                Columnas: Programa, Modalidad, Perfil profesional, Perfil ocupacional,
+                         Saber, SaberHacer, SaberSer, Áreas profesionales,
+                         Tareas profesionales, Poblaciones actuación, Valor agregado
+        """
+        sheet_name = EXCEL_SHEETS['PERFIL_EGRESO']
+        expected_cols = EXPECTED_COLUMNS['PERFIL_EGRESO']
+        header_row = HEADER_ROWS.get('PERFIL_EGRESO', 0)
+
+        try:
+            df = self._read_sheet_as_dataframe(
+                sheet_name,
+                header_row=header_row,
+                expected_columns=expected_cols
+            )
+
+            sede_data = self._extract_sede_modalidad()
+            df['Programa_Archivo'] = self.programa_nombre
+            df['Sede'] = sede_data['sede']
+            df['Modalidad_Archivo'] = sede_data['modalidad']
+            df['Codigo_Sede'] = sede_data['codigo']
+
+            logger.info(f"Extraído perfil de egreso: {len(df)} filas")
+            return df
+
+        except Exception as e:
+            logger.error(f"Error extrayendo perfil de egreso: {e}")
             return pd.DataFrame()
 
     def extract_all(self) -> Dict[str, any]:
@@ -383,12 +472,16 @@ class ExcelExtractor:
             'metadata': {
                 'programa': self.programa_nombre,
                 'archivo': self.file_path.name,
-                'ruta': str(self.file_path)
+                'ruta': str(self.file_path),
+                'sede': self._extract_sede_modalidad()['sede'],
+                'modalidad': self._extract_sede_modalidad()['modalidad'],
+                'codigo_sede': self._extract_sede_modalidad()['codigo']
             },
             'competencias': self.extract_competencias(),
             'resultados_aprendizaje': self.extract_resultados_aprendizaje(),
             'estrategias_meso': self.extract_estrategias_meso(),
-            'estrategias_micro': self.extract_estrategias_micro()
+            'estrategias_micro': self.extract_estrategias_micro(),
+            'perfil_egreso': self.extract_perfil_egreso()
         }
 
         logger.info(f"Extracción completa finalizada para {self.programa_nombre}")
@@ -423,7 +516,9 @@ class ExcelExtractor:
         ]
 
         for sheet_name in required_sheets:
-            if sheet_name not in self.workbook.sheetnames:
+            try:
+                self._find_sheet(sheet_name)
+            except ValueError:
                 errors.append(f"Hoja requerida no encontrada: '{sheet_name}'")
 
         # Verificar hojas opcionales
@@ -433,7 +528,9 @@ class ExcelExtractor:
         ]
 
         for sheet_name in optional_sheets:
-            if sheet_name not in self.workbook.sheetnames:
+            try:
+                self._find_sheet(sheet_name)
+            except ValueError:
                 warnings.append(f"Hoja opcional no encontrada: '{sheet_name}'")
 
         # Intentar extraer datos para validar estructura

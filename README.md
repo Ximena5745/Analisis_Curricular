@@ -1,6 +1,6 @@
 # 🎓 Sistema de Análisis Microcurricular
 
-Sistema completo de análisis automatizado para diseños microcurriculares de programas académicos. Permite consolidar, analizar y visualizar información de 50+ programas académicos, detectar temáticas emergentes, calcular indicadores de calidad curricular y generar reportes profesionales.
+Sistema completo de análisis automatizado para diseños microcurriculares de programas académicos. Permite consolidar, analizar y visualizar información de 99+ programas académicos, detectar temáticas emergentes, limpiar núcleos temáticos, medir cobertura del perfil de egreso, identificar asignaturas compartidas entre sedes/programas, modelar tópicos con LDA, calcular indicadores de calidad curricular y generar un Excel maestro con 15 hojas de análisis.
 
 ## 📋 Tabla de Contenidos
 
@@ -21,10 +21,15 @@ Sistema completo de análisis automatizado para diseños microcurriculares de pr
 ## ✨ Características
 
 ### 🔍 Análisis Automatizado
-- ✅ Consolidación de 50+ archivos Excel en base de datos única
+- ✅ Consolidación de 99+ archivos Excel en base de datos única
 - ✅ Extracción normalizada de competencias, RA, estrategias pedagógicas
+- ✅ Limpieza y filtrado de núcleos temáticos con 6 filtros en cascada
+- ✅ Cobertura del perfil de egreso vs. currículo (TF-IDF + coseno)
+- ✅ Asignaturas compartidas: intra-sede, inter-programa e idénticas
+- ✅ Modelado de tópicos con LDA (10 tópicos, fingerprint TF-IDF)
 - ✅ Cálculo de 15+ indicadores de calidad curricular
 - ✅ Validación de completitud y consistencia de datos
+- ✅ Excel maestro consolidado con 15 hojas de análisis
 
 ### 🏷️ Detección de Temáticas
 Identifica automáticamente 10 temáticas emergentes:
@@ -176,9 +181,13 @@ python run_analysis.py
 Este script:
 1. ✅ Valida estructura de archivos Excel
 2. ✅ Extrae datos de todos los programas
-3. ✅ Calcula indicadores y detecta temáticas
-4. ✅ Genera reportes consolidados
-5. ✅ Guarda resultados en `data/output/`
+3. ✅ Calcula indicadores, detecta temáticas y cobertura del perfil
+4. ✅ Genera reportes individuales (HTML, JSON)
+5. ✅ Genera matriz de temáticas y Excel consolidado de indicadores
+6. ✅ Genera Excel maestro con 15 hojas de análisis
+7. ✅ Detecta asignaturas compartidas (intra-sede, inter-programa, idénticas)
+8. ✅ Entrena modelo LDA de tópicos
+9. ✅ Guarda resultados en `data/output/`
 
 ### Opción 2: Dashboard Interactivo
 
@@ -237,7 +246,11 @@ proyecto_analisis_microcurricular/
 │   ├── analyzer.py                  # 📈 Cálculo de indicadores
 │   ├── thematic_detector.py         # 🏷️ Detección de temáticas
 │   ├── validator.py                 # ✅ Validación de calidad
-│   ├── report_generator.py          # 📄 Generación de reportes
+│   ├── report_generator.py          # 📄 Generación de reportes (Excel maestro 15 hojas)
+│   ├── nucleos_cleaner.py           # 🧹 Limpieza y filtrado de núcleos temáticos
+│   ├── perfil_coverage_analyzer.py  # 🎯 Cobertura del perfil de egreso (TF-IDF)
+│   ├── shared_subjects_analyzer.py  # 🔗 Asignaturas compartidas inter-sede/programa
+│   ├── topic_modeler.py             # 📊 Modelado de tópicos (LDA)
 │   ├── llm_integration.py           # 🤖 Integración con LLM
 │   └── utils.py                     # Utilidades generales
 │
@@ -352,7 +365,88 @@ tematicas_programa = detector.analyze_programa(programa_data)
 matriz = detector.generate_thematic_matrix(lista_programas)
 ```
 
-### 4. QualityValidator (`src/validator.py`)
+### 4. NucleosCleaner (`src/nucleos_cleaner.py`)
+
+Limpia y filtra núcleos temáticos con 6 filtros en cascada.
+
+```python
+from src.nucleos_cleaner import filtrar_nucleos_dataframe, es_nucleo_valido
+
+# Pipeline completo sobre DataFrame
+df_filtrado = filtrar_nucleos_dataframe(df_micro)
+
+# Validar un núcleo individual
+valido, razon = es_nucleo_valido("Análisis financiero de estados contables")
+# (True, '')
+```
+
+**Filtros:** longitud (4-150 chars), solo números, mínimo 2 palabras, sin patrones de encabezado, sin fragmentos de expresión compuesta, sin letra suelta final.
+
+### 5. PerfilCoverageAnalyzer (`src/perfil_coverage_analyzer.py`)
+
+Mide cobertura del perfil de egreso vs. currículo usando TF-IDF + similitud coseno (umbral 0.35).
+
+```python
+from src.perfil_coverage_analyzer import analizar_cobertura_perfil_completa
+
+resultado = analizar_cobertura_perfil_completa(df_perfil, df_micro, df_ra)
+# {'cobertura_global': 75.0, 'num_brechas': 7, 'elementos': [...], ...}
+```
+
+**Columnas analizadas:** Saber, SaberHacer, SaberSer, Áreas profesionales, Tareas profesionales, Valor agregado.
+
+### 6. SharedSubjectsAnalyzer (`src/shared_subjects_analyzer.py`)
+
+Detecta asignaturas compartidas entre sedes y programas.
+
+```python
+from src.shared_subjects_analyzer import detectar_asignaturas_compartidas
+
+resultado = detectar_asignaturas_compartidas(micro_all)
+# {'intra_sede': DataFrame, 'inter_programa': DataFrame,
+#  'asignaturas_identicas': DataFrame, 'resumen': {...}}
+```
+
+**Pipeline:** intra-sede (mismo programa, distintas sedes) → inter-programa (Jaccard + coseno, umbrales 0.60/0.95) → nombres idénticos → recomendaciones (UNIFICAR/HOMOLOGAR/COORDINAR).
+
+### 7. TopicModeler (`src/topic_modeler.py`)
+
+Modelado de tópicos con LDA (batch, 10 topics, 500 features).
+
+```python
+from src.topic_modeler import asignar_topicos_a_programas, obtener_fingerprint
+
+# Asignar tópicos LDA a programas
+topicos = asignar_topicos_a_programas(ra_all)
+# {'lda_model': modelo, 'topicos_por_programa': {...}, ...}
+
+# Fingerprint TF-IDF
+fp = obtener_fingerprint(textos)
+```
+
+### 8. ReportGenerator (`src/report_generator.py`)
+
+El Excel maestro (`generate_excel_maestro`) genera 15 hojas:
+
+| Hoja | Contenido |
+|------|-----------|
+| 01 | Resumen Ejecutivo (score, cobertura perfil, brechas) |
+| 02 | Competencias consolidadas |
+| 03 | RA Completo |
+| 04 | Núcleos Válidos (con score académico) |
+| 05 | Núcleos Rechazados (con razón) |
+| 06 | Cobertura Perfil de Egreso |
+| 07 | Brechas del Perfil |
+| 08 | Divergencia Inter-Sede |
+| 09 | Asignaturas Idénticas |
+| 10 | Asignaturas Similares (con recomendaciones) |
+| 11 | Bloques Curriculares |
+| 12 | Carga Horaria |
+| 13 | Bloom Distribución |
+| 14 | Temáticas Emergentes |
+| 15 | Alertas y Recomendaciones |
+
+### 9. QualityValidator (`src/validator.py`)
 
 Valida calidad de redacción y estructura.
 
@@ -700,6 +794,16 @@ MIT License - Ver [LICENSE](LICENSE) para detalles.
 ---
 
 ## 🔄 Changelog
+
+### v2.0.0 (2026-06-01)
+- ✨ Limpieza de núcleos temáticos con 6 filtros en cascada
+- ✨ Cobertura del perfil de egreso (TF-IDF + coseno, umbral 0.35)
+- ✨ Asignaturas compartidas: intra-sede, inter-programa, idénticas
+- ✨ Modelado de tópicos LDA (10 tópicos, fingerprint)
+- ✨ Excel maestro con 15 hojas de análisis consolidado
+- ✨ Dashboard: página "Familias Curriculares" con clustering
+- ✨ Pipeline centralizado en `run_analysis.py`: extracción → análisis → Excel maestro → asignaturas compartidas → LDA
+- ✨ Sede/Modalidad/Codigo_Sede propagados a todas las tablas extraídas
 
 ### v1.0.0 (2024-01-15)
 - ✨ Primera versión estable

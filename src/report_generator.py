@@ -77,7 +77,8 @@ class ReportGenerator:
 
     def generate_html_report(self, programa_data: Dict,
                             indicadores: Dict,
-                            output_path: str) -> str:
+                            output_path: str,
+                            cobertura_perfil: Optional[Dict] = None) -> str:
         """
         Genera reporte HTML individual por programa.
 
@@ -260,6 +261,21 @@ class ReportGenerator:
             </tbody>
         </table>
 
+        <h2>📋 Cobertura del Perfil de Egreso</h2>
+""" if cobertura_perfil else ''
+
+        if cobertura_perfil:
+            html_content += f"""
+        <p><strong>Cobertura Global:</strong> {cobertura_perfil.get('cobertura_global', 0)}%</p>
+        <p><strong>Brechas:</strong> {cobertura_perfil.get('num_brechas', 0)}</p>
+        <p><strong>Recomendaciones:</strong></p>
+        <ul>
+"""
+            for rec in cobertura_perfil.get('recomendaciones', []):
+                html_content += f'            <li>{rec}</li>\n'
+            html_content += '        </ul>\n'
+
+        html_content += """
         <div class="footer">
             <p>Generado automáticamente por Sistema de Análisis Microcurricular</p>
         </div>
@@ -309,7 +325,7 @@ class ReportGenerator:
                     try:
                         if len(str(cell.value)) > max_length:
                             max_length = len(str(cell.value))
-                    except:
+                    except Exception:
                         pass
                 adjusted_width = min(max_length + 2, 50)
                 worksheet.column_dimensions[column_letter].width = adjusted_width
@@ -320,7 +336,8 @@ class ReportGenerator:
     def generate_json_report(self, programa_data: Dict,
                             indicadores: Dict,
                             tematicas: Dict,
-                            output_path: str) -> str:
+                            output_path: str,
+                            cobertura_perfil: Optional[Dict] = None) -> str:
         """
         Genera reporte en formato JSON.
 
@@ -352,6 +369,14 @@ class ReportGenerator:
                 'total_estrategias_micro': len(programa_data.get('estrategias_micro', []))
             }
         }
+
+        if cobertura_perfil:
+            reporte_json['cobertura_perfil'] = {
+                'cobertura_global': cobertura_perfil.get('cobertura_global', 0),
+                'num_brechas': cobertura_perfil.get('num_brechas', 0),
+                'total_elementos': cobertura_perfil.get('total_elementos', 0),
+                'recomendaciones': cobertura_perfil.get('recomendaciones', [])
+            }
 
         # Convertir tipos numpy a tipos nativos de Python
         reporte_json = convert_to_native_types(reporte_json)
@@ -409,6 +434,311 @@ class ReportGenerator:
             df_consolidado.to_excel(writer, sheet_name='Indicadores Consolidados', index=False)
 
         logger.info(f"Excel consolidado generado: {output_path}")
+        return str(output_path)
+
+
+    def generate_excel_maestro(
+        self,
+        all_results: List[Dict],
+        output_path: str
+    ) -> str:
+        """
+        Genera Excel maestro consolidado con 15 hojas de análisis.
+
+        Args:
+            all_results: Lista de dicts con data, indicadores, tematicas,
+                        validacion, cobertura_perfil (salida de process_single_program)
+            output_path: Ruta de salida del Excel
+
+        Returns:
+            str: Ruta del archivo generado
+        """
+        logger.info(f"Generando Excel maestro con {len(all_results)} programas")
+
+        output_path = Path(output_path)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+
+        with pd.ExcelWriter(output_path, engine='openpyxl') as writer:
+            # 01_Resumen_Ejecutivo
+            rows_resumen = []
+            for r in all_results:
+                meta = r['data'].get('metadata', {})
+                ind = r.get('indicadores', {})
+                cob = r.get('cobertura_perfil', {})
+                rows_resumen.append({
+                    'Programa': meta.get('programa', ''),
+                    'Sede': meta.get('sede', ''),
+                    'Modalidad': meta.get('modalidad', ''),
+                    'Score_Calidad': ind.get('score_calidad', 0),
+                    'Cobertura_Perfil': cob.get('cobertura_global', 0),
+                    'Brechas_Perfil': cob.get('num_brechas', 0),
+                    'Competencias': ind.get('resumen', {}).get('total_competencias', 0),
+                    'RA': ind.get('resumen', {}).get('total_ra', 0),
+                    'Estrategias_Micro': ind.get('resumen', {}).get('total_estrategias_micro', 0)
+                })
+            pd.DataFrame(rows_resumen).to_excel(
+                writer, sheet_name='01_Resumen_Ejecutivo', index=False
+            )
+
+            # 02_Competencias
+            competencias_list = []
+            for r in all_results:
+                df = r['data'].get('competencias', pd.DataFrame())
+                if not df.empty:
+                    competencias_list.append(df)
+            if competencias_list:
+                pd.concat(competencias_list, ignore_index=True).to_excel(
+                    writer, sheet_name='02_Competencias', index=False
+                )
+
+            # 03_RA_Completo
+            ra_list = []
+            for r in all_results:
+                df = r['data'].get('resultados_aprendizaje', pd.DataFrame())
+                if not df.empty:
+                    ra_list.append(df)
+            if ra_list:
+                pd.concat(ra_list, ignore_index=True).to_excel(
+                    writer, sheet_name='03_RA_Completo', index=False
+                )
+
+            # 04_Nucleos_Validos + 05_Nucleos_Rechazados
+            # (se procesa una sola vez para ambas hojas)
+            nucleos_cache = {}
+            for r in all_results:
+                meta = r['data'].get('metadata', {})
+                df_micro = r['data'].get('estrategias_micro', pd.DataFrame())
+                prog = meta.get('programa', '')
+                if not df_micro.empty:
+                    try:
+                        from src.nucleos_cleaner import filtrar_nucleos_dataframe
+                        df_filt = filtrar_nucleos_dataframe(df_micro)
+                        nucleos_cache[prog] = df_filt
+                    except Exception as e:
+                        logger.warning(f"Error filtrando núcleos: {e}")
+
+            nucleos_data = []
+            rechazados_data = []
+            for prog, df_filt in nucleos_cache.items():
+                for _, row in df_filt.iterrows():
+                    for nuc in row.get('nucleos_validos', []):
+                        score = row.get('nucleos_scores', {}).get(nuc, 0)
+                        nucleos_data.append({
+                            'Programa': prog, 'Nucleo': nuc,
+                            'Score_Academico': score
+                        })
+                    for rej in row.get('nucleos_rechazados', []):
+                        rechazados_data.append({
+                            'Programa': prog,
+                            'Nucleo': rej.get('texto', ''),
+                            'Razon_Rechazo': rej.get('razon', '')
+                        })
+            if nucleos_data:
+                pd.DataFrame(nucleos_data).to_excel(
+                    writer, sheet_name='04_Nucleos_Validos', index=False
+                )
+            if rechazados_data:
+                pd.DataFrame(rechazados_data).to_excel(
+                    writer, sheet_name='05_Nucleos_Rechazados', index=False
+                )
+
+            # 06_Cobertura_Perfil_Egreso
+            cobertura_rows = []
+            for r in all_results:
+                cob = r.get('cobertura_perfil', {})
+                for elem in cob.get('elementos', []):
+                    cobertura_rows.append({
+                        'Programa': cob.get('programa', ''),
+                        'Campo': elem.get('campo', ''),
+                        'Elemento': elem.get('elemento', ''),
+                        'Score': elem.get('score', 0),
+                        'Clasificacion': elem.get('clasificacion', '')
+                    })
+            if cobertura_rows:
+                pd.DataFrame(cobertura_rows).to_excel(
+                    writer, sheet_name='06_Cobertura_Perfil_Egreso', index=False
+                )
+
+            # 07_Brechas_Perfil
+            brechas_rows = []
+            for r in all_results:
+                cob = r.get('cobertura_perfil', {})
+                for b in cob.get('brechas', []):
+                    brechas_rows.append({
+                        'Programa': cob.get('programa', ''),
+                        'Campo': b.get('campo', ''),
+                        'Elemento': b.get('elemento', ''),
+                        'Score': b.get('score', 0)
+                    })
+            if brechas_rows:
+                pd.DataFrame(brechas_rows).to_excel(
+                    writer, sheet_name='07_Brechas_Perfil', index=False
+                )
+
+            # 08_Divergencia_Inter_Sede
+            micro_data_list = [r['data'].get('estrategias_micro', pd.DataFrame())
+                               for r in all_results]
+            micro_all = pd.concat(
+                [df for df in micro_data_list if not df.empty], ignore_index=True
+            ) if any(not df.empty for df in micro_data_list) else pd.DataFrame()
+            if not micro_all.empty:
+                try:
+                    from src.shared_subjects_analyzer import comparar_intra_sede
+                    df_intra = comparar_intra_sede(micro_all)
+                    if not df_intra.empty:
+                        df_intra.to_excel(
+                            writer, sheet_name='08_Divergencia_Inter_Sede', index=False
+                        )
+                except Exception as e:
+                    logger.warning(f"Error generando divergencia inter-sede: {e}")
+
+            # 09_Asignaturas_Identicas
+            if not micro_all.empty:
+                try:
+                    from src.shared_subjects_analyzer import detectar_asignaturas_identicas
+                    df_id = detectar_asignaturas_identicas(micro_all)
+                    if not df_id.empty:
+                        df_id.to_excel(
+                            writer, sheet_name='09_Asignaturas_Identicas', index=False
+                        )
+                except Exception as e:
+                    logger.warning(f"Error detectando asignaturas idénticas: {e}")
+
+            # 10_Asignaturas_Similares
+            if not micro_all.empty:
+                try:
+                    from src.shared_subjects_analyzer import (
+                        comparar_inter_programa, generar_recomendaciones
+                    )
+                    df_inter = comparar_inter_programa(micro_all)
+                    if not df_inter.empty:
+                        df_inter_rec = generar_recomendaciones(df_inter)
+                        df_inter_rec.to_excel(
+                            writer, sheet_name='10_Asignaturas_Similares', index=False
+                        )
+                except Exception as e:
+                    logger.warning(f"Error detectando asignaturas similares: {e}")
+
+            # 11_Bloques_Curriculares
+            bloques_rows = []
+            for r in all_results:
+                meta = r['data'].get('metadata', {})
+                df_micro = r['data'].get('estrategias_micro', pd.DataFrame())
+                if not df_micro.empty:
+                    for col in ['B.Institucional', 'B.Disciplinar', 'B.Electivo']:
+                        if col in df_micro.columns:
+                            conteo = df_micro[col].apply(
+                                lambda x: str(x).strip().lower() in ('x', 'si', 's', '1', 'true')
+                                if pd.notna(x) else False
+                            ).sum()
+                            bloques_rows.append({
+                                'Programa': meta.get('programa', ''),
+                                'Bloque': col,
+                                'Asignaturas': conteo
+                            })
+            if bloques_rows:
+                pd.DataFrame(bloques_rows).to_excel(
+                    writer, sheet_name='11_Bloques_Curriculares', index=False
+                )
+
+            # 12_Carga_Horaria
+            carga_rows = []
+            for r in all_results:
+                meta = r['data'].get('metadata', {})
+                df_micro = r['data'].get('estrategias_micro', pd.DataFrame())
+                if not df_micro.empty:
+                    semestre_col = None
+                    htd_col = None
+                    hti_col = None
+                    for c in df_micro.columns:
+                        cn = c.lower().replace('ó', 'o').replace('í', 'i')
+                        if 'semestre' in cn:
+                            semestre_col = c
+                        elif 'trabajo directo' in cn:
+                            htd_col = c
+                        elif 'trabajo independiente' in cn:
+                            hti_col = c
+                    if semestre_col and (htd_col or hti_col):
+                        for _, row in df_micro.iterrows():
+                            sem = row.get(semestre_col, '')
+                            htd = pd.to_numeric(row.get(htd_col, 0), errors='coerce') if htd_col else 0
+                            hti = pd.to_numeric(row.get(hti_col, 0), errors='coerce') if hti_col else 0
+                            try:
+                                sem_int = int(float(sem)) if pd.notna(sem) else ''
+                            except (ValueError, TypeError):
+                                sem_int = ''
+                            carga_rows.append({
+                                'Programa': meta.get('programa', ''),
+                                'Semestre': sem_int,
+                                'HTD': htd if pd.notna(htd) else 0,
+                                'HTI': hti if pd.notna(hti) else 0
+                            })
+            if carga_rows:
+                pd.DataFrame(carga_rows).to_excel(
+                    writer, sheet_name='12_Carga_Horaria', index=False
+                )
+
+            # 13_Bloom_Distribucion
+            bloom_rows = []
+            for r in all_results:
+                meta = r['data'].get('metadata', {})
+                ind = r.get('indicadores', {})
+                bloom = ind.get('complejidad_cognitiva', {})
+                bloom_rows.append({
+                    'Programa': meta.get('programa', ''),
+                    'Basico_%': bloom.get('Básico', 0),
+                    'Intermedio_%': bloom.get('Intermedio', 0),
+                    'Avanzado_%': bloom.get('Avanzado', 0),
+                    'Nivel_Promedio': bloom.get('nivel_promedio', 0),
+                    'Indice_Complejidad': bloom.get('indice_complejidad', 0)
+                })
+            if bloom_rows:
+                pd.DataFrame(bloom_rows).to_excel(
+                    writer, sheet_name='13_Bloom_Distribucion', index=False
+                )
+
+            # 14_Tematicas_Emergentes
+            tematicas_rows = []
+            for r in all_results:
+                meta = r['data'].get('metadata', {})
+                tem = r.get('tematicas', {})
+                for t in tem.get('tematicas_presentes', []):
+                    tematicas_rows.append({
+                        'Programa': meta.get('programa', ''),
+                        'Tematica': t
+                    })
+            if tematicas_rows:
+                pd.DataFrame(tematicas_rows).to_excel(
+                    writer, sheet_name='14_Tematicas_Emergentes', index=False
+                )
+
+            # 15_Alertas_y_Recomendaciones
+            alertas_rows = []
+            for r in all_results:
+                meta = r['data'].get('metadata', {})
+                cob = r.get('cobertura_perfil', {})
+                ind = r.get('indicadores', {})
+                alertas = []
+                if cob.get('cobertura_global', 100) < 40:
+                    alertas.append(f"Cobertura perfil crítica: {cob['cobertura_global']}%")
+                if ind.get('score_calidad', 100) < 50:
+                    alertas.append(f"Score calidad bajo: {ind['score_calidad']}/100")
+                if cob.get('num_brechas', 0) > 5:
+                    alertas.append(f"{cob['num_brechas']} brechas en perfil de egreso")
+                for rec in cob.get('recomendaciones', []):
+                    alertas.append(rec)
+                for a in alertas:
+                    alertas_rows.append({
+                        'Programa': meta.get('programa', ''),
+                        'Alerta': a,
+                        'Tipo': 'RECOMENDACION' if 'recomendaci' in a.lower() else 'ALERTA'
+                    })
+            if alertas_rows:
+                pd.DataFrame(alertas_rows).to_excel(
+                    writer, sheet_name='15_Alertas_y_Recomendaciones', index=False
+                )
+
+        logger.info(f"Excel maestro generado: {output_path}")
         return str(output_path)
 
 

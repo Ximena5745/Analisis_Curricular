@@ -60,7 +60,8 @@ HEADER_ROWS = {
     'COMPETENCIAS': 1,  # Header en fila 2 (índice 1)
     'RESULTADOS_APRENDIZAJE': 1,  # Header en fila 2 (índice 1) - la fila 1 tiene instrucciones
     'ESTRATEGIAS_MESO': 0,
-    'ESTRATEGIAS_MICRO': 1  # Header en fila 2 (índice 1)
+    'ESTRATEGIAS_MICRO': 1,  # Header en fila 2 (índice 1)
+    'PERFIL_EGRESO': 1  # Header en fila 2 (índice 1); fila 1 tiene placeholders
 }
 
 # Columnas esperadas por hoja
@@ -95,12 +96,26 @@ EXPECTED_COLUMNS = {
     ],
     'ESTRATEGIAS_MICRO': [
         'Tipo de Saber',
-        'Estrategias de enseñanza aprendizaje',
-        'Recursos',
-        'Horas de trabajo autónomo',
-        'Horas de trabajo presencial',
-        'Criterios de evaluación',
+        'Resultado de aprendizaje',
+        'Semestre',
+        'Nombre asignatura o módulo',
+        'Indicadores de logro asignatura o módulo',
+        'Tipología',
+        'B.Institucional', 'B.Disciplinar', 'B.Electivo',
+        'Créditos',
+        'Número de horas trabajo directo',
+        'Número de horas trabajo independiente',
+        'Total de horas',
+        'Núcleos temáticos',
+        'Actividades de aprendizaje',
+        'Actividades de evaluación',
         'Acciones de retroalimentación'
+    ],
+    'PERFIL_EGRESO': [
+        'Programa', 'Modalidad', 'Perfil profesional', 'Perfil ocupacional',
+        'Saber', 'SaberHacer', 'SaberSer',
+        'Áreas profesionales', 'Tareas profesionales',
+        'Poblaciones actuación', 'Valor agregado'
     ]
 }
 
@@ -306,6 +321,33 @@ BALANCE_IDEAL_SABER = {
     'SaberHacer': 33.3,
     'SaberSer': 33.4
 }
+
+# ============================================================================
+# NÚCLEOS TEMÁTICOS — CONFIGURACIÓN DE FILTRADO
+# ============================================================================
+
+NUCLEOS_CONFIG = {
+    'MIN_LONGITUD': 4,
+    'MAX_LONGITUD': 150,
+    'MIN_PALABRAS': 2,
+    'CONTAMINATION_IF': 0.15,
+    'UMBRAL_SCORE_ACADEMICO': 0.5,
+    'USE_SPACY': False,
+    'SPACY_MODEL': 'es_core_news_sm',
+}
+
+# ============================================================================
+# COBERTURA DEL PERFIL DE EGRESO
+# ============================================================================
+
+# Umbral de similitud TF-IDF para clasificar cobertura
+UMBRAL_COBERTURA = 0.35
+
+# Columnas del perfil de egreso que se analizan
+COLUMNAS_PERFIL = [
+    'Saber', 'SaberHacer', 'SaberSer',
+    'Áreas profesionales', 'Tareas profesionales', 'Valor agregado'
+]
 
 # ============================================================================
 # CONFIGURACIÓN DE PROCESAMIENTO

@@ -12,6 +12,7 @@ from streamlit_option_menu import option_menu
 import pandas as pd
 import numpy as np
 import plotly.express as px
+import plotly.figure_factory as ff
 import plotly.graph_objects as go
 from collections import Counter
 import re
@@ -21,6 +22,7 @@ from typing import Dict, Optional
 from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.cluster import AgglomerativeClustering
+from src.nucleos_cleaner import filtrar_nucleos_dataframe
 from scipy.stats import entropy
 import warnings
 warnings.filterwarnings('ignore')
@@ -39,58 +41,8 @@ COLORES_SEDE = {
 }
 
 
-# Patrones que NO son núcleos temáticos (encabezados de sección, instrucciones, etc.)
-_PATRON_NO_NUCLEO = re.compile(
-    r'^(construccion\s+y\s+dinamicas?|dinamicas?\s+de|estrategias?\s+de\s+(ensenanza|aprendizaje|evaluacion)|'
-    r'actividades?\s+(de\s+)?(aprendizaje|evaluacion)|metodologia|criterios?\s+de|recursos?\s+(educativos?|didacticos?)|'
-    r'indicadores?\s+de|competencias?\s+(generales?|especificas?)|resultados?\s+de\s+aprendizaje|'
-    r'nucleo\s+tematico|temas?\s+a\s+(desarrollar|tratar)|contenido[s]?\s*(del?\s+)?curso|'
-    r'unidad\s+(tematica\s+)?\d*|modulo\s+\d*|semana\s+\d*|bloque\s+(tematico)?\s*\d*)',
-    re.IGNORECASE
-)
-
-# Fragmentos que empiezan con conjunción o preposición: indican que el texto
-# es la segunda parte de una expresión compuesta (ej. "o su versión actualizada")
-_INICIO_INVALIDO = re.compile(
-    r'^(o |y |e |u |ni |pero |sino |aunque |mas |porque |pues |'
-    r'de |del |al |a |en |con |sin |por |para |'
-    r'lo |la |el |los |las |un |una |'
-    r'que |si |su |sus |se |le |les )',
-    re.IGNORECASE
-)
-
-
-def _limpiar_nucleo(texto: str) -> str:
-    """Elimina numeracion inicial tipo '1. ', '2. ', etc. de un nucleo tematico."""
-    texto = re.sub(r'^\d+[\.\)]\s*', '', texto.strip())
-    texto = re.sub(r'^[•\-–—*]\s*', '', texto)
-    return texto.strip()
-
-
-def _es_nucleo_valido(texto: str) -> bool:
-    """Verifica que el texto sea un nucleo tematico real y no un encabezado o instruccion."""
-    t = texto.strip()
-    if len(t) < 4 or len(t) > 150:
-        return False
-    # Descartar si es sólo números o caracteres especiales
-    if re.match(r'^[\d\s\.\,\;\:\-]+$', t):
-        return False
-    # Requerir mínimo 2 palabras (filtra términos sueltos como "construcción", "dinámicas")
-    if len(t.split()) < 2:
-        return False
-    t_norm = unicodedata.normalize('NFKD', t.lower()).encode('ascii', 'ignore').decode('ascii')
-    # Descartar patrones no temáticos
-    if _PATRON_NO_NUCLEO.match(t_norm):
-        return False
-    # Descartar fragmentos que son la segunda parte de una expresión compuesta.
-    # Se aplica sobre el texto YA LIMPIO (sin numeración "1. " ni viñetas)
-    # para que "3. o su versión actualizada" → "o su versión actualizada" sea rechazado.
-    t_clean_norm = unicodedata.normalize(
-        'NFKD', _limpiar_nucleo(t).lower()
-    ).encode('ascii', 'ignore').decode('ascii')
-    if _INICIO_INVALIDO.match(t_clean_norm):
-        return False
-    return True
+# _limpiar_nucleo, _es_nucleo_valido, _PATRON_NO_NUCLEO e _INICIO_INVALIDO
+# se usan desde src.nucleos_cleaner (importado arriba).
 
 
 def render_icon_svg(name: str, color: str = "#0f3460", size: int = 28) -> str:
@@ -1022,18 +974,26 @@ def _split_nucleos(texto: str) -> list:
 
 
 def analizar_cobertura(df: pd.DataFrame) -> Dict:
-    """Analisis de cobertura y densidad tematica."""
+    """Analisis de cobertura y densidad tematica usando pipeline de nucleos_cleaner."""
+    # Pipeline de filtrado
+    df_filtrado = filtrar_nucleos_dataframe(df, columna='Nucleos tematicos')
+
+    # Extraer todos los núcleos válidos del DataFrame filtrado
     nucleos_list = []
-    for _, row in df.iterrows():
-        nucleos_raw = str(row.get('Nucleos tematicos', ''))
-        if nucleos_raw and nucleos_raw != 'nan':
-            nucleos = [
-                _limpiar_nucleo(n.strip()) for n in _split_nucleos(nucleos_raw)
-                if _es_nucleo_valido(n.strip())
-            ]
-            nucleos_list.extend(nucleos)
+    todos_rechazados = []
+    for _, row in df_filtrado.iterrows():
+        nucleos_list.extend(row.get('nucleos_validos', []))
+        todos_rechazados.extend(row.get('nucleos_rechazados', []))
 
     nucleos_counter = Counter(nucleos_list)
+
+    # Guardar rechazados en session_state para auditoría
+    if 'nucleos_rechazados_pipeline' not in st.session_state:
+        st.session_state['nucleos_rechazados_pipeline'] = []
+    if todos_rechazados:
+        nuevos = [r for r in todos_rechazados
+                  if r not in st.session_state['nucleos_rechazados_pipeline']]
+        st.session_state['nucleos_rechazados_pipeline'].extend(nuevos)
 
     # Densidad por asignatura
     densidad = df.groupby('Nombre asignatura o modulo')['Nucleos tematicos'].apply(
@@ -1054,13 +1014,11 @@ def analizar_cobertura(df: pd.DataFrame) -> Dict:
     # Matriz programa x nucleo (top 20)
     top_20 = [n for n, _ in nucleos_counter.most_common(20)]
     matriz = pd.DataFrame(0, index=df['Programa'].unique(), columns=top_20)
-    for _, row in df.iterrows():
+    for _, row in df_filtrado.iterrows():
         programa = row['Programa']
-        nucleos_raw = str(row.get('Nucleos tematicos', ''))
-        if nucleos_raw and nucleos_raw != 'nan':
-            for nucleo in [_limpiar_nucleo(n.strip()) for n in _split_nucleos(nucleos_raw) if _es_nucleo_valido(n.strip())]:
-                if nucleo in top_20:
-                    matriz.loc[programa, nucleo] += 1
+        for nucleo in row.get('nucleos_validos', []):
+            if nucleo in top_20:
+                matriz.loc[programa, nucleo] += 1
 
     return {
         'nucleos_counter': nucleos_counter,
@@ -1070,7 +1028,8 @@ def analizar_cobertura(df: pd.DataFrame) -> Dict:
         'promedio_densidad': densidad.mean(),
         'shannon': shannon,
         'diversidad': diversidad,
-        'matriz_cobertura': matriz
+        'matriz_cobertura': matriz,
+        'total_rechazados': len(todos_rechazados)
     }
 
 
@@ -3650,6 +3609,106 @@ def pagina_bloom_integracion(df: pd.DataFrame, taxonomias_externas: Dict | None 
                             st.markdown(f"- **{s}** — Programa: {prog_asig.get(s, 'N/A')}")
 
 
+def pagina_familias_curriculares(df: pd.DataFrame, resultados_nlp: Dict):
+    """Pagina de clustering jerarquico y familias curriculares."""
+    st.title("Familias Curriculares")
+    st.markdown("---")
+    st.info(
+        "**¿Qué mide esta sección?** Agrupa los programas en **familias curriculares** "
+        "según la similitud de sus contenidos (TF-IDF sobre RA, núcleos e indicadores). "
+        "Programas en el mismo cluster comparten orientación temática. "
+        "El dendrograma muestra la jerarquía de similitud entre programas."
+    )
+
+    from sklearn.feature_extraction.text import TfidfVectorizer
+    from sklearn.cluster import AgglomerativeClustering
+    from scipy.cluster.hierarchy import linkage, dendrogram
+
+    programas = df['Programa'].unique()
+    if len(programas) < 3:
+        st.warning("Se requieren al menos 3 programas para clustering")
+        return
+
+    textos_por_programa = []
+    for prog in programas:
+        sub = df[df['Programa'] == prog]
+        texto = ' '.join(sub['Texto_Completo'].fillna('').astype(str))
+        if len(texto) > 10:
+            textos_por_programa.append((prog, texto))
+
+    if len(textos_por_programa) < 3:
+        st.warning("Pocos programas con texto suficiente para clustering")
+        return
+
+    prog_names = [t[0] for t in textos_por_programa]
+    corpus = [t[1] for t in textos_por_programa]
+
+    vectorizer = TfidfVectorizer(
+        max_features=200, min_df=2, max_df=0.85,
+        stop_words=list(STOPWORDS_ES), ngram_range=(1, 2)
+    )
+    tfidf = vectorizer.fit_transform(corpus)
+
+    n_clusters = min(5, max(2, len(prog_names) // 3))
+    cluster = AgglomerativeClustering(
+        n_clusters=n_clusters, metric='cosine', linkage='average'
+    )
+    labels = cluster.fit_predict(tfidf.toarray())
+
+    linkage_matrix = linkage(tfidf.toarray(), method='average', metric='cosine')
+
+    fig = ff.create_dendrogram(
+        tfidf.toarray(),
+        labels=prog_names,
+        linkagefun=lambda x: linkage_matrix,
+        color_threshold=0.5 * max(linkage_matrix[:, 2])
+    )
+    fig.update_layout(
+        height=max(400, len(prog_names) * 30),
+        title="Dendrograma de Familias Curriculares",
+        xaxis_title="Programa",
+        yaxis_title="Distancia (coseno)"
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Programas agrupados", len(prog_names))
+    col2.metric("Clusters formados", n_clusters)
+    col3.metric(
+        "Programas por cluster",
+        f"{min(pd.Series(labels).value_counts().values)}-{max(pd.Series(labels).value_counts().values)}"
+    )
+
+    st.markdown("---")
+    st.subheader("Asignación por Cluster")
+
+    df_clusters = pd.DataFrame({
+        'Programa': prog_names,
+        'Cluster': labels
+    }).sort_values('Cluster')
+
+    for c in sorted(df_clusters['Cluster'].unique()):
+        miembros = df_clusters[df_clusters['Cluster'] == c]['Programa'].tolist()
+        with st.expander(f"**Cluster {c}** — {len(miembros)} programa(s)"):
+            for m in miembros:
+                st.markdown(f"- {m}")
+
+    st.markdown("---")
+    st.subheader("Silhouette Score")
+    try:
+        from sklearn.metrics import silhouette_score
+        if len(prog_names) > n_clusters and n_clusters > 1:
+            sil = silhouette_score(tfidf.toarray(), labels, metric='cosine')
+            st.metric("Silhouette Score", f"{sil:.3f}",
+                      help=">0.25 = estructura razonable, >0.5 = buena separación")
+            if sil < 0.1:
+                st.warning("Score bajo: los clusters no están bien diferenciados")
+            elif sil > 0.4:
+                st.success("Buena separación entre clusters")
+    except Exception:
+        pass
+
+
 def pagina_config_tendencias():
     """Pagina para configurar tendencias personalizables."""
     st.title("Configurar Tendencias Globales")
@@ -3836,6 +3895,7 @@ def main():
         "Tendencias Globales":  ("graph-up-arrow",  "Alineación con IA, Sostenibilidad, Innovación, etc."),
         "Minería de Texto":     ("search",          "Términos clave, similitud y frases frecuentes"),
         "Bloom & Integración":  ("diagram-3",       "Taxonomía de Bloom y mapa de integración temática"),
+        "Familias Curriculares":("diagram-2",       "Clustering jerárquico y familias de programas"),
         "Configurar Tendencias":("sliders",         "Personalizar las tendencias globales a detectar"),
         "Explorar Datos":       ("table",           "Explorar y filtrar los registros cargados"),
     }
@@ -4386,6 +4446,11 @@ def main():
     elif pagina == "Bloom & Integración":
         taxonomias_bloom = leer_taxonomias_bloom(uploaded_files)
         pagina_bloom_integracion(df_filtered, taxonomias_bloom)
+
+    elif pagina == "Familias Curriculares":
+        with st.spinner("Agrupando programas en familias curriculares..."):
+            resultados_nlp = analizar_nlp(df_filtered)
+        pagina_familias_curriculares(df_filtered, resultados_nlp)
 
     elif pagina == "Configurar Tendencias":
         pagina_config_tendencias()
