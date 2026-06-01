@@ -3610,183 +3610,92 @@ def pagina_bloom_integracion(df: pd.DataFrame, taxonomias_externas: Dict | None 
 
 
 def pagina_familias_curriculares(df: pd.DataFrame, resultados_nlp: Dict):
-    """Pagina de clustering jerarquico y familias curriculares."""
+    """Muestra asignaturas compartidas entre programas (familias curriculares)."""
     st.title("Familias Curriculares")
     st.markdown("---")
     st.info(
-        "**¿Qué mide esta sección?** Agrupa los programas en **familias curriculares** "
-        "según la similitud de sus contenidos (TF-IDF sobre RA, núcleos e indicadores). "
-        "Programas en el mismo cluster comparten orientación temática. "
-        "El dendrograma muestra la jerarquía de similitud entre programas."
+        "**¿Qué son las Familias Curriculares?** Conjuntos de programas que "
+        "comparten asignaturas. La matriz muestra qué asignaturas están presentes "
+        "en múltiples programas y en cuáles específicamente."
     )
 
-    from sklearn.feature_extraction.text import TfidfVectorizer
-    from sklearn.cluster import AgglomerativeClustering
-    from scipy.cluster.hierarchy import linkage, dendrogram
-
-    programas = df['Programa'].unique()
-    if len(programas) < 3:
-        st.warning("Se requieren al menos 3 programas para clustering")
+    asig_col = _find_column(df, 'Nombre asignatura o módulo')
+    if asig_col is None:
+        st.warning("No se encontró la columna de asignaturas en los datos")
         return
 
-    textos_por_programa = []
-    for prog in programas:
-        sub = df[df['Programa'] == prog]
-        texto = ' '.join(sub['Texto_Completo'].fillna('').astype(str))
-        if len(texto) > 10:
-            textos_por_programa.append((prog, texto))
+    agrupado = (
+        df.groupby(asig_col)
+        .agg(
+            programas=('Programa', lambda x: sorted(set(x))),
+            sedes=('Sede', lambda x: sorted(set(x))),
+            conteo_programas=('Programa', 'nunique')
+        )
+        .reset_index()
+    )
 
-    if len(textos_por_programa) < 3:
-        st.warning("Pocos programas con texto suficiente para clustering")
+    compartidas = agrupado[agrupado['conteo_programas'] > 1].copy()
+    compartidas = compartidas.sort_values('conteo_programas', ascending=False)
+    compartidas.rename(columns={asig_col: 'Asignatura'}, inplace=True)
+
+    if compartidas.empty:
+        st.success("No se encontraron asignaturas compartidas entre programas")
         return
 
-    prog_names = [t[0] for t in textos_por_programa]
-    corpus = [t[1] for t in textos_por_programa]
+    st.metric("Asignaturas compartidas", len(compartidas))
 
-    vectorizer = TfidfVectorizer(
-        max_features=200, min_df=2, max_df=0.85,
-        stop_words=list(STOPWORDS_ES), ngram_range=(1, 2)
-    )
-    tfidf = vectorizer.fit_transform(corpus)
-
-    n_clusters = min(5, max(2, len(prog_names) // 3))
-    cluster = AgglomerativeClustering(
-        n_clusters=n_clusters, metric='cosine', linkage='average'
-    )
-    labels = cluster.fit_predict(tfidf.toarray())
-
-    linkage_matrix = linkage(tfidf.toarray(), method='average', metric='cosine')
-
-    fig = ff.create_dendrogram(
-        tfidf.toarray(),
-        labels=prog_names,
-        linkagefun=lambda x: linkage_matrix,
-        color_threshold=0.5 * max(linkage_matrix[:, 2])
-    )
-    fig.update_layout(
-        height=max(400, len(prog_names) * 30),
-        title="Dendrograma de Familias Curriculares",
-        xaxis_title="Programa",
-        yaxis_title="Distancia (coseno)"
-    )
-    st.plotly_chart(fig, use_container_width=True)
-
-    col1, col2, col3 = st.columns(3)
-    col1.metric("Programas agrupados", len(prog_names))
-    col2.metric("Clusters formados", n_clusters)
-    col3.metric(
-        "Programas por cluster",
-        f"{min(pd.Series(labels).value_counts().values)}-{max(pd.Series(labels).value_counts().values)}"
-    )
-
-    st.markdown("---")
-    st.subheader("Asignación por Cluster")
-
-    df_clusters = pd.DataFrame({
-        'Programa': prog_names,
-        'Cluster': labels
-    }).sort_values('Cluster')
-
-    for c in sorted(df_clusters['Cluster'].unique()):
-        miembros = df_clusters[df_clusters['Cluster'] == c]['Programa'].tolist()
-        with st.expander(f"**Cluster {c}** — {len(miembros)} programa(s)"):
-            for m in miembros:
-                st.markdown(f"- {m}")
-
-    st.markdown("---")
-    st.subheader("Matriz de Familias Curriculares")
+    programas_unicos = df['Programa'].nunique()
     st.caption(
-        "Filas = programas (agrupados por cluster). "
-        "Columnas = términos más distintivos de cada familia. "
-        "El color indica peso TF-IDF."
+        f"De {programas_unicos} programas cargados, se encontraron "
+        f"{len(compartidas)} asignaturas que se repiten en 2 o más programas."
     )
 
-    n_terms_per_cluster = 8
-    feature_names = vectorizer.get_feature_names_out()
-    top_terms_by_cluster = {}
-    for c in sorted(set(labels)):
-        mask = labels == c
-        cluster_tfidf = tfidf.toarray()[mask]
-        mean_weights = cluster_tfidf.mean(axis=0)
-        top_indices = mean_weights.argsort()[::-1][:n_terms_per_cluster]
-        top_terms_by_cluster[c] = [feature_names[i] for i in top_indices]
+    total_programas = df['Programa'].nunique()
+    pivot_rows = []
+    for _, row in compartidas.iterrows():
+        prog_list = row['programas']
+        pivot_row = {'Asignatura': row['Asignatura'], 'Total Programas': row['conteo_programas']}
+        for prog in sorted(df['Programa'].unique()):
+            pivot_row[prog] = 'X' if prog in prog_list else ''
+        pivot_rows.append(pivot_row)
 
-    all_top_terms = []
-    for c in sorted(top_terms_by_cluster):
-        all_top_terms.extend(top_terms_by_cluster[c])
-    all_top_terms = list(dict.fromkeys(all_top_terms))
-
-    matrix_data = []
-    for prog, label in zip(prog_names, labels):
-        row_idx = prog_names.index(prog)
-        tfidf_row = tfidf.toarray()[row_idx]
-        feat_idx = [list(feature_names).index(t) for t in all_top_terms if t in feature_names]
-        row_vals = [tfidf_row[i] for i in feat_idx]
-        matrix_data.append(row_vals)
-
-    idx_labels = [f"[C{label}] {prog}" for prog, label in zip(prog_names, labels)]
-    heatmap_df = pd.DataFrame(
-        matrix_data,
-        index=idx_labels,
-        columns=all_top_terms
-    )
-    heatmap_df.index.name = 'Programa'
-
-    fig_heat = px.imshow(
-        heatmap_df,
-        color_continuous_scale='Blues',
-        aspect='auto',
-        labels=dict(x='Término', y='Programa', color='TF-IDF')
-    )
-    fig_heat.update_layout(
-        height=max(300, len(prog_names) * 25),
-        margin=dict(l=160, r=20, t=20, b=100)
-    )
-
-    st.plotly_chart(fig_heat, use_container_width=True)
+    pivot_df = pd.DataFrame(pivot_rows)
+    st.dataframe(pivot_df, use_container_width=True, hide_index=True)
 
     st.markdown("---")
-    st.subheader("Matriz Programas × Clusters")
-    crosstab = pd.crosstab(
-        pd.Series(prog_names, name='Programa'),
-        pd.Series(labels, name='Cluster')
+    st.subheader("Mapa de calor: Asignaturas × Programas")
+    heat_pivot = compartidas.copy()
+    for prog in sorted(df['Programa'].unique()):
+        heat_pivot[prog] = heat_pivot['programas'].apply(lambda x: 1 if prog in x else 0)
+
+    mat_heat = heat_pivot.drop(
+        columns=['programas', 'sedes', 'conteo_programas', 'Asignatura']
     )
-    crosstab.index = [f"[C{lbl}] {p}" for p, lbl in zip(prog_names, labels)]
-    fig_cross = px.imshow(
-        crosstab,
-        color_continuous_scale='Blues',
-        aspect='auto',
-        labels=dict(x='Cluster', y='Programa', color='Pertenencia')
-    )
-    fig_cross.update_layout(
-        height=max(200, len(prog_names) * 22),
-        margin=dict(l=160, r=20, t=20, b=40)
-    )
-    st.plotly_chart(fig_cross, use_container_width=True)
+    mat_heat.index = heat_pivot['Asignatura'].str[:60]
+
+    if not mat_heat.empty:
+        fig = px.imshow(
+            mat_heat,
+            color_continuous_scale='Blues',
+            aspect='auto',
+            labels=dict(x='Programa', y='Asignatura', color='Presente')
+        )
+        fig.update_layout(
+            height=max(300, len(mat_heat) * 20),
+            margin=dict(l=200, r=20, t=20, b=120)
+        )
+        st.plotly_chart(fig, use_container_width=True)
 
     st.markdown("---")
-    st.subheader("Firma de cada Familia (términos distintivos por cluster)")
-    cols = st.columns(n_clusters)
-    for c in sorted(set(labels)):
-        with cols[c % n_clusters]:
-            st.markdown(f"**Cluster {c}** ({int((labels == c).sum())} prog.)")
-            for t in top_terms_by_cluster[c]:
-                st.markdown(f"- `{t}`")
-
-    st.markdown("---")
-    st.subheader("Silhouette Score")
-    try:
-        from sklearn.metrics import silhouette_score
-        if len(prog_names) > n_clusters and n_clusters > 1:
-            sil = silhouette_score(tfidf.toarray(), labels, metric='cosine')
-            st.metric("Silhouette Score", f"{sil:.3f}",
-                      help=">0.25 = estructura razonable, >0.5 = buena separación")
-            if sil < 0.1:
-                st.warning("Score bajo: los clusters no están bien diferenciados")
-            elif sil > 0.4:
-                st.success("Buena separación entre clusters")
-    except Exception:
-        pass
+    st.subheader("Asignaturas por cantidad de programas")
+    hist = compartidas['conteo_programas'].value_counts().sort_index()
+    fig_bar = px.bar(
+        x=hist.index, y=hist.values,
+        labels={'x': 'Programas que comparten la asignatura', 'y': 'Cantidad de asignaturas'},
+        text=hist.values
+    )
+    fig_bar.update_traces(textposition='outside')
+    st.plotly_chart(fig_bar, use_container_width=True)
 
 
 def pagina_config_tendencias():
