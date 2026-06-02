@@ -340,8 +340,21 @@ NUCLEOS_CONFIG = {
 # COBERTURA DEL PERFIL DE EGRESO
 # ============================================================================
 
-# Umbral de similitud TF-IDF para clasificar cobertura
+# Umbral de similitud TF-IDF para clasificar cobertura (fallback)
 UMBRAL_COBERTURA = 0.35
+
+# Umbrales diferenciados por campo del perfil de egreso
+UMBRALES_POR_CAMPO = {
+    'Perfil profesional': 0.28,
+    'Perfil ocupacional': 0.28,
+    'Saber': 0.35,
+    'SaberHacer': 0.35,
+    'SaberSer': 0.32,
+    'Áreas profesionales': 0.38,
+    'Tareas profesionales': 0.38,
+    'Poblaciones actuación': 0.32,
+    'Valor agregado': 0.30,
+}
 
 # Columnas del perfil de egreso que se analizan (todos los campos del perfil)
 COLUMNAS_PERFIL = [

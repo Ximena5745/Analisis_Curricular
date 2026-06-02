@@ -30,14 +30,60 @@ def test_nucleos_cleaner():
 
 
 def test_perfil_coverage():
-    from src.perfil_coverage_analyzer import analizar_cobertura_perfil_completa
-    df_perfil = pd.DataFrame({'Programa': ['Test'], 'Saber': ['Analisis financiero'],
-                               'SaberHacer': ['Aplica metodos']})
-    df_ra = pd.DataFrame({'SaberAsociado': ['analisis financiero de estados']})
-    df_micro = pd.DataFrame({'Indicadores de logro asignatura o modulo': ['aplica metodos cuantitativos']})
+    from src.perfil_coverage_analyzer import (
+        analizar_cobertura_perfil_completa,
+        _split_elementos_perfil,
+        calcular_cobertura_elemento,
+        construir_corpus_curriculo,
+    )
+
+    # Smart split: texto corto no se fragmenta
+    partes = _split_elementos_perfil('Analisis financiero / gestion de costos')
+    assert len(partes) == 1
+
+    df_perfil = pd.DataFrame({
+        'Programa': ['Test'],
+        'Saber': ['Analisis financiero'],
+        'SaberHacer': ['Aplica metodos cuantitativos'],
+        'Areas profesionales': ['Gerencia administrativa'],
+    })
+    df_ra = pd.DataFrame({
+        'SaberAsociado': [
+            'analisis financiero de estados contables',
+            'evaluacion economica de proyectos',
+            'gestion de costos empresariales',
+        ],
+    })
+    df_micro = pd.DataFrame({
+        'Nombre asignatura o modulo': ['Contabilidad', 'Finanzas', 'Administracion'],
+        'Indicadores de logro asignatura o modulo': [
+            'aplica metodos cuantitativos en decisiones gerenciales',
+            'analiza estados financieros de la empresa',
+            'desarrolla gerencia administrativa organizacional',
+        ],
+        'Nucleos tematicos': ['finanzas', 'administracion', 'costos'],
+    })
+
+    corpus, fuentes = construir_corpus_curriculo(df_micro, df_ra)
+    assert len(corpus) >= 3
+    assert len(fuentes) == len(corpus)
+
+    score, idx, asig, doc = calcular_cobertura_elemento(
+        'analisis financiero', corpus, fuentes
+    )
+    assert 0 <= score <= 1
+    if score > 0:
+        assert asig or doc
+
     result = analizar_cobertura_perfil_completa(df_perfil, df_micro, df_ra)
     assert result['total_elementos'] > 0
     assert 0 <= result['cobertura_global'] <= 100
+    assert 'cobertura_por_campo' in result
+    assert isinstance(result['cobertura_por_campo'], dict)
+    elem = result['elementos'][0]
+    assert 'asignatura_trazable' in elem
+    assert 'umbral' in elem
+    assert 'doc_trazable' in elem
     print("test_perfil_coverage: OK")
 
 

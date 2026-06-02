@@ -268,12 +268,31 @@ class ReportGenerator:
             html_content += f"""
         <p><strong>Cobertura Global:</strong> {cobertura_perfil.get('cobertura_global', 0)}%</p>
         <p><strong>Brechas:</strong> {cobertura_perfil.get('num_brechas', 0)}</p>
+        <p><strong>Corpus:</strong> {cobertura_perfil.get('corpus_size', 0)} documentos</p>
         <p><strong>Recomendaciones:</strong></p>
         <ul>
 """
             for rec in cobertura_perfil.get('recomendaciones', []):
                 html_content += f'            <li>{rec}</li>\n'
             html_content += '        </ul>\n'
+            elementos = cobertura_perfil.get('elementos', [])
+            if elementos:
+                html_content += """
+        <table>
+            <thead><tr>
+                <th>Campo</th><th>Elemento</th><th>Score</th><th>Estado</th><th>Asignatura trazable</th>
+            </tr></thead><tbody>
+"""
+                for e in elementos[:50]:
+                    traz = e.get('asignatura_trazable', '') or '—'
+                    html_content += (
+                        f"            <tr><td>{e.get('campo', '')}</td>"
+                        f"<td>{e.get('elemento', '')[:80]}</td>"
+                        f"<td>{e.get('score', 0):.2%}</td>"
+                        f"<td>{e.get('clasificacion', '')}</td>"
+                        f"<td>{traz[:100]}</td></tr>\n"
+                    )
+                html_content += '        </tbody></table>\n'
 
         html_content += """
         <div class="footer">
@@ -544,6 +563,7 @@ class ReportGenerator:
 
             # 06_Cobertura_Perfil_Egreso
             cobertura_rows = []
+            cobertura_campo_rows = []
             for r in all_results:
                 cob = r.get('cobertura_perfil', {})
                 for elem in cob.get('elementos', []):
@@ -552,11 +572,24 @@ class ReportGenerator:
                         'Campo': elem.get('campo', ''),
                         'Elemento': elem.get('elemento', ''),
                         'Score': elem.get('score', 0),
-                        'Clasificacion': elem.get('clasificacion', '')
+                        'Umbral': elem.get('umbral', ''),
+                        'Clasificacion': elem.get('clasificacion', ''),
+                        'Asignatura_Trazable': elem.get('asignatura_trazable', ''),
+                        'Doc_Trazable': elem.get('doc_trazable', ''),
+                    })
+                for campo, pct in cob.get('cobertura_por_campo', {}).items():
+                    cobertura_campo_rows.append({
+                        'Programa': cob.get('programa', ''),
+                        'Campo': campo,
+                        'Cobertura_Campo_Pct': pct,
                     })
             if cobertura_rows:
                 pd.DataFrame(cobertura_rows).to_excel(
                     writer, sheet_name='06_Cobertura_Perfil_Egreso', index=False
+                )
+            if cobertura_campo_rows:
+                pd.DataFrame(cobertura_campo_rows).to_excel(
+                    writer, sheet_name='06b_Cobertura_Por_Campo', index=False
                 )
 
             # 07_Brechas_Perfil

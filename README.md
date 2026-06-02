@@ -24,7 +24,7 @@ Sistema completo de análisis automatizado para diseños microcurriculares de pr
 - ✅ Consolidación de 99+ archivos Excel en base de datos única
 - ✅ Extracción normalizada de competencias, RA, estrategias pedagógicas
 - ✅ Limpieza y filtrado de núcleos temáticos con 6 filtros en cascada
-- ✅ Cobertura del perfil de egreso vs. currículo (TF-IDF + coseno)
+- ✅ Cobertura del perfil de egreso vs. currículo (TF-IDF + BM25 híbrido, umbrales por campo, trazabilidad)
 - ✅ Asignaturas compartidas: intra-sede, inter-programa e idénticas
 - ✅ Modelado de tópicos con LDA (10 tópicos, fingerprint TF-IDF)
 - ✅ Cálculo de 15+ indicadores de calidad curricular
@@ -104,7 +104,10 @@ source venv/bin/activate
 ```bash
 pip install --upgrade pip
 pip install -r requirements.txt
+python -m spacy download es_core_news_sm
 ```
+
+El modelo `es_core_news_sm` activa la lematización en el análisis de cobertura del perfil de egreso.
 
 **Instalación completa:**
 ```bash

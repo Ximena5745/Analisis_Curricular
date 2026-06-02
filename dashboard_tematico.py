@@ -3615,8 +3615,9 @@ def _cargar_cobertura_perfil_por_programa(uploaded_files) -> Dict:
     import hashlib
 
     cache_key = 'cobertura_perfil_cache'
+    _cache_ver = 'v2_hibrido_bm25'
     files_sig = hashlib.md5(
-        ','.join(sorted(f.name for f in uploaded_files)).encode()
+        (_cache_ver + ',' + ','.join(sorted(f.name for f in uploaded_files))).encode()
     ).hexdigest()
 
     if cache_key in st.session_state and st.session_state.get(cache_key + '_sig') == files_sig:
@@ -3662,6 +3663,56 @@ def _cargar_cobertura_perfil_por_programa(uploaded_files) -> Dict:
     return resultados
 
 
+def _color_fila_score_cobertura(score: float) -> str:
+    """Color de fondo según zona de riesgo del score (0-1)."""
+    if score < 0.25:
+        return 'background-color: #ffcccc'
+    if score < 0.35:
+        return 'background-color: #ffe0cc'
+    if score < 0.50:
+        return 'background-color: #fff8cc'
+    if score < 0.70:
+        return 'background-color: #cce5ff'
+    return 'background-color: #ccffcc'
+
+
+def _styler_tabla_cobertura_perfil(df: pd.DataFrame) -> "pd.io.formats.style.Styler":
+    """Aplica gradiente de riesgo por fila según score numérico."""
+    scores = df['_score_num'].tolist()
+
+    def _fila(row):
+        idx = row.name
+        s = scores[idx] if idx < len(scores) else 0
+        return [_color_fila_score_cobertura(s)] * len(row)
+
+    cols_show = [c for c in df.columns if c != '_score_num']
+    return df[cols_show].style.apply(_fila, axis=1)
+
+
+def _distribucion_scores_cobertura(elementos: list) -> dict:
+    """Cuenta elementos por rango de score."""
+    rangos = {
+        '< 0.25': 0,
+        '0.25–0.35': 0,
+        '0.35–0.50': 0,
+        '0.50–0.70': 0,
+        '> 0.70': 0,
+    }
+    for e in elementos:
+        s = e.get('score', 0)
+        if s < 0.25:
+            rangos['< 0.25'] += 1
+        elif s < 0.35:
+            rangos['0.25–0.35'] += 1
+        elif s < 0.50:
+            rangos['0.35–0.50'] += 1
+        elif s < 0.70:
+            rangos['0.50–0.70'] += 1
+        else:
+            rangos['> 0.70'] += 1
+    return rangos
+
+
 def pagina_cobertura_perfil(df_micro: pd.DataFrame):
     """Evalua si las asignaturas cubren las actitudes/aptitudes del perfil de egreso."""
     st.title("Cobertura de Perfil de Egreso")
@@ -3669,8 +3720,11 @@ def pagina_cobertura_perfil(df_micro: pd.DataFrame):
     st.info(
         "**¿Qué mide esta sección?** Compara cada elemento del perfil de egreso "
         "(Saber, SaberHacer, SaberSer, Áreas profesionales, Tareas profesionales, "
-        "Valor agregado) contra el contenido curricular usando TF-IDF. "
-        "Un elemento se clasifica **CUBIERTO** si su similitud máxima ≥ 0.35."
+        "Valor agregado) contra el contenido curricular con **TF-IDF + BM25** (score híbrido). "
+        "Un elemento se clasifica **CUBIERTO** si su score supera el **umbral por campo** "
+        "(p. ej. 0.35 en Saber, 0.38 en Áreas profesionales). "
+        "Las filas coloreadas indican nivel de riesgo; la columna **Asignatura trazable** "
+        "muestra dónde se detectó la mayor similitud en el currículo."
     )
 
     uploaded_files = st.session_state.get('archivos_subidos', [])
@@ -3685,18 +3739,66 @@ def pagina_cobertura_perfil(df_micro: pd.DataFrame):
         st.warning("No se pudieron analizar perfiles. Verifica que los archivos tengan la hoja 'Paso1 Analisis perfil egreso'.")
         return
 
-    # ── Resumen global ──
     progs_con_perfil = [r for r in resultados.values() if r['total_elementos'] > 0]
     progs_sin_perfil = [r for r in resultados.values() if r['total_elementos'] == 0]
 
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2, col3, col4, col5 = st.columns(5)
     col1.metric("Programas con perfil", len(progs_con_perfil))
     col2.metric("Programas sin perfil", len(progs_sin_perfil))
     if progs_con_perfil:
         avg_cob = np.mean([r['cobertura_global'] for r in progs_con_perfil])
         total_brechas = sum(r['num_brechas'] for r in progs_con_perfil)
+        en_riesgo = sum(
+            1 for r in progs_con_perfil
+            for e in r.get('elementos', [])
+            if e.get('clasificacion') == 'CUBIERTO' and 0.35 <= e.get('score', 0) < 0.50
+        )
         col3.metric("Cobertura global promedio", f"{avg_cob:.1f}%")
         col4.metric("Brechas totales", total_brechas)
+        col5.metric("Cobertura superficial", en_riesgo)
+
+    st.markdown("---")
+
+    # ── Heatmap campo × programa ──
+    if progs_con_perfil and any(r.get('cobertura_por_campo') for r in progs_con_perfil):
+        st.subheader("Mapa de cobertura por campo")
+        from config import COLUMNAS_PERFIL
+        filas_heat = {}
+        for r in progs_con_perfil:
+            filas_heat[r['programa']] = {
+                c: r.get('cobertura_por_campo', {}).get(c, 0.0)
+                for c in COLUMNAS_PERFIL
+            }
+        df_heat = pd.DataFrame(filas_heat).T
+        df_heat = df_heat[[c for c in COLUMNAS_PERFIL if c in df_heat.columns]]
+        fig_heat = px.imshow(
+            df_heat,
+            labels=dict(x='Campo del perfil', y='Programa', color='Cobertura (%)'),
+            color_continuous_scale='RdYlGn',
+            zmin=0, zmax=100,
+            aspect='auto',
+            text_auto='.0f',
+        )
+        fig_heat.update_layout(height=max(280, len(df_heat) * 40 + 120))
+        st.plotly_chart(fig_heat, use_container_width=True)
+
+        st.subheader("Comparativa de cobertura por campo")
+        df_campo_long = df_heat.reset_index(names='Programa').melt(
+            id_vars='Programa',
+            var_name='Campo',
+            value_name='Cobertura (%)',
+        )
+        fig_campo = px.bar(
+            df_campo_long,
+            y='Campo',
+            x='Cobertura (%)',
+            color='Programa',
+            orientation='h',
+            barmode='group',
+            title='Cobertura por campo y programa',
+        )
+        fig_campo.update_layout(height=max(400, len(COLUMNAS_PERFIL) * 36))
+        st.plotly_chart(fig_campo, use_container_width=True)
 
     st.markdown("---")
 
@@ -3714,12 +3816,51 @@ def pagina_cobertura_perfil(df_micro: pd.DataFrame):
         ):
             col_tab, col_rec = st.columns([2, 1])
             with col_tab:
-                df_elem = pd.DataFrame(r['elementos'])
-                df_elem['score'] = df_elem['score'].apply(lambda x: f"{x:.2%}")
-                df_elem.columns = ['Campo', 'Elemento', 'Score TF-IDF', 'Clasificación']
-                st.dataframe(df_elem, use_container_width=True, hide_index=True)
+                elems = sorted(r.get('elementos', []), key=lambda e: e.get('score', 0))
+                rows = []
+                for e in elems:
+                    traz = e.get('asignatura_trazable') or '— sin cobertura detectada'
+                    if e.get('doc_trazable') and e.get('asignatura_trazable'):
+                        traz = f"{traz} · {e['doc_trazable'][:60]}"
+                    rows.append({
+                        'Campo': e['campo'],
+                        'Elemento': e['elemento'][:80] + ('…' if len(e['elemento']) > 80 else ''),
+                        'Score': f"{e['score']:.2%}",
+                        'Umbral': f"{e.get('umbral', 0.35):.0%}",
+                        'Estado': e['clasificacion'],
+                        'Asignatura trazable': traz[:100],
+                        '_score_num': e['score'],
+                    })
+                df_elem = pd.DataFrame(rows)
+                st.caption(
+                    "Colores: rojo <25% · naranja 25–35% · amarillo 35–50% (superficial) · "
+                    "azul 50–70% · verde >70%"
+                )
+                st.dataframe(
+                    _styler_tabla_cobertura_perfil(df_elem),
+                    use_container_width=True,
+                    hide_index=True,
+                )
+
+                dist = _distribucion_scores_cobertura(r.get('elementos', []))
+                fig_dist = px.bar(
+                    x=list(dist.keys()),
+                    y=list(dist.values()),
+                    labels={'x': 'Rango de score', 'y': 'Cantidad de elementos'},
+                    title=f"Distribución de scores — {r['programa']}",
+                    text=list(dist.values()),
+                )
+                fig_dist.update_traces(textposition='outside')
+                fig_dist.update_layout(height=280)
+                st.plotly_chart(fig_dist, use_container_width=True)
 
             with col_rec:
+                if r.get('cobertura_por_campo'):
+                    st.markdown("**Cobertura por campo:**")
+                    for campo, pct in sorted(
+                        r['cobertura_por_campo'].items(), key=lambda x: x[1]
+                    ):
+                        st.markdown(f"- {campo}: **{pct}%**")
                 if r['recomendaciones']:
                     st.markdown("**Recomendaciones:**")
                     for rec in r['recomendaciones']:
@@ -3728,19 +3869,21 @@ def pagina_cobertura_perfil(df_micro: pd.DataFrame):
 
     st.markdown("---")
 
-    # ── Grafico comparativo ──
     if len(ordenados) >= 2:
         st.subheader("Comparación de cobertura entre programas")
         df_chart = pd.DataFrame([
-            {'Programa': r['programa'], 'Cobertura Global (%)': r['cobertura_global'],
-             'Cubiertos': r['total_elementos'] - r['num_brechas'],
-             'Brechas': r['num_brechas']}
+            {
+                'Programa': r['programa'],
+                'Cobertura Global (%)': r['cobertura_global'],
+                'Cubiertos': r['total_elementos'] - r['num_brechas'],
+                'Brechas': r['num_brechas'],
+            }
             for r in ordenados
         ])
         fig = px.bar(
             df_chart, x='Programa', y='Cobertura Global (%)',
             color='Cobertura Global (%)', color_continuous_scale='RdYlGn',
-            text='Cobertura Global (%)', range_color=[0, 100]
+            text='Cobertura Global (%)', range_color=[0, 100],
         )
         fig.update_traces(texttemplate='%{text:.1f}%', textposition='outside')
         fig.update_layout(height=400, xaxis_tickangle=45)
@@ -3749,7 +3892,7 @@ def pagina_cobertura_perfil(df_micro: pd.DataFrame):
         fig2 = px.bar(
             df_chart, x='Programa', y=['Cubiertos', 'Brechas'],
             barmode='group', title='Elementos cubiertos vs. brechas por programa',
-            color_discrete_map={'Cubiertos': '#1fb2de', 'Brechas': '#ec0677'}
+            color_discrete_map={'Cubiertos': '#1fb2de', 'Brechas': '#ec0677'},
         )
         fig2.update_layout(height=400, xaxis_tickangle=45)
         st.plotly_chart(fig2, use_container_width=True)
