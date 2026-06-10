@@ -182,6 +182,9 @@ html, body,
     background: linear-gradient(180deg, #0F385A 0%, #071E32 100%);
     border-right: 3px solid #1FB2DE;
 }
+[data-testid="stSidebar"][data-testid="stSidebar"] {
+    overflow-y: auto !important;
+}
 [data-testid="stSidebar"] * {
     color: #FFFFFF !important;
 }
@@ -226,10 +229,11 @@ html, body,
 /* ── Forzar visibilidad del iframe de option_menu ── */
 [data-testid="stSidebar"] iframe {
     display: block !important;
-    min-height: 340px !important;
-    height: 340px !important;
+    min-height: 480px !important;
+    height: auto !important;
     width: 100% !important;
     border: none !important;
+    overflow-y: auto !important;
 }
 [data-testid="stSidebar"] hr {
     border-color: rgba(66,242,242,0.25) !important;
@@ -502,7 +506,10 @@ TENDENCIAS_DEFAULT = {
             "sostenibilidad", "sostenible", "desarrollo sostenible",
             "ODS", "objetivos desarrollo", "medio ambiente", "ambiental",
             "ecologia", "verde", "cambio climatico", "huella carbono",
-            "economia circular", "recursos naturales"
+            "economia circular", "recursos naturales",
+            "consumo responsable", "energias renovables", "eficiencia energetica",
+            "movilidad sostenible", "agua", "biodiversidad",
+            "innovacion social", "desarrollo comunitario", "responsabilidad social"
         ],
         "color": "#2ECC71",
         "descripcion": "Sostenibilidad y Desarrollo Sostenible (ODS)"
@@ -4477,7 +4484,7 @@ def main():
                     <div class="hero-bar"></div>
                     <span class="hero-label">Sistema de Análisis Microcurricular</span>
                     <p>Optimice los procesos de diseño, actualización y evaluación curricular mediante el uso de analítica avanzada e Inteligencia Artificial.</p>
-                    <p class="hero-support">Permita identificar brechas, tendencias, niveles de alineación y oportunidades de mejora en tiempo real para fortalecer la toma de decisiones académicas y la calidad educativa.</p>
+                    <p class="hero-support">Permite identificar brechas, tendencias, niveles de alineación y oportunidades de mejora en tiempo real para fortalecer la toma de decisiones académicas y la calidad educativa.</p>
                 </div>
                 """, unsafe_allow_html=True)
 

@@ -130,7 +130,10 @@ TEMATICAS = {
             'ambiental', 'medio ambiente', 'ecológico', 'ecología',
             'cambio climático', 'responsabilidad ambiental',
             'desarrollo sostenible', 'ods', 'objetivos de desarrollo sostenible',
-            'huella de carbono', 'economía circular', 'verde', 'green'
+            'huella de carbono', 'economía circular', 'verde', 'green',
+            'consumo responsable', 'energías renovables', 'eficiencia energética',
+            'movilidad sostenible', 'agua', 'biodiversidad',
+            'innovación social', 'desarrollo comunitario', 'responsabilidad social'
         ],
         'contexto_keywords': [
             'dimensiones económicas, ambientales y sociales',

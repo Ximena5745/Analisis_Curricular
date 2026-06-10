@@ -50,7 +50,10 @@ TENDENCIAS_GLOBALES = {
             "sostenibilidad", "sostenible", "desarrollo sostenible",
             "ODS", "objetivos desarrollo", "medio ambiente", "ambiental",
             "ecologia", "verde", "cambio climatico", "huella carbono",
-            "economia circular", "recursos naturales"
+            "economia circular", "recursos naturales",
+            "consumo responsable", "energias renovables", "eficiencia energetica",
+            "movilidad sostenible", "agua", "biodiversidad",
+            "innovacion social", "desarrollo comunitario", "responsabilidad social"
         ],
         "color": "#2ECC71",
         "descripcion": "Sostenibilidad y Desarrollo Sostenible (ODS)"
