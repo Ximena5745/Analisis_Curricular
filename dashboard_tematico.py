@@ -188,6 +188,13 @@ html, body,
 [data-testid="stSidebar"] * {
     color: #FFFFFF !important;
 }
+/* Selectbox en sidebar: texto oscuro sobre fondo blanco */
+[data-testid="stSidebar"] [data-baseweb="select"] > div:first-child,
+[data-testid="stSidebar"] [data-baseweb="select"] input,
+[data-testid="stSidebar"] [data-baseweb="select"] [data-id="select-input"] {
+    color: #0F385A !important;
+    background-color: #FFFFFF !important;
+}
 /* ── option_menu: fondo y texto ─────────────────────────────────────────── */
 /* Contenedor principal del menú */
 [data-testid="stSidebar"] .nav,
@@ -236,7 +243,8 @@ html, body,
     overflow-y: auto !important;
 }
 [data-testid="stSidebar"] hr {
-    border-color: rgba(66,242,242,0.25) !important;
+    border-color: transparent !important;
+    background-color: transparent !important;
 }
 [data-testid="stSidebar"] .stFileUploader {
     background: rgba(255,255,255,0.07);
@@ -4411,6 +4419,13 @@ def main():
         .st-key-hero_section [data-testid="stFileUploader"] small,
         .st-key-hero_section [data-testid="stFileUploader"] > div > small {
             display: none !important;
+        }
+        /* Nombres de archivos en la lista del hero */
+        .st-key-hero_section [data-testid="stFileUploader"] span,
+        .st-key-hero_section [data-testid="stFileUploader"] p,
+        .st-key-hero_section [data-testid="stFileUploader"] div,
+        .st-key-hero_section [data-testid="stFileUploader"] label {
+            color: #e0f2fe !important;
         }
         .st-key-hero_section [data-testid="stBaseButton-secondary"] {
             background: rgba(31,178,222,.08) !important;
