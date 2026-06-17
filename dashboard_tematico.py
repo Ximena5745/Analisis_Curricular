@@ -2145,8 +2145,87 @@ def pagina_tendencias(df: pd.DataFrame, tendencias: Dict, resultados: Dict):
 
     st.markdown("---")
 
-    # ── Exportar listados ────────────────────────────────────────────────────
-    def _build_listados_excel(dataframe: pd.DataFrame) -> bytes:
+    # Helper de export — informe gerencial con formato
+    def _build_listados_excel(dataframe: pd.DataFrame, tendencia_nombre: str = '') -> bytes:
+        from openpyxl import Workbook
+        from openpyxl.styles import (
+            PatternFill, Font, Alignment, Border, Side, GradientFill
+        )
+        from openpyxl.utils import get_column_letter
+        import datetime
+
+        # ── Paleta ──────────────────────────────────────────────────────────
+        AZUL_OSCURO  = '0F385A'
+        AZUL_MEDIO   = '1565A7'
+        AZUL_CLARO   = '1FB2DE'
+        GRIS_FILA    = 'EBF5FB'
+        BLANCO       = 'FFFFFF'
+        AMARILLO_ACC = 'FBAF17'
+
+        def fill(hex_color):
+            return PatternFill('solid', fgColor=hex_color)
+
+        def borde_fino():
+            s = Side(style='thin', color='D0D7DE')
+            return Border(left=s, right=s, top=s, bottom=s)
+
+        def borde_header():
+            s = Side(style='medium', color=AZUL_OSCURO)
+            return Border(left=s, right=s, top=s, bottom=s)
+
+        def apply_header_row(ws, row_idx, labels, col_widths):
+            for ci, label in enumerate(labels, start=1):
+                cell = ws.cell(row=row_idx, column=ci, value=label)
+                cell.fill = fill(AZUL_OSCURO)
+                cell.font = Font(name='Calibri', bold=True, color=BLANCO, size=11)
+                cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+                cell.border = borde_header()
+                ws.column_dimensions[get_column_letter(ci)].width = col_widths[ci - 1]
+            ws.row_dimensions[row_idx].height = 28
+
+        def apply_data_rows(ws, data_rows, start_row):
+            for ri, row_data in enumerate(data_rows):
+                row_idx = start_row + ri
+                bg = GRIS_FILA if ri % 2 == 0 else BLANCO
+                for ci, value in enumerate(row_data, start=1):
+                    cell = ws.cell(row=row_idx, column=ci, value=value)
+                    cell.fill = fill(bg)
+                    cell.font = Font(name='Calibri', size=10, color='1A1A2E')
+                    cell.alignment = Alignment(horizontal='left', vertical='center', wrap_text=False)
+                    cell.border = borde_fino()
+                ws.row_dimensions[row_idx].height = 18
+
+        def write_title_block(ws, title, subtitle, n_cols, fecha_str):
+            # Fila 1: título principal
+            ws.merge_cells(start_row=1, start_column=1, end_row=2, end_column=n_cols)
+            title_cell = ws.cell(row=1, column=1, value=title)
+            title_cell.fill = fill(AZUL_OSCURO)
+            title_cell.font = Font(name='Calibri', bold=True, color=BLANCO, size=16)
+            title_cell.alignment = Alignment(horizontal='center', vertical='center')
+            ws.row_dimensions[1].height = 34
+            ws.row_dimensions[2].height = 34
+
+            # Fila 3: subtítulo
+            ws.merge_cells(start_row=3, start_column=1, end_row=3, end_column=n_cols - 1)
+            sub_cell = ws.cell(row=3, column=1, value=subtitle)
+            sub_cell.fill = fill(AZUL_MEDIO)
+            sub_cell.font = Font(name='Calibri', italic=True, color=BLANCO, size=10)
+            sub_cell.alignment = Alignment(horizontal='left', vertical='center', indent=1)
+
+            # Fecha en última columna de fila 3
+            fecha_cell = ws.cell(row=3, column=n_cols, value=fecha_str)
+            fecha_cell.fill = fill(AZUL_MEDIO)
+            fecha_cell.font = Font(name='Calibri', color=AMARILLO_ACC, size=10, bold=True)
+            fecha_cell.alignment = Alignment(horizontal='right', vertical='center')
+            ws.row_dimensions[3].height = 20
+
+            # Fila 4: separador
+            for ci in range(1, n_cols + 1):
+                sep = ws.cell(row=4, column=ci, value='')
+                sep.fill = fill(AZUL_CLARO)
+            ws.row_dimensions[4].height = 4
+
+        # ── Preparar datos ───────────────────────────────────────────────────
         df_programas = (
             dataframe[['Modalidad', 'Nivel', 'Programa']]
             .drop_duplicates()
@@ -2161,26 +2240,89 @@ def pagina_tendencias(df: pd.DataFrame, tendencias: Dict, resultados: Dict):
             dataframe[['Programa', asig_col]]
             .dropna(subset=[asig_col])
             .drop_duplicates()
-            .rename(columns={asig_col: 'Nombre de asignatura'})
-            .sort_values(['Programa', 'Nombre de asignatura'])
+            .rename(columns={asig_col: 'Nombre de asignatura', 'Programa': 'Nombre del programa'})
+            .sort_values(['Nombre del programa', 'Nombre de asignatura'])
             .reset_index(drop=True)
         )
-        df_asignaturas.rename(columns={'Programa': 'Nombre del programa'}, inplace=True)
+
+        fecha_str = datetime.date.today().strftime('%d/%m/%Y')
+        tend_label = f'Tendencia: {tendencia_nombre}' if tendencia_nombre else 'Todos los programas cargados'
+        wb = Workbook()
+
+        # ═══════════════════════════════════════════════════════════════════
+        # HOJA 1 — Programas
+        # ═══════════════════════════════════════════════════════════════════
+        ws1 = wb.active
+        ws1.title = 'Programas'
+        ws1.sheet_view.showGridLines = False
+
+        cols_prog  = ['Modalidad', 'Nivel', 'Programa']
+        widths_prog = [18, 18, 52]
+        write_title_block(ws1, 'Listado de Programas Académicos', tend_label, len(cols_prog), fecha_str)
+        apply_header_row(ws1, 5, cols_prog, widths_prog)
+
+        # Fila de resumen en color acento antes de los datos
+        ws1.merge_cells(start_row=6, start_column=1, end_row=6, end_column=len(cols_prog))
+        res_cell = ws1.cell(row=6, column=1, value=f'Total de programas: {len(df_programas)}')
+        res_cell.fill = fill(AMARILLO_ACC)
+        res_cell.font = Font(name='Calibri', bold=True, color=AZUL_OSCURO, size=10)
+        res_cell.alignment = Alignment(horizontal='right', vertical='center', indent=1)
+        ws1.row_dimensions[6].height = 16
+
+        apply_data_rows(ws1, df_programas.values.tolist(), start_row=7)
+        ws1.freeze_panes = 'A7'
+
+        # ═══════════════════════════════════════════════════════════════════
+        # HOJA 2 — Asignaturas
+        # ═══════════════════════════════════════════════════════════════════
+        ws2 = wb.create_sheet('Asignaturas')
+        ws2.sheet_view.showGridLines = False
+
+        cols_asig   = ['Nombre del programa', 'Nombre de asignatura']
+        widths_asig = [48, 58]
+        write_title_block(ws2, 'Listado de Asignaturas por Programa', tend_label, len(cols_asig), fecha_str)
+        apply_header_row(ws2, 5, cols_asig, widths_asig)
+
+        ws2.merge_cells(start_row=6, start_column=1, end_row=6, end_column=len(cols_asig))
+        res2 = ws2.cell(row=6, column=1, value=f'Total de asignaturas únicas: {len(df_asignaturas)}')
+        res2.fill = fill(AMARILLO_ACC)
+        res2.font = Font(name='Calibri', bold=True, color=AZUL_OSCURO, size=10)
+        res2.alignment = Alignment(horizontal='right', vertical='center', indent=1)
+        ws2.row_dimensions[6].height = 16
+
+        # Agrupar visualmente por programa: fila de subgrupo cada vez que cambia
+        prev_prog = None
+        data_start = 7
+        for ri, row in enumerate(df_asignaturas.values.tolist()):
+            prog = row[0]
+            row_idx = data_start + ri
+            if prog != prev_prog:
+                # Fila separadora de programa
+                ws2.insert_rows(row_idx)
+                for ci in range(1, 3):
+                    gc = ws2.cell(row=row_idx, column=ci, value=prog if ci == 1 else '')
+                    gc.fill = fill(AZUL_MEDIO)
+                    gc.font = Font(name='Calibri', bold=True, color=BLANCO, size=10)
+                    gc.alignment = Alignment(horizontal='left', vertical='center', indent=1)
+                    gc.border = borde_fino()
+                ws2.row_dimensions[row_idx].height = 20
+                data_start += 1
+                prev_prog = prog
+            row_idx2 = data_start + ri
+            bg = GRIS_FILA if ri % 2 == 0 else BLANCO
+            for ci, value in enumerate(row, start=1):
+                cell = ws2.cell(row=row_idx2, column=ci, value=value)
+                cell.fill = fill(bg)
+                cell.font = Font(name='Calibri', size=10, color='1A1A2E')
+                cell.alignment = Alignment(horizontal='left', vertical='center')
+                cell.border = borde_fino()
+            ws2.row_dimensions[row_idx2].height = 18
+
+        ws2.freeze_panes = 'A7'
 
         buf = io.BytesIO()
-        with pd.ExcelWriter(buf, engine='openpyxl') as writer:
-            df_programas.to_excel(writer, sheet_name='Programas', index=False)
-            df_asignaturas.to_excel(writer, sheet_name='Asignaturas', index=False)
+        wb.save(buf)
         return buf.getvalue()
-
-    st.download_button(
-        label="📥 Descargar listado de programas y asignaturas (Excel)",
-        data=_build_listados_excel(df),
-        file_name="listado_programas_asignaturas.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    )
-
-    st.markdown("---")
 
     tab_global, tab_programa = st.tabs([
         "🌍 Vista Global — Todos los Programas",
@@ -2356,12 +2498,15 @@ def pagina_tendencias(df: pd.DataFrame, tendencias: Dict, resultados: Dict):
         st.markdown("---")
         st.subheader("Detalle por Tendencia (todos los programas)")
         st.caption("Expande cada programa para ver qué asignaturas abordan la tendencia seleccionada.")
-        tend_sel = st.selectbox(
-            "Seleccionar tendencia:",
-            list(tendencias.keys()),
-            format_func=lambda x: tendencias[x]['descripcion'],
-            key="tend_sel_global"
-        )
+        col_sel, col_btn = st.columns([3, 1])
+        with col_sel:
+            tend_sel = st.selectbox(
+                "Seleccionar tendencia:",
+                list(tendencias.keys()),
+                format_func=lambda x: tendencias[x]['descripcion'],
+                key="tend_sel_global"
+            )
+
         if tend_sel in resultados['detalle']:
             n_asigs_tend = resultados.get('asig_counts', {}).get(tend_sel, 0)
             total_asigs = resultados.get('total_asigs', 1)
@@ -2370,6 +2515,29 @@ def pagina_tendencias(df: pd.DataFrame, tendencias: Dict, resultados: Dict):
                 f"**{n_asigs_tend} de {total_asigs}** asignaturas "
                 f"({n_asigs_tend/total_asigs*100:.1f}% de cobertura)"
             )
+
+            # Filtrar df solo a programas/asignaturas que cubren esta tendencia
+            asig_col_exp = next(
+                (c for c in df.columns if 'nombre asignatura' in c.lower()),
+                'Nombre asignatura o modulo'
+            )
+            asigs_tend = set()
+            for prog, hallazgos in resultados['detalle'][tend_sel].items():
+                for h in hallazgos:
+                    a = h.get('asignatura', '')
+                    if a and a not in ('Sin nombre', 'nan', ''):
+                        asigs_tend.add(a)
+            df_filtrado = df[df[asig_col_exp].isin(asigs_tend)] if asigs_tend else df.iloc[0:0]
+            tend_nombre = tendencias[tend_sel]['descripcion'][:30]
+            with col_btn:
+                st.markdown("<div style='margin-top:28px'></div>", unsafe_allow_html=True)
+                st.download_button(
+                    label="📥 Descargar Excel",
+                    data=_build_listados_excel(df_filtrado, tend_nombre),
+                    file_name=f"listado_{tend_sel}.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    help=f"Descarga programas y asignaturas que cubren: {tend_nombre}",
+                )
             tiene_hallazgos = False
             for programa, hallazgos in resultados['detalle'][tend_sel].items():
                 if hallazgos:
