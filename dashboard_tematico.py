@@ -2516,18 +2516,31 @@ def pagina_tendencias(df: pd.DataFrame, tendencias: Dict, resultados: Dict):
                 f"({n_asigs_tend/total_asigs*100:.1f}% de cobertura)"
             )
 
-            # Filtrar df solo a programas/asignaturas que cubren esta tendencia
+            # Construir pares exactos (Programa, Asignatura) desde resultados['detalle']
+            # — misma fuente que usa el heatmap, garantiza consistencia de conteos
             asig_col_exp = next(
                 (c for c in df.columns if 'nombre asignatura' in c.lower()),
                 'Nombre asignatura o modulo'
             )
-            asigs_tend = set()
+            pares_rows = []
             for prog, hallazgos in resultados['detalle'][tend_sel].items():
+                asigs_vistas = set()
                 for h in hallazgos:
-                    a = h.get('asignatura', '')
-                    if a and a not in ('Sin nombre', 'nan', ''):
-                        asigs_tend.add(a)
-            df_filtrado = df[df[asig_col_exp].isin(asigs_tend)] if asigs_tend else df.iloc[0:0]
+                    a = str(h.get('asignatura', '')).strip()
+                    if a and a not in ('Sin nombre', 'nan'):
+                        asigs_vistas.add(a)
+                for a in asigs_vistas:
+                    pares_rows.append({'Programa': str(prog).strip(), asig_col_exp: a})
+
+            if pares_rows:
+                df_pares = pd.DataFrame(pares_rows).drop_duplicates()
+                # Normalizar espacios antes del merge para evitar descuadres
+                df_norm = df.copy()
+                df_norm['Programa'] = df_norm['Programa'].astype(str).str.strip()
+                df_norm[asig_col_exp] = df_norm[asig_col_exp].astype(str).str.strip()
+                df_filtrado = df_norm.merge(df_pares, on=['Programa', asig_col_exp], how='inner')
+            else:
+                df_filtrado = df.iloc[0:0]
             tend_nombre = tendencias[tend_sel]['descripcion'][:30]
             with col_btn:
                 st.markdown("<div style='margin-top:28px'></div>", unsafe_allow_html=True)
