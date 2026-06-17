@@ -1077,32 +1077,36 @@ def analizar_tendencias(df: pd.DataFrame, tendencias: Dict) -> Dict:
         )
 
         for tid, tinfo in tendencias.items():
-            for kw in tinfo['keywords']:
-                if kw.lower() in texto:
-                    matriz.loc[programa, tid] += 1
-                    if asig_str:
-                        asig_sets[tid].add(asig_str)
-                    campos = []
-                    textos = {}
-                    _ra = str(row.get('Resultado de aprendizaje', ''))
-                    if kw.lower() in _ra.lower():
-                        campos.append('RA')
-                        textos['RA'] = _ra
-                    _nuc = str(row.get('Nucleos tematicos', ''))
-                    if kw.lower() in _nuc.lower():
-                        campos.append('Nucleos')
-                        textos['Nucleos'] = _nuc
-                    _ind = str(row.get('Indicadores de logro asignatura o modulo', ''))
-                    if kw.lower() in _ind.lower():
-                        campos.append('Indicadores')
-                        textos['Indicadores'] = _ind
-                    detalle[tid][programa].append({
-                        'keyword': kw,
-                        'campos': campos,
-                        'textos': textos,
-                        'asignatura': asig_str if asig_str else 'Sin nombre'
-                    })
-                    break
+            # Recolectar TODAS las keywords que coinciden en este texto
+            kws_match = [kw for kw in tinfo['keywords'] if kw.lower() in texto]
+            if not kws_match:
+                continue
+            # Contar la fila UNA sola vez para no inflar la matriz
+            matriz.loc[programa, tid] += 1
+            if asig_str:
+                asig_sets[tid].add(asig_str)
+            # Guardar un hallazgo por cada keyword coincidente
+            _ra  = str(row.get('Resultado de aprendizaje', ''))
+            _nuc = str(row.get('Nucleos tematicos', ''))
+            _ind = str(row.get('Indicadores de logro asignatura o modulo', ''))
+            for kw in kws_match:
+                campos = []
+                textos = {}
+                if kw.lower() in _ra.lower():
+                    campos.append('RA')
+                    textos['RA'] = _ra
+                if kw.lower() in _nuc.lower():
+                    campos.append('Nucleos')
+                    textos['Nucleos'] = _nuc
+                if kw.lower() in _ind.lower():
+                    campos.append('Indicadores')
+                    textos['Indicadores'] = _ind
+                detalle[tid][programa].append({
+                    'keyword': kw,
+                    'campos': campos,
+                    'textos': textos,
+                    'asignatura': asig_str if asig_str else 'Sin nombre'
+                })
 
     # Cobertura = % de asignaturas unicas que abordan la tendencia
     cobertura = {}
@@ -2272,9 +2276,12 @@ def pagina_tendencias(df: pd.DataFrame, tendencias: Dict, resultados: Dict):
                         lookup_det[key]['keywords'].add(kw)
                     for c in h.get('campos', []):
                         lookup_det[key]['campos'].add(c)
+                    # Acumular textos: si el campo ya existe y el texto es distinto, no duplicar
                     for c, t in h.get('textos', {}).items():
-                        if c not in lookup_det[key]['textos']:
-                            lookup_det[key]['textos'][c] = t
+                        existing = lookup_det[key]['textos'].get(c, '')
+                        if t and t != existing:
+                            # Concatenar si es texto diferente del mismo campo
+                            lookup_det[key]['textos'][c] = (existing + '\n---\n' + t) if existing else t
 
         fecha_str = datetime.date.today().strftime('%d/%m/%Y')
         tend_label = f'Tendencia: {tendencia_nombre}' if tendencia_nombre else 'Todos los programas cargados'
