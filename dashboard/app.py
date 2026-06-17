@@ -443,12 +443,7 @@ def main():
     if modalidad_sel != "Todos" or sede_sel != "Todos" or nivel_sel != "Todos":
         st.sidebar.info(f"📊 Mostrando {len(filtered_programs)} de {len(programs)} programas")
 
-    # ── Exportar listados a Excel ────────────────────────────────────────────
-    st.sidebar.markdown("---")
-    st.sidebar.subheader("📥 Exportar")
-
     def build_export_excel(prog_list):
-        # Hoja 1: listado de programas
         df_programas = pd.DataFrame([
             {
                 'Modalidad': p.get('modalidad', ''),
@@ -458,7 +453,6 @@ def main():
             for p in prog_list
         ])
 
-        # Hoja 2: listado de asignaturas (únicas por programa)
         asignaturas_rows = []
         for p in prog_list:
             estrategias = p['data'].get('estrategias_micro')
@@ -492,14 +486,6 @@ def main():
             df_asignaturas.to_excel(writer, sheet_name='Asignaturas', index=False)
         buf.seek(0)
         return buf
-
-    excel_bytes = build_export_excel(filtered_programs)
-    st.sidebar.download_button(
-        label="Descargar listados Excel",
-        data=excel_bytes,
-        file_name="listado_programas_asignaturas.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    )
 
     # ========================================================================
     # PÁGINA:  INICIO
@@ -741,6 +727,16 @@ def main():
     # ========================================================================
     elif page == "🏷️ Temáticas":
         st.title("🏷️ Análisis de Temáticas")
+        st.markdown("---")
+
+        # Exportar listado de programas y asignaturas
+        excel_bytes = build_export_excel(filtered_programs)
+        st.download_button(
+            label="📥 Descargar listado de programas y asignaturas (Excel)",
+            data=excel_bytes,
+            file_name="listado_programas_asignaturas.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
         st.markdown("---")
 
         # Selector de temática
