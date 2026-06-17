@@ -1083,15 +1083,23 @@ def analizar_tendencias(df: pd.DataFrame, tendencias: Dict) -> Dict:
                     if asig_str:
                         asig_sets[tid].add(asig_str)
                     campos = []
-                    if kw.lower() in str(row.get('Resultado de aprendizaje', '')).lower():
+                    textos = {}
+                    _ra = str(row.get('Resultado de aprendizaje', ''))
+                    if kw.lower() in _ra.lower():
                         campos.append('RA')
-                    if kw.lower() in str(row.get('Nucleos tematicos', '')).lower():
+                        textos['RA'] = _ra
+                    _nuc = str(row.get('Nucleos tematicos', ''))
+                    if kw.lower() in _nuc.lower():
                         campos.append('Nucleos')
-                    if kw.lower() in str(row.get('Indicadores de logro asignatura o modulo', '')).lower():
+                        textos['Nucleos'] = _nuc
+                    _ind = str(row.get('Indicadores de logro asignatura o modulo', ''))
+                    if kw.lower() in _ind.lower():
                         campos.append('Indicadores')
+                        textos['Indicadores'] = _ind
                     detalle[tid][programa].append({
                         'keyword': kw,
                         'campos': campos,
+                        'textos': textos,
                         'asignatura': asig_str if asig_str else 'Sin nombre'
                     })
                     break
@@ -2146,7 +2154,7 @@ def pagina_tendencias(df: pd.DataFrame, tendencias: Dict, resultados: Dict):
     st.markdown("---")
 
     # Helper de export — informe gerencial con formato
-    def _build_listados_excel(dataframe: pd.DataFrame, tendencia_nombre: str = '') -> bytes:
+    def _build_listados_excel(dataframe: pd.DataFrame, tendencia_nombre: str = '', detalle_tend: dict = None) -> bytes:
         from openpyxl import Workbook
         from openpyxl.styles import (
             PatternFill, Font, Alignment, Border, Side, GradientFill
@@ -2245,6 +2253,29 @@ def pagina_tendencias(df: pd.DataFrame, tendencias: Dict, resultados: Dict):
             .reset_index(drop=True)
         )
 
+        # Construir lookup (prog, asig) → {keywords, campos, textos} desde detalle_tend
+        CAMPO_LABEL = {
+            'RA': 'Resultado de aprendizaje',
+            'Nucleos': 'Núcleos temáticos',
+            'Indicadores': 'Indicadores de logro',
+        }
+        lookup_det = {}
+        if detalle_tend:
+            for prog, hallazgos in detalle_tend.items():
+                for h in hallazgos:
+                    asig = str(h.get('asignatura', '')).strip()
+                    key = (str(prog).strip(), asig)
+                    if key not in lookup_det:
+                        lookup_det[key] = {'keywords': set(), 'campos': set(), 'textos': {}}
+                    kw = h.get('keyword', '')
+                    if kw:
+                        lookup_det[key]['keywords'].add(kw)
+                    for c in h.get('campos', []):
+                        lookup_det[key]['campos'].add(c)
+                    for c, t in h.get('textos', {}).items():
+                        if c not in lookup_det[key]['textos']:
+                            lookup_det[key]['textos'][c] = t
+
         fecha_str = datetime.date.today().strftime('%d/%m/%Y')
         tend_label = f'Tendencia: {tendencia_nombre}' if tendencia_nombre else 'Todos los programas cargados'
         wb = Workbook()
@@ -2278,12 +2309,15 @@ def pagina_tendencias(df: pd.DataFrame, tendencias: Dict, resultados: Dict):
         ws2 = wb.create_sheet('Asignaturas')
         ws2.sheet_view.showGridLines = False
 
-        cols_asig   = ['Nombre del programa', 'Nombre de asignatura']
-        widths_asig = [48, 58]
-        write_title_block(ws2, 'Listado de Asignaturas por Programa', tend_label, len(cols_asig), fecha_str)
+        N_ASIG_COLS = 5
+        cols_asig   = ['Nombre del programa', 'Nombre de asignatura',
+                       'Keywords identificadas', 'Campos detectados',
+                       'Campo y fragmento detectado']
+        widths_asig = [38, 42, 28, 26, 60]
+        write_title_block(ws2, 'Listado de Asignaturas por Programa', tend_label, N_ASIG_COLS, fecha_str)
         apply_header_row(ws2, 5, cols_asig, widths_asig)
 
-        ws2.merge_cells(start_row=6, start_column=1, end_row=6, end_column=len(cols_asig))
+        ws2.merge_cells(start_row=6, start_column=1, end_row=6, end_column=N_ASIG_COLS)
         res2 = ws2.cell(row=6, column=1, value=f'Total de asignaturas únicas: {len(df_asignaturas)}')
         res2.fill = fill(AMARILLO_ACC)
         res2.font = Font(name='Calibri', bold=True, color=AZUL_OSCURO, size=10)
@@ -2294,29 +2328,50 @@ def pagina_tendencias(df: pd.DataFrame, tendencias: Dict, resultados: Dict):
         prev_prog = None
         data_start = 7
         for ri, row in enumerate(df_asignaturas.values.tolist()):
-            prog = row[0]
+            prog = str(row[0]).strip()
+            asig = str(row[1]).strip()
             row_idx = data_start + ri
             if prog != prev_prog:
-                # Fila separadora de programa
+                # Fila separadora de programa (abarca todas las columnas)
                 ws2.insert_rows(row_idx)
-                for ci in range(1, 3):
-                    gc = ws2.cell(row=row_idx, column=ci, value=prog if ci == 1 else '')
-                    gc.fill = fill(AZUL_MEDIO)
-                    gc.font = Font(name='Calibri', bold=True, color=BLANCO, size=10)
-                    gc.alignment = Alignment(horizontal='left', vertical='center', indent=1)
-                    gc.border = borde_fino()
+                ws2.merge_cells(start_row=row_idx, start_column=1,
+                                end_row=row_idx, end_column=N_ASIG_COLS)
+                gc = ws2.cell(row=row_idx, column=1, value=prog)
+                gc.fill = fill(AZUL_MEDIO)
+                gc.font = Font(name='Calibri', bold=True, color=BLANCO, size=10)
+                gc.alignment = Alignment(horizontal='left', vertical='center', indent=1)
+                gc.border = borde_fino()
                 ws2.row_dimensions[row_idx].height = 20
                 data_start += 1
                 prev_prog = prog
+
+            # Enriquecer con datos de detalle
+            det = lookup_det.get((prog, asig), {})
+            kw_str     = '; '.join(sorted(det.get('keywords', [])))
+            campos_str = '; '.join(
+                CAMPO_LABEL.get(c, c) for c in sorted(det.get('campos', []))
+            )
+            frag_parts = [
+                f"{CAMPO_LABEL.get(c, c)}:\n{t[:250]}{'…' if len(t) > 250 else ''}"
+                for c, t in sorted(det.get('textos', {}).items())
+            ]
+            frag_str = '\n\n'.join(frag_parts)
+
             row_idx2 = data_start + ri
             bg = GRIS_FILA if ri % 2 == 0 else BLANCO
-            for ci, value in enumerate(row, start=1):
+            extended_row = [prog, asig, kw_str, campos_str, frag_str]
+            for ci, value in enumerate(extended_row, start=1):
                 cell = ws2.cell(row=row_idx2, column=ci, value=value)
                 cell.fill = fill(bg)
                 cell.font = Font(name='Calibri', size=10, color='1A1A2E')
-                cell.alignment = Alignment(horizontal='left', vertical='center')
+                wrap = ci >= 3  # wrap desde Keywords en adelante
+                cell.alignment = Alignment(
+                    horizontal='left', vertical='top', wrap_text=wrap
+                )
                 cell.border = borde_fino()
-            ws2.row_dimensions[row_idx2].height = 18
+            # Altura proporcional al fragmento
+            has_frag = bool(frag_str)
+            ws2.row_dimensions[row_idx2].height = 60 if has_frag else 18
 
         ws2.freeze_panes = 'A7'
 
@@ -2546,7 +2601,7 @@ def pagina_tendencias(df: pd.DataFrame, tendencias: Dict, resultados: Dict):
                 st.markdown("<div style='margin-top:28px'></div>", unsafe_allow_html=True)
                 st.download_button(
                     label="📥 Descargar Excel",
-                    data=_build_listados_excel(df_filtrado, tend_nombre),
+                    data=_build_listados_excel(df_filtrado, tend_nombre, detalle_tend=resultados['detalle'][tend_sel]),
                     file_name=f"listado_{tend_sel}.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     help=f"Descarga programas y asignaturas que cubren: {tend_nombre}",
