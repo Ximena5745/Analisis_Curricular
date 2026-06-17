@@ -11,6 +11,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 from pathlib import Path
 import sys
+import io
 
 # Agregar src al path
 sys.path.append(str(Path(__file__).parent.parent))
@@ -441,6 +442,64 @@ def main():
     # Indicador de filtros activos
     if modalidad_sel != "Todos" or sede_sel != "Todos" or nivel_sel != "Todos":
         st.sidebar.info(f"📊 Mostrando {len(filtered_programs)} de {len(programs)} programas")
+
+    # ── Exportar listados a Excel ────────────────────────────────────────────
+    st.sidebar.markdown("---")
+    st.sidebar.subheader("📥 Exportar")
+
+    def build_export_excel(prog_list):
+        # Hoja 1: listado de programas
+        df_programas = pd.DataFrame([
+            {
+                'Modalidad': p.get('modalidad', ''),
+                'Nivel': p.get('nivel', ''),
+                'Programa': p.get('nombre', ''),
+            }
+            for p in prog_list
+        ])
+
+        # Hoja 2: listado de asignaturas (únicas por programa)
+        asignaturas_rows = []
+        for p in prog_list:
+            estrategias = p['data'].get('estrategias_micro')
+            if estrategias is None or estrategias.empty:
+                continue
+            nombre_col = next(
+                (c for c in estrategias.columns if 'Nombre' in c and 'asignatura' in c.lower()),
+                None
+            )
+            if nombre_col is None:
+                continue
+            asignaturas_unicas = (
+                estrategias[nombre_col]
+                .dropna()
+                .astype(str)
+                .str.strip()
+                .replace('', pd.NA)
+                .dropna()
+                .unique()
+            )
+            for asig in asignaturas_unicas:
+                asignaturas_rows.append({
+                    'Nombre del programa': p.get('nombre', ''),
+                    'Nombre de asignatura': asig,
+                })
+        df_asignaturas = pd.DataFrame(asignaturas_rows)
+
+        buf = io.BytesIO()
+        with pd.ExcelWriter(buf, engine='openpyxl') as writer:
+            df_programas.to_excel(writer, sheet_name='Programas', index=False)
+            df_asignaturas.to_excel(writer, sheet_name='Asignaturas', index=False)
+        buf.seek(0)
+        return buf
+
+    excel_bytes = build_export_excel(filtered_programs)
+    st.sidebar.download_button(
+        label="Descargar listados Excel",
+        data=excel_bytes,
+        file_name="listado_programas_asignaturas.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
 
     # ========================================================================
     # PÁGINA:  INICIO
