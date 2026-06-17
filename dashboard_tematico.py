@@ -25,6 +25,7 @@ from sklearn.cluster import AgglomerativeClustering
 from src.nucleos_cleaner import filtrar_nucleos_dataframe, limpiar_nucleo, es_nucleo_valido
 from src.perfil_coverage_analyzer import analizar_cobertura_perfil_completa
 from scipy.stats import entropy
+import io
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -2144,6 +2145,43 @@ def pagina_tendencias(df: pd.DataFrame, tendencias: Dict, resultados: Dict):
 
     st.markdown("---")
 
+    # ── Exportar listados ────────────────────────────────────────────────────
+    def _build_listados_excel(dataframe: pd.DataFrame) -> bytes:
+        df_programas = (
+            dataframe[['Modalidad', 'Nivel', 'Programa']]
+            .drop_duplicates()
+            .sort_values(['Modalidad', 'Nivel', 'Programa'])
+            .reset_index(drop=True)
+        )
+        asig_col = next(
+            (c for c in dataframe.columns if 'nombre asignatura' in c.lower()),
+            'Nombre asignatura o modulo'
+        )
+        df_asignaturas = (
+            dataframe[['Programa', asig_col]]
+            .dropna(subset=[asig_col])
+            .drop_duplicates()
+            .rename(columns={asig_col: 'Nombre de asignatura'})
+            .sort_values(['Programa', 'Nombre de asignatura'])
+            .reset_index(drop=True)
+        )
+        df_asignaturas.rename(columns={'Programa': 'Nombre del programa'}, inplace=True)
+
+        buf = io.BytesIO()
+        with pd.ExcelWriter(buf, engine='openpyxl') as writer:
+            df_programas.to_excel(writer, sheet_name='Programas', index=False)
+            df_asignaturas.to_excel(writer, sheet_name='Asignaturas', index=False)
+        return buf.getvalue()
+
+    st.download_button(
+        label="📥 Descargar listado de programas y asignaturas (Excel)",
+        data=_build_listados_excel(df),
+        file_name="listado_programas_asignaturas.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+
+    st.markdown("---")
+
     tab_global, tab_programa = st.tabs([
         "🌍 Vista Global — Todos los Programas",
         "🏫 Análisis por Programa"
@@ -2151,44 +2189,90 @@ def pagina_tendencias(df: pd.DataFrame, tendencias: Dict, resultados: Dict):
 
     # ── TAB 1: VISTA GLOBAL ───────────────────────────────────────────────────
     with tab_global:
-        st.subheader("Asignaturas que abordan cada tendencia por programa")
+        st.subheader("Cobertura de Tendencias por Programa")
         st.caption(
-            "Número de asignaturas **únicas** (cada una contada una sola vez) "
-            "que tratan cada tendencia, desglosado por programa."
+            "Cada celda muestra el número de asignaturas únicas que abordan esa tendencia. "
+            "Tonos más oscuros indican mayor cobertura."
         )
-        # Construir tabla: programa × tendencia → # asignaturas únicas
+        # Construir matriz programa × tendencia
         detalle = resultados['detalle']
-        rows_bar = []
+        programas_ord = sorted({str(p) for tid_d in detalle.values() for p in tid_d})
+        tend_labels = {
+            tid: (tendencias[tid]['descripcion'][:40] + '…' if len(tendencias[tid]['descripcion']) > 40 else tendencias[tid]['descripcion'])
+            for tid in tendencias
+        }
+        matrix_rows = {}
         for tid, por_prog in detalle.items():
-            nombre_tend = tendencias[tid]['descripcion'] if tid in tendencias else tid
-            nombre_tend_corto = nombre_tend[:35] + '…' if len(nombre_tend) > 35 else nombre_tend
-            for prog, registros in por_prog.items():
-                n_uniq = len({r['asignatura'] for r in registros if r['asignatura'] != 'Sin nombre'})
-                if n_uniq > 0:
-                    rows_bar.append({'Tendencia': nombre_tend_corto, 'Programa': str(prog), 'Asignaturas': n_uniq})
-        if rows_bar:
-            df_bar_global = pd.DataFrame(rows_bar)
+            label = tend_labels.get(tid, tid)
+            matrix_rows[label] = {}
+            for prog in programas_ord:
+                registros = por_prog.get(prog, [])
+                matrix_rows[label][str(prog)] = len({r['asignatura'] for r in registros if r['asignatura'] != 'Sin nombre'})
+
+        if matrix_rows:
+            df_heat = pd.DataFrame(matrix_rows).T  # filas=tendencias, cols=programas
             # Ordenar tendencias por total descendente
-            orden = (
-                df_bar_global.groupby('Tendencia')['Asignaturas'].sum()
-                .sort_values(ascending=False).index.tolist()
+            df_heat['_total'] = df_heat.sum(axis=1)
+            df_heat = df_heat.sort_values('_total', ascending=False).drop(columns='_total')
+
+            z = df_heat.values.tolist()
+            x_labels = [str(p)[:30] for p in df_heat.columns]
+            y_labels = df_heat.index.tolist()
+
+            # Texto en celdas: solo mostrar valores > 0 para no saturar
+            text_matrix = [
+                [str(int(v)) if v > 0 else '' for v in row]
+                for row in z
+            ]
+
+            fig_heat = go.Figure(go.Heatmap(
+                z=z,
+                x=x_labels,
+                y=y_labels,
+                text=text_matrix,
+                texttemplate='%{text}',
+                textfont=dict(size=9, color='white'),
+                colorscale=[
+                    [0.0,  '#F0F4F8'],
+                    [0.01, '#C8E6F5'],
+                    [0.3,  '#1FB2DE'],
+                    [0.7,  '#1565A7'],
+                    [1.0,  '#0F385A'],
+                ],
+                showscale=True,
+                colorbar=dict(
+                    title=dict(text='Asignaturas', font=dict(size=12)),
+                    thickness=14,
+                    len=0.8,
+                ),
+                hoverongaps=False,
+                hovertemplate='<b>%{y}</b><br>%{x}<br>%{z} asignatura(s)<extra></extra>',
+            ))
+
+            n_progs = len(x_labels)
+            n_tends = len(y_labels)
+            cell_h = max(28, min(48, 900 // n_tends))
+            cell_w = max(18, min(60, 1400 // n_progs))
+            fig_height = max(380, cell_h * n_tends + 120)
+
+            fig_heat.update_layout(
+                height=fig_height,
+                margin=dict(l=10, r=20, t=30, b=120),
+                xaxis=dict(
+                    tickangle=40,
+                    tickfont=dict(size=9),
+                    side='bottom',
+                    fixedrange=False,
+                ),
+                yaxis=dict(
+                    tickfont=dict(size=10),
+                    autorange='reversed',
+                ),
+                plot_bgcolor='white',
+                paper_bgcolor='white',
+                font=dict(family='Inter, Arial, sans-serif'),
             )
-            fig_bar_global = px.bar(
-                df_bar_global,
-                x='Tendencia', y='Asignaturas', color='Programa',
-                barmode='group',
-                color_discrete_sequence=PALETA_DOUBLE_SPLIT,
-                labels={'Asignaturas': 'N° Asignaturas únicas'},
-                category_orders={'Tendencia': orden}
-            )
-            fig_bar_global.update_layout(
-                height=480,
-                xaxis_tickangle=35,
-                xaxis=dict(tickfont=dict(size=10)),
-                legend=dict(orientation='h', y=1.08),
-                yaxis_title='N° Asignaturas únicas'
-            )
-            st.plotly_chart(fig_bar_global, use_container_width=True)
+            st.plotly_chart(fig_heat, use_container_width=True)
         else:
             st.info("No se detectaron tendencias en los datos cargados.")
 
@@ -2202,15 +2286,32 @@ def pagina_tendencias(df: pd.DataFrame, tendencias: Dict, resultados: Dict):
             for tid, pct in resultados['cobertura'].items():
                 nombre = tendencias[tid]['descripcion'] if tid in tendencias else tid
                 n_asigs = resultados.get('asig_counts', {}).get(tid, 0)
-                cobertura_data.append({'Tendencia': nombre[:35], 'Cobertura': round(pct, 1), 'Asignaturas': n_asigs})
+                cobertura_data.append({'Tendencia': nombre[:38], 'Cobertura': round(pct, 1), 'Asignaturas': n_asigs})
             df_cob = pd.DataFrame(cobertura_data).sort_values('Cobertura', ascending=True)
-            fig = px.bar(df_cob, y='Tendencia', x='Cobertura', orientation='h',
-                         color='Cobertura', color_continuous_scale='RdYlGn', range_color=[0, 100],
-                         hover_data=['Asignaturas'],
-                         labels={'Cobertura': '% Asignaturas'})
-            fig.add_vline(x=50, line_dash="dash", line_color="#FBAF17", opacity=0.7)
-            fig.update_layout(height=480)
-            st.plotly_chart(fig, use_container_width=True)
+            bar_h_cob = max(380, len(df_cob) * 32 + 80)
+            fig_cob = px.bar(
+                df_cob, y='Tendencia', x='Cobertura', orientation='h',
+                color='Cobertura',
+                color_continuous_scale=[[0, '#F8D7DA'], [0.3, '#FBAF17'], [0.6, '#8BC34A'], [1, '#2E7D32']],
+                range_color=[0, 100],
+                text='Cobertura',
+                hover_data=['Asignaturas'],
+                labels={'Cobertura': '% Asignaturas', 'Tendencia': ''},
+            )
+            fig_cob.update_traces(texttemplate='%{text:.1f}%', textposition='outside', textfont_size=10)
+            fig_cob.add_vline(x=50, line_dash='dash', line_color='#0F385A', line_width=1.5,
+                              annotation_text='50 %', annotation_font_size=10,
+                              annotation_position='top right')
+            fig_cob.update_layout(
+                height=bar_h_cob,
+                margin=dict(l=10, r=60, t=20, b=20),
+                xaxis=dict(range=[0, 115], showgrid=True, gridcolor='#F0F0F0', ticksuffix='%'),
+                yaxis=dict(tickfont=dict(size=10)),
+                coloraxis_showscale=False,
+                plot_bgcolor='white', paper_bgcolor='white',
+                font=dict(family='Inter, Arial, sans-serif'),
+            )
+            st.plotly_chart(fig_cob, use_container_width=True)
 
         with col_b:
             st.subheader("N° de Asignaturas por Tendencia")
@@ -2219,14 +2320,27 @@ def pagina_tendencias(df: pd.DataFrame, tendencias: Dict, resultados: Dict):
             for tid in tendencias:
                 nombre = tendencias[tid]['descripcion']
                 n_asigs = resultados.get('asig_counts', {}).get(tid, 0)
-                menciones_data.append({'Tendencia': nombre[:35], 'Asignaturas': n_asigs})
+                menciones_data.append({'Tendencia': nombre[:38], 'Asignaturas': n_asigs})
             df_menciones = pd.DataFrame(menciones_data).sort_values('Asignaturas', ascending=True)
-            fig = px.bar(df_menciones, y='Tendencia', x='Asignaturas', orientation='h',
-                         color='Asignaturas',
-                         color_continuous_scale=[[0, '#EAF9FD'], [0.5, '#1FB2DE'], [1, '#0F385A']],
-                         labels={'Asignaturas': 'N° Asignaturas únicas'})
-            fig.update_layout(height=480)
-            st.plotly_chart(fig, use_container_width=True)
+            bar_h_men = max(380, len(df_menciones) * 32 + 80)
+            fig_men = px.bar(
+                df_menciones, y='Tendencia', x='Asignaturas', orientation='h',
+                color='Asignaturas',
+                color_continuous_scale=[[0, '#C8E6F5'], [0.5, '#1FB2DE'], [1, '#0F385A']],
+                text='Asignaturas',
+                labels={'Asignaturas': 'N° Asignaturas únicas', 'Tendencia': ''},
+            )
+            fig_men.update_traces(texttemplate='%{text}', textposition='outside', textfont_size=10)
+            fig_men.update_layout(
+                height=bar_h_men,
+                margin=dict(l=10, r=50, t=20, b=20),
+                xaxis=dict(showgrid=True, gridcolor='#F0F0F0'),
+                yaxis=dict(tickfont=dict(size=10)),
+                coloraxis_showscale=False,
+                plot_bgcolor='white', paper_bgcolor='white',
+                font=dict(family='Inter, Arial, sans-serif'),
+            )
+            st.plotly_chart(fig_men, use_container_width=True)
 
         if resultados['ausentes']:
             st.markdown("---")
