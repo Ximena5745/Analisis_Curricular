@@ -2352,7 +2352,7 @@ def pagina_tendencias(df: pd.DataFrame, tendencias: Dict, resultados: Dict):
                 CAMPO_LABEL.get(c, c) for c in sorted(det.get('campos', []))
             )
             frag_parts = [
-                f"{CAMPO_LABEL.get(c, c)}:\n{t[:250]}{'…' if len(t) > 250 else ''}"
+                f"{CAMPO_LABEL.get(c, c)}:\n{t}"
                 for c, t in sorted(det.get('textos', {}).items())
             ]
             frag_str = '\n\n'.join(frag_parts)
@@ -2369,9 +2369,9 @@ def pagina_tendencias(df: pd.DataFrame, tendencias: Dict, resultados: Dict):
                     horizontal='left', vertical='top', wrap_text=wrap
                 )
                 cell.border = borde_fino()
-            # Altura proporcional al fragmento
-            has_frag = bool(frag_str)
-            ws2.row_dimensions[row_idx2].height = 60 if has_frag else 18
+            # Altura proporcional al contenido: ~15pt por cada línea estimada
+            n_lineas = max(1, frag_str.count('\n') + 1) if frag_str else 1
+            ws2.row_dimensions[row_idx2].height = max(18, min(n_lineas * 15, 400))
 
         ws2.freeze_panes = 'A7'
 
