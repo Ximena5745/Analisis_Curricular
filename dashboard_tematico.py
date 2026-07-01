@@ -957,11 +957,14 @@ def procesar_archivos(uploaded_files) -> pd.DataFrame:
     ]
 
     # Preparar texto combinado
+    if 'Proceso Responsable' not in df_consolidado.columns:
+        df_consolidado['Proceso Responsable'] = ''
     df_consolidado['Texto_Completo'] = (
         df_consolidado['Resultado de aprendizaje'].fillna('') + ' ' +
         df_consolidado['Nombre asignatura o modulo'].fillna('') + ' ' +
         df_consolidado['Indicadores de logro asignatura o modulo'].fillna('') + ' ' +
-        df_consolidado['Nucleos tematicos'].fillna('')
+        df_consolidado['Nucleos tematicos'].fillna('') + ' ' +
+        df_consolidado['Proceso Responsable'].fillna('')
     ).str.lower().str.strip()
 
     return df_consolidado, failed_files
@@ -1086,9 +1089,10 @@ def analizar_tendencias(df: pd.DataFrame, tendencias: Dict) -> Dict:
             if asig_str:
                 asig_sets[tid].add(asig_str)
             # Guardar un hallazgo por cada keyword coincidente
-            _ra  = str(row.get('Resultado de aprendizaje', ''))
-            _nuc = str(row.get('Nucleos tematicos', ''))
-            _ind = str(row.get('Indicadores de logro asignatura o modulo', ''))
+            _ra   = str(row.get('Resultado de aprendizaje', ''))
+            _nuc  = str(row.get('Nucleos tematicos', ''))
+            _ind  = str(row.get('Indicadores de logro asignatura o modulo', ''))
+            _proc = str(row.get('Proceso Responsable', ''))
             for kw in kws_match:
                 campos = []
                 textos = {}
@@ -1101,6 +1105,9 @@ def analizar_tendencias(df: pd.DataFrame, tendencias: Dict) -> Dict:
                 if kw.lower() in _ind.lower():
                     campos.append('Indicadores')
                     textos['Indicadores'] = _ind
+                if kw.lower() in _proc.lower():
+                    campos.append('Proceso')
+                    textos['Proceso'] = _proc
                 detalle[tid][programa].append({
                     'keyword': kw,
                     'campos': campos,
@@ -2262,6 +2269,7 @@ def pagina_tendencias(df: pd.DataFrame, tendencias: Dict, resultados: Dict):
             'RA': 'Resultado de aprendizaje',
             'Nucleos': 'Núcleos temáticos',
             'Indicadores': 'Indicadores de logro',
+            'Proceso': 'Proceso Responsable',
         }
         lookup_det = {}
         if detalle_tend:
