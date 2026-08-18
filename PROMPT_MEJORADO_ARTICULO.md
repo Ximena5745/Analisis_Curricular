@@ -64,26 +64,28 @@ Crear un artículo educativo que documente el proceso completo de **análisis mi
 
 ---
 
-### **3. RESULTADOS** (datos concretos)
+### **3. RESULTADOS** (datos concretos — sección vigente del artículo, no una plantilla genérica)
 
-#### **3.1 Hallazgos Principales**
-- **Coherencia curricular**: Porcentaje de alineación entre RA y competencias
-- **Brechas identificadas**: Áreas sin cobertura suficiente
-- **Redundancias**: Contenidos duplicados entre asignaturas
-- **Variabilidad sede**: Diferencias significativas entre ubicaciones (PBOG, HMED, VNAL, PMED)
+La sección de Resultados del artículo real (`articulo_curricular_IA.md`, `## 4. RESULTADOS`) ya no sigue el esquema genérico 3.1/3.2/3.3 de las versiones anteriores de este prompt. Su estructura actual, que debe mantenerse y no sustituirse, es:
 
-#### **3.2 Comparativa IA vs. Análisis Manual**
-- **Tiempo de análisis**: Reducción de horas (especificar)
-- **Cobertura**: % de elementos revisados correctamente
-- **Precisión**: Falsos positivos/negativos en detección de patrones
-- **Escalabilidad**: Capacidad de procesar N programas simultáneamente
+- **R1–R5**: una variable cuantitativa por resultado — V1 coherencia vertical, V2 coherencia horizontal, V3 evaluabilidad, V4 trazabilidad, V5 orientación a indicadores — cada una con media, desviación típica, tabla por sede e "Implicación" (qué decisión habilita el hallazgo).
+- **R6–R7**: estadística inferencial — correlaciones de Spearman entre variables (R6) y comparaciones Kruskal-Wallis/Mann-Whitney entre sedes y niveles de formación (R7).
+- **R8**: los módulos del panel analítico de seguimiento curricular, organizados por área de decisión — **estos son los 7 ítems del dashboard (`dashboard_tematico.py`) que todo texto nuevo de Resultados debe cubrir, con contexto (qué mide y con qué método) y resultado (cifra real, no placeholder)**:
 
-#### **3.3 Visualizaciones de Datos** (incluir en artículo)
-- Tabla resumen: Programas analizados, competencias identificadas, fortalezas/brechas
-- Gráfico: Distribución de complejidad de RA (por nivel Bloom)
-- Gráfico: Cobertura de competencias transversales
-- Matriz de coherencia: Alineación vertical RA-ciclo académico
-- Dashboard interactivo: Exploración por sede y programa
+  | Ítem del dashboard | Dónde vive en el artículo |
+  |---|---|
+  | Tipo de saber (detalle por programa) | R2, ampliación |
+  | Familias curriculares | R8.1 |
+  | Minería de Texto y Análisis Semántico | R8.1 / R8.2 |
+  | Cobertura temática (diversidad/densidad) | R8.2 |
+  | Tendencias y Brechas | R8.2 |
+  | Cobertura de perfil | R8.3 |
+  | Taxonomías Curriculares e Integración | R8.4 |
+  | — Síntesis (matriz de valor por área) | R8.5 |
+
+**Regla de fundamentación (obligatoria):** cada cifra de R8 debe salir de ejecutar el código del proyecto sobre el corpus real (`analisis_tematico_avanzado.py` para tendencias/cobertura temática/minería de texto; las funciones de cálculo de `dashboard_tematico.py` para tipo de saber, familias curriculares y taxonomías/Bloom; `src/perfil_coverage_analyzer.py` para cobertura de perfil), nunca inventarse ni generalizarse a partir de un ejemplo. Si al ejecutar un módulo el resultado es inconsistente con lo que el resto del corpus sugiere (como ocurrió con la clasificación por dominio taxonómico, ver R8.4), eso se reporta como hallazgo de validación del propio proyecto, no se descarta ni se maquilla.
+
+**Regla de tono (obligatoria):** el artículo debe ser comprensible para profesionales de áreas distintas a la analítica de datos o el diseño curricular. Cada término técnico (TF-IDF, entropía/diversidad, similitud de coseno, dominio taxonómico, p-valor) se explica en una frase simple la primera vez que aparece en una sección. Las cifras y tablas se mantienen con todo su rigor; lo que cambia es que cada cifra va acompañada de una frase que explica qué significa para alguien que no maneja el método.
 
 ---
 
@@ -93,7 +95,7 @@ Crear un artículo educativo que documente el proceso completo de **análisis mi
 - **Lenguaje**: Python 3.9+
 - **Librerías**: Pandas, Openpyxl, Anthropic SDK
 - **Procesamiento**: Lectura masiva Excel → normalización → API IA
-- **Modelo IA**: Claude Sonnet 4.6 (análisis profundo y contexto extendido)
+- **Modelo IA**: el configurado en `config.py` (`CONFIG['LLM_MODEL']`) — no fijar un nombre de modelo en este prompt ni en el artículo, porque queda desactualizado en cuanto el proyecto actualiza de versión; referenciar siempre la fuente de verdad (`config.py`)
 - **Visualización**: Matplotlib, Seaborn, Plotly (HTML interactivo)
 
 #### **Código Clave** (fragmentos explicados)
@@ -121,7 +123,7 @@ client = Anthropic()
 prompt = f"""
 Analiza estos resultados de aprendizaje y:
 1. Identifica las competencias clave
-2. Evalúa alineación con objetivos del programa
+2. Evalúa alineación con objetivos del programaShow 
 3. Propone mejoras de coherencia
 4. Clasifica por nivel de complejidad (Bloom's taxonomy)
 
@@ -130,7 +132,7 @@ Datos:
 """
 
 response = client.messages.create(
-    model="claude-sonnet-4.6",
+    model=CONFIG['LLM_MODEL'],  # definido en config.py, no hardcodear el nombre aqui
     max_tokens=3000,
     messages=[{"role": "user", "content": prompt}]
 )

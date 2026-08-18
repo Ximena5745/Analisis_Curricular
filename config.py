@@ -334,9 +334,43 @@ NUCLEOS_CONFIG = {
     'MAX_LONGITUD': 150,
     'MIN_PALABRAS': 2,
     'CONTAMINATION_IF': 0.15,
-    'UMBRAL_SCORE_ACADEMICO': 0.5,
     'USE_SPACY': False,
     'SPACY_MODEL': 'es_core_news_sm',
+
+    # ------------------------------------------------------------------
+    # INACTIVO — NO ACTIVAR SIN RECALIBRAR PREVIAMENTE
+    # ------------------------------------------------------------------
+    # 'UMBRAL_SCORE_ACADEMICO' fue definido como umbral para clasificar
+    # núcleos en ALTO/BAJO segun calcular_score_academico(). Nunca se
+    # implementó: ninguna función del pipeline lo consulta.
+    #
+    # Se mantiene comentado, y no eliminado, para dejar constancia de la
+    # intención de diseño y evitar que se reintroduzca por descuido.
+    #
+    # Auditoría (2026-08-03) sobre los 5.780 núcleos válidos del corpus:
+    #   - score medio = 0.198
+    #   - el 96% de los núcleos obtiene score < 0.5
+    #   => aplicar el umbral 0.5 descartaría casi todo el corpus.
+    #      El valor nunca fue calibrado contra datos reales.
+    #
+    # Además, calcular_score_academico() tiene una inconsistencia conocida:
+    # el término 'practica' figura a la vez en _KEYWORDS_ACADEMICAS_POS y
+    # en _KEYWORDS_ACADEMICAS_NEG (nucleos_cleaner.py), de modo que suma y
+    # resta en la misma operación.
+    #
+    # Antes de reactivar cualquier uso decisorio del score es necesario:
+    #   1. Depurar el solapamiento entre ambas listas de keywords.
+    #   2. Separar el criterio "vocabulario académico" del criterio
+    #      "formato pedagógico", hoy mezclados.
+    #   3. Recalibrar el umbral sobre la distribución real del corpus.
+    #   4. Verificar ausencia de sesgo disciplinar (el contraste actual
+    #      entre programas aplicados y teóricos da p = 0.565, sin
+    #      diferencia significativa; debe rehacerse tras la depuración).
+    #
+    # Mientras tanto, el score se calcula y se exporta ÚNICAMENTE como
+    # columna informativa para revisión humana (report_generator.py).
+    #
+    # 'UMBRAL_SCORE_ACADEMICO': 0.5,
 }
 
 # ============================================================================

@@ -636,6 +636,50 @@ def normalizar_columnas(df: pd.DataFrame) -> pd.DataFrame:
     return df.rename(columns=nuevos_nombres)
 
 
+# Columnas del bloque Saber/SaberHacer/SaberSer que Excel guarda como celdas
+# combinadas: el valor solo esta en la primera fila del bloque, las demas
+# quedan NaN al leerse con pandas. Sin "rellenar hacia abajo" antes de
+# cualquier groupby por estas columnas (p. ej. Tipo de Saber por asignatura,
+# nucleos tematicos), dos de cada tres filas del bloque se descartan
+# silenciosamente porque pandas excluye claves NaN de un groupby.
+_COLUMNAS_CELDA_COMBINADA = [
+    'Semestre', 'Nombre asignatura o modulo',
+    'Indicadores de logro asignatura o modulo',
+    'Presencial', 'Virtual', 'Tipologia',
+    'B.Institucional', 'B.Disciplinar', 'B.Electivo',
+    'Creditos', 'Numero de horas trabajo directo',
+    'Numero de horas trabajo independiente', 'Total de horas',
+    'Nucleos tematicos', 'Actividades de aprendizaje',
+    'Actividades de evaluacion', 'Acciones de retroalimentacion',
+]
+
+
+def _rellenar_celdas_combinadas(df: pd.DataFrame) -> pd.DataFrame:
+    """Propaga hacia abajo el valor de las celdas combinadas del bloque
+    Saber/SaberHacer/SaberSer. Debe aplicarse por archivo, antes de
+    concatenar varios programas, para que el relleno no se filtre entre
+    archivos distintos.
+
+    Tambien marca, en '_bloque_inicio', la fila que originalmente traia el
+    valor (antes de rellenar). Un campo como 'Nucleos tematicos' describe la
+    asignatura/competencia completa, no cada fila de RA por separado: si se
+    cuenta en las 3 filas del bloque ya relleno, cada nucleo queda triplicado.
+    Cualquier conteo a nivel de asignatura (menciones, densidad tematica)
+    debe filtrar por df['_bloque_inicio'] para contar cada bloque una sola
+    vez; los analisis a nivel de fila (p. ej. Tipo de Saber, que si varia
+    fila a fila) deben usar el dataframe completo ya relleno.
+    """
+    df = df.copy()
+    if 'Nombre asignatura o modulo' in df.columns:
+        df['_bloque_inicio'] = df['Nombre asignatura o modulo'].notna()
+    else:
+        df['_bloque_inicio'] = True
+    for col in _COLUMNAS_CELDA_COMBINADA:
+        if col in df.columns:
+            df[col] = df[col].ffill()
+    return df
+
+
 def _normalize_column_name(name: str) -> str:
     """Normaliza un nombre de columna para comparación tolerante."""
     normalized = unicodedata.normalize('NFKD', str(name))
@@ -857,6 +901,7 @@ def procesar_archivos(uploaded_files) -> pd.DataFrame:
             )
             if df is not None and not df.empty:
                 df = normalizar_columnas(df)
+                df = _rellenar_celdas_combinadas(df)
                 nivel_col = _find_column(df, 'Nivel')
                 if nivel_col is not None:
                     df['Nivel'] = (

@@ -191,6 +191,49 @@ def normalizar_columnas(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+# Columnas del bloque Saber/SaberHacer/SaberSer que Excel guarda como celdas
+# combinadas: el valor solo esta en la primera fila del bloque, las demas
+# quedan NaN al leerse con pandas. Sin "rellenar hacia abajo" antes de
+# cualquier groupby por estas columnas, dos de cada tres filas del bloque se
+# descartan silenciosamente (pandas excluye claves NaN de un groupby).
+_COLUMNAS_CELDA_COMBINADA = [
+    'Semestre', 'Nombre asignatura o modulo',
+    'Indicadores de logro asignatura o modulo',
+    'Presencial', 'Virtual', 'Tipologia',
+    'B.Institucional', 'B.Disciplinar', 'B.Electivo',
+    'Creditos', 'Numero de horas trabajo directo',
+    'Numero de horas trabajo independiente', 'Total de horas',
+    'Nucleos tematicos', 'Actividades de aprendizaje',
+    'Actividades de evaluacion', 'Acciones de retroalimentacion',
+]
+
+
+def _rellenar_celdas_combinadas(df: pd.DataFrame) -> pd.DataFrame:
+    """Propaga hacia abajo el valor de las celdas combinadas del bloque
+    Saber/SaberHacer/SaberSer. Debe aplicarse por archivo, antes de
+    concatenar varios programas, para que el relleno no se filtre entre
+    archivos distintos.
+
+    Tambien marca, en '_bloque_inicio', la fila que originalmente traia el
+    valor (antes de rellenar). Un campo como 'Nucleos tematicos' describe la
+    asignatura/competencia completa, no cada fila de RA por separado: si se
+    cuenta en las 3 filas del bloque ya relleno, cada nucleo queda triplicado.
+    Cualquier conteo a nivel de asignatura (menciones, densidad tematica)
+    debe filtrar por df['_bloque_inicio'] para contar cada bloque una sola
+    vez; los analisis a nivel de fila (p. ej. Tipo de Saber, que si varia
+    fila a fila) deben usar el dataframe completo ya relleno.
+    """
+    df = df.copy()
+    if 'Nombre asignatura o modulo' in df.columns:
+        df['_bloque_inicio'] = df['Nombre asignatura o modulo'].notna()
+    else:
+        df['_bloque_inicio'] = True
+    for col in _COLUMNAS_CELDA_COMBINADA:
+        if col in df.columns:
+            df[col] = df[col].ffill()
+    return df
+
+
 def cargar_datos_consolidados(input_folder: Path) -> pd.DataFrame:
     """Carga y consolida datos de Paso 5 de todos los programas."""
     print("\n" + "="*70)
@@ -213,6 +256,7 @@ def cargar_datos_consolidados(input_folder: Path) -> pd.DataFrame:
         try:
             df = pd.read_excel(archivo, sheet_name='Paso 5 Estrategias micro', header=1)
             df = normalizar_columnas(df)
+            df = _rellenar_celdas_combinadas(df)
             df['Programa'] = programa_nombre
             all_data.append(df)
             print(f"      Registros: {len(df)}")
@@ -296,11 +340,18 @@ def analisis_cobertura_tematica(df: pd.DataFrame) -> Dict:
 
     resultados = {}
 
+    # Los Nucleos tematicos (como el resto de campos de celda combinada) se
+    # declaran una vez por bloque Saber/SaberHacer/SaberSer, no una vez por
+    # fila de RA. Tras _rellenar_celdas_combinadas() el valor queda repetido
+    # en las 3 filas del bloque; para no triplicar cada nucleo, los conteos
+    # a nivel de asignatura usan solo la fila de inicio de cada bloque.
+    df_bloques = df[df['_bloque_inicio']] if '_bloque_inicio' in df.columns else df
+
     # 1.1 Extraer nucleos tematicos unicos
     print("[1.1] Extrayendo nucleos tematicos...")
 
     nucleos_list = []
-    for idx, row in df.iterrows():
+    for idx, row in df_bloques.iterrows():
         nucleos_raw = str(row['Nucleos tematicos'])
         if nucleos_raw and nucleos_raw != 'nan':
             # Separar por coma, punto y coma, salto de linea
@@ -324,7 +375,7 @@ def analisis_cobertura_tematica(df: pd.DataFrame) -> Dict:
     # 1.2 Densidad tematica por asignatura
     print("\n[1.2] Calculando densidad tematica por asignatura...")
 
-    densidad_por_asignatura = df.groupby('Nombre asignatura o modulo')['Nucleos tematicos'].apply(
+    densidad_por_asignatura = df_bloques.groupby('Nombre asignatura o modulo')['Nucleos tematicos'].apply(
         lambda x: len(re.split(r'[,;\n]+', ' '.join(x.fillna('').astype(str))))
     ).sort_values(ascending=False)
 
