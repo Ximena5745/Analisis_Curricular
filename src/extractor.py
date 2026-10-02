@@ -17,7 +17,7 @@ from openpyxl.utils.exceptions import InvalidFileException
 import sys
 sys.path.append(str(Path(__file__).parent.parent))
 
-from config import EXCEL_SHEETS, HEADER_ROWS, EXPECTED_COLUMNS
+from config import EXCEL_SHEETS, HEADER_ROWS, EXPECTED_COLUMNS, COLUMN_ALIASES
 
 # Configurar logging
 logging.basicConfig(
@@ -149,6 +149,11 @@ class ExcelExtractor:
 
         return col_name
 
+    def _clave_columna(self, col_name) -> str:
+        """Nombre normalizado sin espacios: 'Saberhacer', 'SaberHacer' y
+        'Saber Hacer' producen la misma clave."""
+        return self._normalize_column_name(col_name).replace(' ', '')
+
     def _find_header_row(self, sheet, expected_columns: List[str],
                          max_rows: int = 10) -> Optional[int]:
         """
@@ -165,15 +170,15 @@ class ExcelExtractor:
             Optional[int]: Índice de la fila de header (0-indexed) o None
         """
         # Normalizar columnas esperadas
-        expected_normalized = [self._normalize_column_name(col)
+        expected_normalized = [self._clave_columna(col)
                               for col in expected_columns]
 
         best_match = None
         best_score = 0
 
-        for row_idx in range(max_rows):
+        for row_idx in range(min(max_rows, sheet.max_row)):
             row_values = [cell.value for cell in sheet[row_idx + 1]]
-            row_normalized = [self._normalize_column_name(val)
+            row_normalized = [self._clave_columna(val)
                             for val in row_values]
 
             # Contar coincidencias
@@ -217,34 +222,43 @@ class ExcelExtractor:
 
     def _read_sheet_as_dataframe(self, sheet_name: str,
                                  header_row: Optional[int] = None,
-                                 expected_columns: Optional[List[str]] = None) -> pd.DataFrame:
+                                 expected_columns: Optional[List[str]] = None,
+                                 sheet_key: Optional[str] = None) -> pd.DataFrame:
         """
         Lee una hoja de Excel como DataFrame con detección automática de headers.
 
+        Con expected_columns, la fila de encabezado se detecta comparando cada
+        fila con las columnas esperadas; header_row solo se usa si la detección
+        falla. Luego las columnas se renombran a su nombre canónico (por
+        normalización o por COLUMN_ALIASES[sheet_key]) y se descartan las filas
+        de instrucciones de la plantilla ("[…]") y las que repiten el encabezado.
+
         Args:
             sheet_name (str): Nombre de la hoja
-            header_row (Optional[int]): Fila del header (0-indexed).
-                                       Si es None, se detecta automáticamente
-            expected_columns (Optional[List[str]]): Columnas esperadas para validación
+            header_row (Optional[int]): Fila del header de respaldo (0-indexed)
+            expected_columns (Optional[List[str]]): Columnas esperadas
+            sheet_key (Optional[str]): Clave de la hoja en COLUMN_ALIASES
 
         Returns:
             pd.DataFrame: Datos de la hoja
 
         Raises:
-            ValueError: Si la hoja no existe o no se encuentra header
+            ValueError: Si la hoja no existe
         """
         sheet_name = self._find_sheet(sheet_name)
 
         sheet = self.workbook[sheet_name]
 
-        # Detectar header si no se proporciona
-        if header_row is None and expected_columns:
+        respaldo = header_row if header_row is not None else 0
+        if expected_columns:
             header_row = self._find_header_row(sheet, expected_columns)
             if header_row is None:
-                logger.warning("Usando primera fila como header por defecto")
-                header_row = 0
+                logger.warning(f"{self.file_path.name} / '{sheet_name}': encabezado no detectado; "
+                               f"se usa la fila de respaldo {respaldo + 1}")
+                header_row = respaldo
         elif header_row is None:
             header_row = 0
+        logger.info(f"{self.file_path.name} / '{sheet_name}': encabezado en fila {header_row + 1}")
 
         # Leer con pandas
         df = pd.read_excel(
@@ -255,10 +269,26 @@ class ExcelExtractor:
         )
 
         # Limpiar columnas vacías
-        df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
+        df = df.loc[:, ~df.columns.astype(str).str.contains('^Unnamed')]
+
+        # Renombrar a nombres canónicos
+        if expected_columns:
+            canonicas = {self._clave_columna(c): c for c in expected_columns}
+            canonicas.update(COLUMN_ALIASES.get(sheet_key, {}))
+            df = df.rename(columns=lambda c: canonicas.get(self._clave_columna(c), c))
 
         # Remover filas completamente vacías
         df = df.dropna(how='all')
+
+        # Remover filas de instrucciones de la plantilla y encabezados repetidos
+        if len(df):
+            texto = df.astype(str).apply(lambda c: c.str.strip())
+            es_instruccion = texto.apply(lambda c: c.str.startswith('[')).any(axis=1)
+            claves_cols = [self._clave_columna(c) for c in df.columns]
+            repite_encabezado = texto.apply(
+                lambda fila: sum(self._clave_columna(v) == k for v, k in zip(fila, claves_cols) if v not in ('', 'nan')) >= 2,
+                axis=1)
+            df = df[~(es_instruccion | repite_encabezado)]
 
         logger.debug(f"Hoja '{sheet_name}' leída: {len(df)} filas, "
                     f"{len(df.columns)} columnas")
@@ -287,7 +317,8 @@ class ExcelExtractor:
             df = self._read_sheet_as_dataframe(
                 sheet_name,
                 header_row=header_row,
-                expected_columns=expected_cols
+                expected_columns=expected_cols,
+                sheet_key='COMPETENCIAS'
             )
 
             # Agregar metadatos
@@ -327,7 +358,8 @@ class ExcelExtractor:
             df = self._read_sheet_as_dataframe(
                 sheet_name,
                 header_row=header_row,
-                expected_columns=expected_cols
+                expected_columns=expected_cols,
+                sheet_key='RESULTADOS_APRENDIZAJE'
             )
 
             # Agregar metadatos
@@ -360,7 +392,8 @@ class ExcelExtractor:
             df = self._read_sheet_as_dataframe(
                 sheet_name,
                 header_row=header_row,
-                expected_columns=expected_cols
+                expected_columns=expected_cols,
+                sheet_key='ESTRATEGIAS_MESO'
             )
 
             sede_data = self._extract_sede_modalidad()
@@ -392,7 +425,8 @@ class ExcelExtractor:
             df = self._read_sheet_as_dataframe(
                 sheet_name,
                 header_row=header_row,
-                expected_columns=expected_cols
+                expected_columns=expected_cols,
+                sheet_key='ESTRATEGIAS_MICRO'
             )
 
             sede_data = self._extract_sede_modalidad()
@@ -427,7 +461,8 @@ class ExcelExtractor:
             df = self._read_sheet_as_dataframe(
                 sheet_name,
                 header_row=header_row,
-                expected_columns=expected_cols
+                expected_columns=expected_cols,
+                sheet_key='PERFIL_EGRESO'
             )
 
             sede_data = self._extract_sede_modalidad()

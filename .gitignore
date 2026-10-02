@@ -85,3 +85,9 @@ Thumbs.db
 *.db
 *.sqlite
 *.sqlite3
+
+# Auditoría: entregables y evidencias con contenido curricular (política de datos)
+auditoria/*.xlsx
+auditoria/*.docx
+auditoria/evidencia_*.json
+!auditoria/scripts/
