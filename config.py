@@ -55,7 +55,9 @@ EXCEL_SHEETS = {
     'TAXONOMIA_RA': 'Taxonomias para RA'
 }
 
-# Fila donde empiezan los headers en cada hoja (0-indexed)
+# Fila de headers de respaldo (0-indexed). El extractor detecta la fila real
+# comparando cada fila con EXPECTED_COLUMNS; estos valores solo se usan si la
+# detección falla (corrección P2 de la auditoría, 2026-10-02).
 HEADER_ROWS = {
     'COMPETENCIAS': 1,  # Header en fila 2 (índice 1)
     'RESULTADOS_APRENDIZAJE': 1,  # Header en fila 2 (índice 1) - la fila 1 tiene instrucciones
@@ -117,6 +119,34 @@ EXPECTED_COLUMNS = {
         'Áreas profesionales', 'Tareas profesionales',
         'Poblaciones actuación', 'Valor agregado'
     ]
+}
+
+# Sinónimos de encabezado observados en las matrices, por hoja. La clave es el
+# nombre normalizado (minúsculas, sin tildes, espacios ni puntuación); el valor,
+# el nombre canónico de EXPECTED_COLUMNS. Las variantes que solo difieren en
+# mayúsculas, tildes o espacios (p. ej. 'Saberhacer', 'ÁreasProfesionales') no
+# necesitan entrada: se resuelven por normalización.
+COLUMN_ALIASES = {
+    'COMPETENCIAS': {
+        'tipocompetencia': 'Tipo de competencia',
+        'verbo': 'Verbo competencia',
+        'redacciondelacompetenciaadesarrollar': 'Redacción competencia',
+    },
+    'RESULTADOS_APRENDIZAJE': {
+        'tipodesaber': 'TipoSaber',
+        'niveldeldominio': 'Nivel Dominio',
+        'verbo': 'Verbo RA',
+        'redacciondelresultadodeaprendizajedelprograma': 'Resultados Aprendizaje',
+    },
+    'ESTRATEGIAS_MESO': {
+        'instrumentos': 'Instrumentos de medición',
+    },
+    'ESTRATEGIAS_MICRO': {
+        'numerodehorasdetrabajodirecto': 'Número de horas trabajo directo',
+        'numerodehorasdetrabajoindependiente': 'Número de horas trabajo independiente',
+        'tipologiaasignaturaomodulo': 'Tipología',
+        'actividadesevaluativas': 'Actividades de evaluación',
+    },
 }
 
 # ============================================================================

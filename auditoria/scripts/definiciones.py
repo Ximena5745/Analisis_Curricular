@@ -1,0 +1,105 @@
+"""
+Definiciones finales de la auditoría: fuente única para Word, Excel y Markdown.
+
+Cada definición fija qué se cuenta, dónde está el dato, la regla de conteo, el
+valor final verificado y la decisión de método que la respalda.
+"""
+
+
+def definiciones(T, MIC, TN):
+    n = lambda x: f'{x:,}'.replace(',', '.')
+    return [
+        dict(termino='Matriz (unidad programa-sede)', decision='D1',
+             definicion='Un archivo FormatoRA_<Programa>_<Sede>.xlsx. Es la unidad de análisis de los descriptivos.',
+             fuente='Carpeta data/raw/FORMATOS RA CICLO UNO RC (*.xlsx)',
+             regla='Contar archivos .xlsx con las hojas Paso 1 a Paso 5.', valor=n(T['archivos'])),
+        dict(termino='Programa académico', decision='D1',
+             definicion='Denominación del programa, con independencia de la sede. Un programa ofrecido en varias sedes tiene una matriz por sede.',
+             fuente='Nombre del archivo: texto entre "FormatoRA_" y "_<Sede>"',
+             regla='Agrupar matrices por denominación. Denominador de las cifras "por programa".', valor=n(T['programas'])),
+        dict(termino='Programa multisede', decision='D1',
+             definicion='Programa con matriz en más de una sede.',
+             fuente='Nombre del archivo', regla='Denominaciones con 2 o más archivos.',
+             valor=f'8 programas / 19 matrices'),
+        dict(termino='Sede y modalidad', decision='—',
+             definicion='Ubicación y modalidad de la oferta, codificadas en el sufijo del archivo: PBOG/PMED presencial, HBOG/HMED híbrida, VNAL virtual nacional.',
+             fuente='Sufijo del nombre del archivo', regla='Bogotá (PBOG, HBOG), Medellín (PMED, HMED), oferta virtual nacional (VNAL).',
+             valor='2 sedes físicas + oferta virtual; 3 modalidades'),
+        dict(termino='Nivel de formación', decision='—',
+             definicion='Profesional universitario (incluye licenciaturas), Tecnología, Técnica profesional (pregrado); Especialización, Maestría (posgrado).',
+             fuente='Denominación del programa', regla='Esp* → Especialización; MCE, MEDSTEM, MGEM, MGerTalentoHumano, MInnovacionEducativa → Maestría; Tecnol* → Tecnología; TecProf* → Técnica; resto → Profesional.',
+             valor='34 / 5 / 1 / 5 / 5 matrices'),
+        dict(termino='Perfil profesional y ocupacional', decision='D2, D3',
+             definicion='Textos del Paso 1 que describen el perfil profesional y el perfil ocupacional. No se denomina "perfil de egreso".',
+             fuente='Hoja "Paso1 Analisis perfil egreso", columnas C y D, fila 3',
+             regla='Una celda con contenido = un registro. No se divide el texto en frases ni por separadores.',
+             valor='100 (50 profesionales + 50 ocupacionales)'),
+        dict(termino='Competencia', decision='—',
+             definicion='Competencia redactada en el Paso 2.',
+             fuente='Hoja "Paso 2 Redacción competen", columna F, desde la fila 3',
+             regla='Filas con texto en la columna F, excluyendo instrucciones "[…]" y el encabezado repetido.',
+             valor=n(TN['Total']['competencias'])),
+        dict(termino='Resultado de aprendizaje (RA) único', decision='D4',
+             definicion='Redacción distinta de un RA dentro de una matriz. La identidad es el texto, no el número.',
+             fuente='Hoja "Paso 3 Redacción RA", columna I, desde la fila 3 (se excluye la hoja "- Backup")',
+             regla='Texto normalizado (minúsculas, sin tildes ni puntuación final), deduplicado dentro de cada matriz.',
+             valor=n(T['ra_unicos_por_archivo'])),
+        dict(termino='Registro de RA', decision='D4',
+             definicion='Fila del Paso 3. Un RA se repite una vez por cada competencia a la que aporta. Solo para preguntas sobre vínculos competencia–RA.',
+             fuente='Hoja "Paso 3 Redacción RA", columna I', regla='Filas con texto en la columna I.', valor=n(T['ra_registros'])),
+        dict(termino='Estrategia mesocurricular declarada', decision='D5',
+             definicion='Estrategia del programa nombrada en el Paso 4. Se escribe solo en la primera fila de su bloque.',
+             fuente='Hoja "Paso 4 Estrategias mesocurricu", columna B, desde la fila 3',
+             regla='Filas con RA en la columna A y nombre de estrategia en la columna B.', valor=n(T['p4_con_estrategia'])),
+        dict(termino='Vínculo RA–estrategia', decision='D5',
+             definicion='Fila del Paso 4 que asocia un RA con la estrategia de su bloque.',
+             fuente='Hoja "Paso 4 Estrategias mesocurricu", columna A', regla='Filas con RA en la columna A.',
+             valor=n(T['p4_filas_con_ra'])),
+        dict(termino='Registro de asignatura', decision='D6',
+             definicion='Una asignatura o módulo del plan de estudios de una matriz. Incluye los espacios electivos (nota N1).',
+             fuente='Hoja "Paso 5 Estrategias micro", columna D, desde la fila 3',
+             regla='Filas con nombre en la columna D, excluyendo la fila de totales (columna D numérica, una por matriz).',
+             valor=n(T['p5_registros'])),
+        dict(termino='Denominación de asignatura', decision='D6',
+             definicion='Nombre distinto de asignatura en todo el corpus.',
+             fuente='Paso 5, columna D', regla='Nombre en minúsculas, sin tildes ni puntuación, deduplicado en el corpus.',
+             valor=n(MIC['denominaciones']['minúsculas sin tildes ni puntuación'])),
+        dict(termino='Espacio electivo', decision='N1',
+             definicion='Registro de asignatura cuyo contenido depende de la electiva elegida ("Electiva 1…4", "Electiva I…IV", "Electiva"). No declara núcleos; es rasgo del diseño, no omisión.',
+             fuente='Paso 5, columna D', regla='Registros de asignatura sin núcleos temáticos.',
+             valor=f'{MIC["asig_sin_nucleos"]} (4 por matriz de pregrado profesional; 1 en 5 de posgrado)'),
+        dict(termino='Núcleo temático', decision='D7',
+             definicion='Ítem numerado ("1. …", "2. …") de la celda de núcleos de una asignatura, aunque ocupe varias líneas. Si la celda no está numerada, cada línea es un núcleo.',
+             fuente='Paso 5, columna "Núcleos temáticos", fila de inicio de cada asignatura (celda combinada, se cuenta una vez)',
+             regla='Separar solo por la numeración al inicio de línea. No se corta por comas ni por saltos de línea internos; no se aplica el filtro es_nucleo_valido.',
+             valor=f'{n(MIC["R3_nucleos"])} ({n(MIC["R3_unicos"])} únicos)'),
+        dict(termino='Densidad de núcleos', decision='D7',
+             definicion='Número de núcleos por asignatura con núcleos, dentro de cada matriz.',
+             fuente='Paso 5', regla='Núcleos / asignaturas con núcleos, por matriz (no agrupar por nombre en todo el corpus).',
+             valor=f'media {str(MIC["R3_densidad_media"]).replace(".", ",")}; mediana {MIC["R3_densidad_mediana"]:.0f}'),
+    ]
+
+
+def md(defs, fecha):
+    lines = ['# Definiciones finales de la auditoría', '',
+             f'Fuente única de las definiciones usadas para verificar el artículo curricular. Fecha de verificación: {fecha}.',
+             'Las mismas definiciones están en el Word (sección "Definiciones finales") y en el Excel (hoja "Definiciones").', '',
+             '| Término | Definición | Dónde está el dato | Regla de conteo | Valor final | Decisión |',
+             '|---|---|---|---|---|---|']
+    for d in defs:
+        cel = [d['termino'], d['definicion'], d['fuente'], d['regla'], d['valor'], d['decision']]
+        lines.append('| ' + ' | '.join(str(c).replace('|', '\\|') for c in cel) + ' |')
+    lines += ['', '## Decisiones de método', '',
+              '- **D1** — 39 programas académicos (por denominación); 50 matrices = unidades programa-sede.',
+              '- **D2** — El Paso 1 se denomina "perfil profesional y ocupacional".',
+              '- **D3** — Perfil: una celda con contenido = un registro; sin dividir el texto.',
+              '- **D4** — RA único = texto normalizado deduplicado dentro de cada matriz; las filas solo para vínculos.',
+              '- **D5** — Estrategia = nombre en la columna B del Paso 4; las filas con RA son vínculos.',
+              '- **D6** — Registro de asignatura = una asignatura por matriz, sin la fila de totales.',
+              '- **D7** — Núcleo temático = ítem numerado de la celda de núcleos.',
+              '- **N1** — Los espacios electivos sin núcleos se documentan como nota de datos, no como hallazgo.', '',
+              '## Reproducción', '',
+              'Desde la raíz del proyecto, ejecutar en orden los scripts de `auditoria/scripts/`: '
+              '`verificar_extraccion.py`, `eda_resultados_aprendizaje.py`, `verificar_corpus.py`, `verificar_resultados.py`, '
+              '`verificar_micro.py` y `generar_entregables.py`.', '']
+    return '\n'.join(lines)
