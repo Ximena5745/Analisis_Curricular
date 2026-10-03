@@ -13,13 +13,28 @@ def test_nucleos_cleaner():
         tokenizar_nucleo_celda, limpiar_nucleo, es_nucleo_valido,
         calcular_score_academico, filtrar_nucleos_dataframe
     )
+    from config import NUCLEOS_CONFIG
     items = tokenizar_nucleo_celda('1. Tema A\n2. Tema B')
     assert len(items) == 2
+    # Separación por numeración (D7): un núcleo con comas o en varias líneas es uno solo
+    items = tokenizar_nucleo_celda('1. Oferta, demanda y\nequilibrio\n2.Costos')
+    assert items == ['Oferta, demanda y equilibrio', 'Costos']
+    # Celda sin numeración: una línea = un núcleo
+    assert tokenizar_nucleo_celda('Mi empresa\nMi ciudad') == ['Mi empresa', 'Mi ciudad']
     assert limpiar_nucleo('1. Tema') == 'Tema'
     valido, razon = es_nucleo_valido('Analisis financiero')
     assert valido and razon == ''
-    invalido, _ = es_nucleo_valido('Salgamos')
-    assert not invalido
+    # Control mínimo, siempre activo
+    assert not es_nucleo_valido('[Escribir los núcleos]')[0]
+    assert not es_nucleo_valido('12.3')[0]
+    # Filtros heurísticos: desactivados por defecto, activables por configuración
+    assert es_nucleo_valido('Planeación')[0]
+    NUCLEOS_CONFIG['FILTROS_ESTRICTOS'] = True
+    try:
+        invalido, _ = es_nucleo_valido('Salgamos')
+        assert not invalido
+    finally:
+        NUCLEOS_CONFIG['FILTROS_ESTRICTOS'] = False
     score = calcular_score_academico('Analisis financiero de estados')
     assert 0 <= score <= 1
     df = pd.DataFrame({'Nucleos tematicos': ['1. Valido\n2. No']})
@@ -114,6 +129,24 @@ def test_topic_modeler():
     assert len(result['topics']) == 2
     assert result['model'] is not None
     print("test_topic_modeler: OK")
+
+
+def test_topicos_consenso():
+    import pandas as pd
+    from src.topic_modeler import modelar_topicos_consenso
+    temas = ['1. Estados financieros\n2. Normas contables NIIF\n3. Presupuestos y costos',
+             '1. Plan de mercadeo\n2. Investigación de mercados\n3. Marketing digital',
+             '1. Programación orientada a objetos\n2. Bases de datos\n3. Desarrollo de software']
+    filas = [{'Programa': f'P{i % 3}', 'Archivo': f'P{i % 3}_A.xlsx', 'Nombre asignatura o módulo': f'Asig {i}',
+              'Núcleos temáticos': temas[i % 3]} for i in range(30)]
+    # Una sede repetida del programa P0: debe excluirse del corpus
+    filas += [{'Programa': 'P0', 'Archivo': 'P0_B.xlsx', 'Nombre asignatura o módulo': 'Asig repetida',
+               'Núcleos temáticos': temas[0]}]
+    r = modelar_topicos_consenso(pd.DataFrame(filas), k=3, semillas=(0, 1))
+    assert len(r['topics']) == 3
+    assert r['corpus_size'] == 30
+    assert set(r['asignatura_topico']['Programa']) == {'P0', 'P1', 'P2'}
+    print("test_topicos_consenso: OK")
 
 
 def test_report_generator():

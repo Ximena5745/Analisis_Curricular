@@ -116,30 +116,40 @@ def limpiar_nucleo(texto: str) -> str:
     return t.strip()
 
 
+# Número de ítem al inicio de línea: "1. ", "2.", "3) ", "1.1 " (seguido de texto)
+_NUMERACION = re.compile(r'(?m)^\s*(\d+(?:\.\d+)*)[\.\)]?\s*(?=[^\d\s])')
+
+
 def tokenizar_nucleo_celda(texto_celda: str) -> List[str]:
     """
-    Separa el contenido de una celda en sub-ítems (núcleos individuales).
+    Separa el contenido de una celda en núcleos temáticos individuales.
 
-    Divide por punto y coma, salto de línea, pipe, y también por items
-    numerados tipo '1. Núcleo' o '2) Núcleo'.
+    Las matrices enumeran cada núcleo ("1. …", "2. …"). Se separa solo por esa
+    numeración al inicio de línea, de modo que un núcleo que ocupa varias
+    líneas o contiene comas se conserva como una unidad (decisión D7 de la
+    auditoría, 2026-10-02). Si la celda no está numerada, cada línea es un
+    núcleo.
 
     Args:
         texto_celda: Texto crudo de la celda de núcleos temáticos
 
     Returns:
-        Lista de strings con cada núcleo individual
+        Lista de strings con cada núcleo individual, sin la numeración
     """
     if pd.isna(texto_celda) or not str(texto_celda).strip():
         return []
-    texto = str(texto_celda)
-    partes = re.split(r'[;\n\|]+', texto)
+    texto = str(texto_celda).strip()
+    marcas = list(_NUMERACION.finditer(texto))
+    if not marcas or marcas[0].start() > 3:
+        partes = texto.split('\n')
+    else:
+        partes = [texto[a.end():b.start() if b else len(texto)]
+                  for a, b in zip(marcas, marcas[1:] + [None])]
     resultado = []
     for p in partes:
-        sub = re.split(r'(?<!\d)(?=\d+[\.\)]\s+\w)', p)
-        for s in sub:
-            s = s.strip()
-            if s and s != 'nan':
-                resultado.append(s)
+        s = re.sub(r'\s+', ' ', p).strip()
+        if s and s != 'nan':
+            resultado.append(s)
     return resultado
 
 
@@ -148,7 +158,10 @@ def es_nucleo_valido(texto: str) -> Tuple[bool, str]:
     Verifica si un texto es un núcleo temático válido, retornando
     (valido, razon_rechazo).
 
-    Filtros en cascada:
+    Control mínimo (siempre activo): vacío, solo números/símbolos e
+    instrucciones de la plantilla ("[…]").
+
+    Filtros heurísticos en cascada, solo si NUCLEOS_CONFIG['FILTROS_ESTRICTOS']:
     1. Longitud (MIN_LONGITUD - MAX_LONGITUD)
     2. Solo números/caracteres especiales
     3. Mínimo de palabras (MIN_PALABRAS)
@@ -162,6 +175,19 @@ def es_nucleo_valido(texto: str) -> Tuple[bool, str]:
         Tuple[bool, str]: (True, '') si es válido, (False, 'razón') si no
     """
     t = texto.strip()
+    # Control mínimo (siempre activo): vacío, solo números/símbolos o
+    # texto de instrucciones de la plantilla.
+    if not t:
+        return False, "Vacío"
+    if re.fullmatch(r'[\W\d_]+', t):
+        return False, "Solo números o caracteres especiales"
+    if t.startswith('['):
+        return False, "Instrucción de la plantilla"
+    # Filtros heurísticos: desactivados por defecto. Con la separación por
+    # numeración rechazaban núcleos legítimos ("La balanza de pagos…",
+    # "Planeación", "Política económica parte I"); ver auditoría P5.
+    if not NUCLEOS_CONFIG.get('FILTROS_ESTRICTOS', False):
+        return True, ''
     if len(t) < NUCLEOS_CONFIG['MIN_LONGITUD']:
         return False, f"Demasiado corto ({len(t)} chars, min {NUCLEOS_CONFIG['MIN_LONGITUD']})"
     if len(t) > NUCLEOS_CONFIG['MAX_LONGITUD']:

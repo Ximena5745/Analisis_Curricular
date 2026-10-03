@@ -1,0 +1,54 @@
+{
+ "etiqueta": "antes",
+ "elementos": 2562,
+ "alertas": 323,
+ "pct_alertas": 12.6,
+ "corpus_docs": 13177,
+ "por_campo": {
+  "Perfil profesional": {
+   "elementos": 51,
+   "alertas": 0,
+   "pct": 0.0
+  },
+  "Perfil ocupacional": {
+   "elementos": 72,
+   "alertas": 1,
+   "pct": 1.4
+  },
+  "Saber": {
+   "elementos": 222,
+   "alertas": 0,
+   "pct": 0.0
+  },
+  "SaberHacer": {
+   "elementos": 222,
+   "alertas": 0,
+   "pct": 0.0
+  },
+  "SaberSer": {
+   "elementos": 222,
+   "alertas": 0,
+   "pct": 0.0
+  },
+  "Áreas profesionales": {
+   "elementos": 665,
+   "alertas": 173,
+   "pct": 26.0
+  },
+  "Tareas profesionales": {
+   "elementos": 632,
+   "alertas": 68,
+   "pct": 10.8
+  },
+  "Poblaciones actuación": {
+   "elementos": 420,
+   "alertas": 81,
+   "pct": 19.3
+  },
+  "Valor agregado": {
+   "elementos": 56,
+   "alertas": 0,
+   "pct": 0.0
+  }
+ }
+}

@@ -1,0 +1,15 @@
+{
+ "etiqueta": "antes",
+ "celdas": 1616,
+ "items": 6714,
+ "validos": 5777,
+ "unicos": 2429,
+ "rechazados": 937,
+ "motivos": {
+  "Fragmento de expresión compuesta": 569,
+  "Menos de 2 palabras": 243,
+  "Termina con letra suelta": 55,
+  "Patrón de encabezado/instrucción": 41,
+  "Demasiado largo": 29
+ }
+}

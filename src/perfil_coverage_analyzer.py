@@ -24,14 +24,18 @@ from config import (
     UMBRAL_COBERTURA,
     UMBRALES_POR_CAMPO,
     COLUMNAS_PERFIL,
+    GRUPOS_PERFIL,
 )
 
 logger = logging.getLogger(__name__)
 
+# Corpus = contenidos de las asignaturas. No se incluyen 'SaberAsociado'
+# (Paso 3) ni el texto de los RA (Paso 5): se redactan a partir del propio
+# perfil (98,6 % de las celdas de Saber son idénticas a un SaberAsociado), lo
+# que hacía circular la medición (auditoría P9b, 2026-10-02).
 COLUMNAS_CURRICULO = {
-    'Paso3': ['SaberAsociado'],
+    'Paso3': [],
     'Paso5': [
-        'Resultado de aprendizaje',
         'Nombre asignatura o módulo',
         'Indicadores de logro asignatura o módulo',
         'Núcleos temáticos',
@@ -189,6 +193,10 @@ def _score_bm25_normalizado(elemento_norm: str, corpus: List[str]) -> float:
 def extraer_elementos_perfil(df_perfil: pd.DataFrame) -> List[Dict[str, str]]:
     """
     Extrae elementos del perfil de egreso desde un DataFrame de Paso1.
+
+    Unidad (decisión D3 de la auditoría, 2026-10-02): una celda con
+    contenido = un elemento. El texto no se divide en frases ni por
+    separadores; _split_elementos_perfil se conserva solo como utilidad.
     """
     elementos = []
     if df_perfil.empty:
@@ -197,19 +205,32 @@ def extraer_elementos_perfil(df_perfil: pd.DataFrame) -> List[Dict[str, str]]:
 
     for _, row in df_perfil.iterrows():
         for campo in COLUMNAS_PERFIL:
-            if campo not in df_perfil.columns:
+            col_real = _columna(df_perfil, campo)
+            if col_real is None:
                 continue
-            valor = row.get(campo, '')
+            valor = row.get(col_real, '')
             if pd.isna(valor) or not str(valor).strip():
                 continue
-            for sub in _split_elementos_perfil(valor):
-                elementos.append({
-                    'campo': campo,
-                    'elemento': sub,
-                    'elemento_norm': _normalizar_texto(sub),
-                })
+            texto = str(valor).strip()
+            elementos.append({
+                'campo': campo,
+                'elemento': texto,
+                'elemento_norm': _normalizar_texto(texto),
+            })
     logger.info(f"Extraídos {len(elementos)} elementos del perfil de egreso")
     return elementos
+
+
+def _clave_col(nombre) -> str:
+    """Nombre de columna normalizado: sin mayúsculas, tildes, espacios ni puntuación."""
+    return re.sub(r'[^a-z0-9]', '', _preprocesar_ascii(nombre))
+
+
+def _columna(df: pd.DataFrame, nombre: str) -> Optional[str]:
+    """Columna real de df que corresponde a 'nombre' (p. ej. 'Saberhacer' o
+    'Nucleos tematicos' para 'SaberHacer' / 'Núcleos temáticos'), o None."""
+    clave = _clave_col(nombre)
+    return next((c for c in df.columns if _clave_col(c) == clave), None)
 
 
 def _asignatura_de_fila(row: pd.Series) -> str:
@@ -237,10 +258,11 @@ def construir_corpus_curriculo(
 
     if not df_micro.empty:
         for col in COLUMNAS_CURRICULO['Paso5']:
-            if col not in df_micro.columns:
+            col_real = _columna(df_micro, col)
+            if col_real is None:
                 continue
             for _, row in df_micro.iterrows():
-                val = row.get(col)
+                val = row.get(col_real)
                 if pd.isna(val) or len(str(val).strip()) <= 3:
                     continue
                 norm = _normalizar_texto(val)
@@ -256,10 +278,11 @@ def construir_corpus_curriculo(
 
     if not df_ra.empty:
         for col in COLUMNAS_CURRICULO['Paso3']:
-            if col not in df_ra.columns:
+            col_real = _columna(df_ra, col)
+            if col_real is None:
                 continue
             for _, row in df_ra.iterrows():
-                val = row.get(col)
+                val = row.get(col_real)
                 if pd.isna(val) or len(str(val).strip()) <= 3:
                     continue
                 norm = _normalizar_texto(val)
@@ -337,9 +360,23 @@ def _calcular_cobertura_por_campo(elementos_con_score: List[Dict]) -> Dict[str, 
     }
 
 
+def _calcular_cobertura_por_grupo(elementos_con_score: List[Dict]) -> Dict[str, Dict[str, float]]:
+    """Elementos, alertas y % de alertas por grupo del perfil (config.GRUPOS_PERFIL).
+    Cada elemento ya fue clasificado con el umbral de su campo; aquí solo se agrega."""
+    por_grupo: Dict[str, Dict[str, float]] = {}
+    for e in elementos_con_score:
+        g = por_grupo.setdefault(GRUPOS_PERFIL.get(e['campo'], e['campo']), {'elementos': 0, 'alertas': 0})
+        g['elementos'] += 1
+        g['alertas'] += e['clasificacion'] == 'BRECHA'
+    for g in por_grupo.values():
+        g['pct_alertas'] = round(g['alertas'] / g['elementos'] * 100, 1) if g['elementos'] else 0.0
+    return por_grupo
+
+
 def _elemento_resultado_vacio(elem: Dict, umbral: float) -> Dict[str, Any]:
     return {
         'campo': elem['campo'],
+        'grupo': GRUPOS_PERFIL.get(elem['campo'], elem['campo']),
         'elemento': elem['elemento'],
         'score': 0.0,
         'umbral': umbral,
@@ -362,6 +399,7 @@ def analizar_cobertura_perfil_completa(
         'total_elementos': 0,
         'cobertura_global': 0.0,
         'cobertura_por_campo': {},
+        'cobertura_por_grupo': {},
         'elementos': [],
         'brechas': [],
         'num_brechas': 0,
@@ -395,6 +433,7 @@ def analizar_cobertura_perfil_completa(
         resultado['num_brechas'] = len(resultado['brechas'])
         resultado['cobertura_global'] = 0.0
         resultado['cobertura_por_campo'] = _calcular_cobertura_por_campo(resultado['elementos'])
+        resultado['cobertura_por_grupo'] = _calcular_cobertura_por_grupo(resultado['elementos'])
         return resultado
 
     vectorizer = TfidfVectorizer(**TFIDF_KWARGS)
@@ -413,6 +452,7 @@ def analizar_cobertura_perfil_completa(
         clasificacion = 'CUBIERTO' if score >= umbral else 'BRECHA'
         elementos_con_score.append({
             'campo': elem['campo'],
+            'grupo': GRUPOS_PERFIL.get(elem['campo'], elem['campo']),
             'elemento': elem['elemento'],
             'score': round(score, 4),
             'umbral': umbral,
@@ -463,6 +503,7 @@ def analizar_cobertura_perfil_completa(
     resultado['total_elementos'] = total
     resultado['cobertura_global'] = cobertura_global
     resultado['cobertura_por_campo'] = _calcular_cobertura_por_campo(elementos_con_score)
+    resultado['cobertura_por_grupo'] = _calcular_cobertura_por_grupo(elementos_con_score)
     resultado['elementos'] = elementos_con_score
     resultado['brechas'] = brechas
     resultado['num_brechas'] = num_brechas

@@ -205,7 +205,7 @@ class ReportGenerator:
         </div>
         <div class="metric">
             <div class="metric-value">{indicadores['resumen']['total_estrategias_micro']}</div>
-            <div class="metric-label">Estrategias Microcurriculares</div>
+            <div class="metric-label">Asignaturas</div>
         </div>
 
         <h2>📊 Balance de Tipos de Saber</h2>
@@ -382,11 +382,8 @@ class ReportGenerator:
                 'num_tematicas': tematicas.get('num_tematicas', 0),
                 'resumen': tematicas.get('resumen', {})
             },
-            'resumen': {
-                'total_competencias': len(programa_data['competencias']),
-                'total_ra': len(programa_data['resultados_aprendizaje']),
-                'total_estrategias_micro': len(programa_data.get('estrategias_micro', []))
-            }
+            # Mismas unidades que CurricularAnalyzer (decisiones D4-D6 de la auditoría)
+            'resumen': indicadores.get('resumen', {})
         }
 
         if cobertura_perfil:

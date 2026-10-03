@@ -11,6 +11,7 @@ import logging
 import re
 import unicodedata
 from typing import Dict
+import numpy as np
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
@@ -24,12 +25,70 @@ logger = logging.getLogger(__name__)
 
 UMBRAL_IDENTICO = 0.95
 UMBRAL_SIMILAR = 0.60
+# Contenido de una asignatura: indicadores de logro y núcleos temáticos. No se
+# incluye el texto de los RA: es propio de cada programa y medía la diferencia
+# entre programas, no entre asignaturas (auditoría P12b, 2026-10-02).
 COLUMNAS_CONTENIDO = [
     'Nombre asignatura o módulo',
     'Indicadores de logro asignatura o módulo',
     'Núcleos temáticos',
-    'Resultado de aprendizaje'
 ]
+
+# Vectorizador común para comparar contenidos de asignaturas
+_TFIDF_ASIGNATURAS = dict(max_df=0.85, ngram_range=(1, 2), sublinear_tf=True)
+
+
+def _clave_nombre(nombre) -> str:
+    """Denominación normalizada: minúsculas, sin tildes ni puntuación."""
+    t = _normalizar(nombre)
+    return re.sub(r'\s+', ' ', re.sub(r'[^a-z0-9 ]', ' ', t)).strip()
+
+
+def consolidar_asignaturas(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Una fila por asignatura de cada matriz (programa-sede) con su contenido.
+
+    En el Paso 5 el nombre de la asignatura aparece solo en la primera fila de
+    su bloque; las filas siguientes (otros RA) pertenecen a la misma
+    asignatura. El contenido reúne los núcleos temáticos (separados por su
+    numeración, decisión D7) y los indicadores de logro de todo el bloque. Se
+    excluyen las filas de totales y los espacios electivos (nota N1).
+
+    Returns:
+        DataFrame con Programa, Sede, Codigo, asignatura, clave, texto
+    """
+    from src.nucleos_cleaner import tokenizar_nucleo_celda
+
+    asig_col = _buscar_columna(df, 'Nombre asignatura o módulo')
+    if asig_col is None or df.empty:
+        return pd.DataFrame(columns=['Programa', 'Sede', 'Codigo', 'asignatura', 'clave', 'texto'])
+    ind_col = _buscar_columna(df, 'Indicadores de logro asignatura o módulo')
+    nuc_col = _buscar_columna(df, 'Núcleos temáticos')
+    matriz_col = 'Archivo' if 'Archivo' in df.columns else 'Programa'
+
+    filas, actual, matriz_actual = [], None, None
+    for _, row in df.iterrows():
+        if row.get(matriz_col) != matriz_actual:
+            matriz_actual, actual = row.get(matriz_col), None
+        nombre = row.get(asig_col)
+        if pd.notna(nombre) and str(nombre).strip():
+            nombre = str(nombre).strip()
+            if re.fullmatch(r'[\d\.\s]+', nombre) or _clave_nombre(nombre).startswith('electiva'):
+                actual = None
+                continue
+            actual = {'Programa': row.get('Programa'), 'Sede': row.get('Sede', ''),
+                      'Codigo': row.get('Codigo_Sede', row.get('Codigo', '')),
+                      'asignatura': nombre, 'clave': _clave_nombre(nombre), 'partes': []}
+            filas.append(actual)
+        if actual is None:
+            continue
+        if nuc_col is not None and pd.notna(row.get(nuc_col)):
+            actual['partes'] += tokenizar_nucleo_celda(row.get(nuc_col))
+        if ind_col is not None and pd.notna(row.get(ind_col)):
+            actual['partes'].append(str(row.get(ind_col)))
+    for f in filas:
+        f['texto'] = _normalizar(' '.join(f.pop('partes')))
+    return pd.DataFrame(filas)
 
 
 def _normalizar(texto: str) -> str:
@@ -83,12 +142,16 @@ def detectar_asignaturas_identicas(df: pd.DataFrame) -> pd.DataFrame:
         logger.warning("Columna 'Nombre asignatura o módulo' no encontrada")
         return pd.DataFrame()
 
-    df = df.copy()
-    df[asig_col] = df[asig_col].astype(str).str.strip()
+    # Denominación normalizada, sin electivas ni filas de totales
+    df = consolidar_asignaturas(df)
+    if df.empty:
+        return pd.DataFrame()
+    asig_col = 'clave'
 
     agrupado = (
         df.groupby(asig_col)
         .agg(
+            nombre=('asignatura', 'first'),
             programas=('Programa', lambda x: list(dict.fromkeys(x))),
             sedes=('Sede', lambda x: list(dict.fromkeys(x))),
             conteo_programas=('Programa', 'nunique'),
@@ -99,7 +162,7 @@ def detectar_asignaturas_identicas(df: pd.DataFrame) -> pd.DataFrame:
 
     multiples_programas = agrupado[agrupado['conteo_programas'] > 1].copy()
     multiples_programas = multiples_programas.sort_values('conteo_programas', ascending=False)
-    multiples_programas.rename(columns={asig_col: 'nombre_asignatura'}, inplace=True)
+    multiples_programas = multiples_programas.drop(columns=asig_col).rename(columns={'nombre': 'nombre_asignatura'})
 
     logger.info(
         f"Asignaturas idénticas: {len(multiples_programas)} "
@@ -202,101 +265,51 @@ def comparar_inter_programa(
     df: pd.DataFrame,
     umbral_identico: float = UMBRAL_IDENTICO,
     umbral_similar: float = UMBRAL_SIMILAR,
-    max_asignaturas: int = 500
+    max_asignaturas: int = None
 ) -> pd.DataFrame:
     """
-    PASO 2: Compara asignaturas entre programas distintos.
-    Encuentra pares con similitud >= umbral_similar.
+    PASO 2: Compara las asignaturas de programas distintos por contenido.
 
-    Para conjuntos grandes (> max_asignaturas) toma una muestra
-    estratificada por programa para limitar el tiempo de cómputo O(n²).
+    Usa todas las asignaturas consolidadas (sin muestreo; auditoría P12) y
+    reporta los pares de programas distintos con similitud >= umbral_similar.
+    La columna 'mismo_nombre' separa las asignaturas homónimas de las que
+    tienen nombre distinto y cubren lo mismo.
 
     Args:
-        df: DataFrame consolidado
+        df: DataFrame consolidado del Paso 5
         umbral_identico: Similitud para considerar idéntico (0.95)
-        umbral_similar: Similitud mínima para reportar (0.60)
-        max_asignaturas: Máximo de asignaturas a comparar (default 500)
+        umbral_similar: Similitud mínima para reportar (0.60; sin calibración documentada)
+        max_asignaturas: Solo para pruebas: limita el número de asignaturas
 
     Returns:
-        DataFrame con pares inter-programa, similitud y recomendación
+        DataFrame con pares inter-programa, similitud y categoría
     """
-    asig_col = _buscar_columna(df, 'Nombre asignatura o módulo')
-    if asig_col is None:
-        return pd.DataFrame()
-
-    programas = df['Programa'].unique()
-    if len(programas) < 2:
+    df_asigs = consolidar_asignaturas(df)
+    df_asigs = df_asigs[df_asigs['texto'].str.len() > 5].reset_index(drop=True)
+    if df_asigs['Programa'].nunique() < 2:
         logger.warning("Se requieren al menos 2 programas para comparación inter-programa")
         return pd.DataFrame()
-
-    todas_asignaturas = []
-    for prog in programas:
-        sub = df[df['Programa'] == prog]
-        for _, row in sub.iterrows():
-            txt = _extraer_texto_asignatura(row)
-            nombre_asig = str(row.get(asig_col, '')).strip()
-            if nombre_asig and nombre_asig != 'nan' and len(txt) > 5:
-                todas_asignaturas.append({
-                    'programa': prog,
-                    'sede': row.get('Sede', ''),
-                    'asignatura': nombre_asig,
-                    'texto': txt
-                })
-
-    if len(todas_asignaturas) < 3:
-        logger.warning("Muy pocas asignaturas con texto para comparar")
-        return pd.DataFrame()
-
-        # Muestrear si hay demasiadas asignaturas (O(n²) protección)
-    if len(todas_asignaturas) > max_asignaturas:
-        logger.warning(
-            f"{len(todas_asignaturas)} asignaturas excede el límite de {max_asignaturas}, "
-            f"muestreando estratificado por programa"
-        )
-        df_temp = pd.DataFrame(todas_asignaturas)
-        muestreadas = []
-        n_por_programa = max(1, max_asignaturas // len(programas))
-        for prog in programas:
-            sub = df_temp[df_temp['programa'] == prog]
-            if len(sub) > n_por_programa:
-                sub = sub.sample(n=n_por_programa, random_state=42)
-            muestreadas.append(sub)
-        todas_asignaturas = pd.concat(muestreadas, ignore_index=True).to_dict('records')
-        logger.info(f"Muestra reducida a {len(todas_asignaturas)} asignaturas")
-
-    df_asigs = pd.DataFrame(todas_asignaturas)
+    if max_asignaturas is not None and len(df_asigs) > max_asignaturas:
+        df_asigs = df_asigs.head(max_asignaturas)
 
     try:
-        vectorizer = TfidfVectorizer(
-            max_features=300, min_df=1, max_df=0.85,
-            ngram_range=(1, 2),
-            stop_words=['el', 'la', 'de', 'que', 'y', 'a', 'en', 'un',
-                        'ser', 'se', 'no', 'por', 'con', 'su', 'para',
-                        'como', 'del', 'las', 'los', 'al', 'una']
-        )
-        tfidf = vectorizer.fit_transform(df_asigs['texto'])
+        tfidf = TfidfVectorizer(**_TFIDF_ASIGNATURAS).fit_transform(df_asigs['texto'])
         sim_matrix = cosine_similarity(tfidf)
     except Exception as e:
         logger.error(f"Error vectorizando: {e}")
         return pd.DataFrame()
 
-    pares = []
-    n = len(df_asigs)
-    for i in range(n):
-        for j in range(i + 1, n):
-            if df_asigs.iloc[i]['programa'] == df_asigs.iloc[j]['programa']:
-                continue
-            sim = float(sim_matrix[i, j])
-            if sim >= umbral_similar:
-                pares.append({
-                    'programa_a': df_asigs.iloc[i]['programa'],
-                    'sede_a': df_asigs.iloc[i]['sede'],
-                    'asignatura_a': df_asigs.iloc[i]['asignatura'],
-                    'programa_b': df_asigs.iloc[j]['programa'],
-                    'sede_b': df_asigs.iloc[j]['sede'],
-                    'asignatura_b': df_asigs.iloc[j]['asignatura'],
-                    'similitud': round(sim, 4)
-                })
+    programas = df_asigs['Programa'].to_numpy()
+    distinto = programas[:, None] != programas[None, :]
+    filas_i, filas_j = np.where(np.triu(sim_matrix >= umbral_similar, k=1) & distinto)
+    pares = [{
+        'programa_a': df_asigs.at[i, 'Programa'], 'sede_a': df_asigs.at[i, 'Sede'],
+        'asignatura_a': df_asigs.at[i, 'asignatura'],
+        'programa_b': df_asigs.at[j, 'Programa'], 'sede_b': df_asigs.at[j, 'Sede'],
+        'asignatura_b': df_asigs.at[j, 'asignatura'],
+        'mismo_nombre': df_asigs.at[i, 'clave'] == df_asigs.at[j, 'clave'],
+        'similitud': round(float(sim_matrix[i, j]), 4),
+    } for i, j in zip(filas_i, filas_j)]
 
     df_pares = pd.DataFrame(pares)
     if df_pares.empty:
@@ -309,11 +322,50 @@ def comparar_inter_programa(
     df_pares = df_pares.sort_values('similitud', ascending=False)
 
     logger.info(
-        f"Inter-programa: {len(df_pares)} pares encontrados "
-        f"({(df_pares['categoria']=='IDENTICO').sum()} idénticos, "
-        f"{(df_pares['categoria']=='SIMILAR').sum()} similares)"
+        f"Inter-programa: {len(df_pares)} pares de {len(df_asigs)} asignaturas "
+        f"({(~df_pares['mismo_nombre']).sum()} con nombre distinto)"
     )
     return df_pares
+
+
+def divergencia_homonimas(df: pd.DataFrame, umbral: float = UMBRAL_SIMILAR) -> pd.DataFrame:
+    """
+    Similitud de contenido de las asignaturas homónimas (misma denominación
+    normalizada en dos o más programas). Para cada una se promedia la
+    similitud coseno entre sus versiones de programas distintos; las versiones
+    de sedes de un mismo programa no se comparan entre sí (auditoría P12b).
+
+    Returns:
+        DataFrame con asignatura, programas, versiones, similitud_media y
+        divergente (similitud_media < umbral)
+    """
+    df_asigs = consolidar_asignaturas(df).reset_index(drop=True)
+    if df_asigs.empty:
+        return pd.DataFrame()
+    try:
+        tfidf = TfidfVectorizer(**_TFIDF_ASIGNATURAS).fit_transform(df_asigs['texto'])
+    except ValueError as e:  # textos sin vocabulario utilizable
+        logger.warning(f"Divergencia de homónimas no calculada: {e}")
+        return pd.DataFrame()
+    filas = []
+    for clave, idx in df_asigs.groupby('clave').groups.items():
+        idx = list(idx)
+        if df_asigs.loc[idx, 'Programa'].nunique() < 2:
+            continue
+        sim = cosine_similarity(tfidf[idx])
+        progs = df_asigs.loc[idx, 'Programa'].to_numpy()
+        mascara = np.triu(progs[:, None] != progs[None, :], k=1)
+        filas.append({
+            'asignatura': df_asigs.at[idx[0], 'asignatura'],
+            'programas': int(df_asigs.loc[idx, 'Programa'].nunique()),
+            'versiones': len(idx),
+            'similitud_media': round(float(sim[mascara].mean()), 3),
+        })
+    res = pd.DataFrame(filas)
+    if res.empty:
+        return res
+    res['divergente'] = res['similitud_media'] < umbral
+    return res.sort_values('similitud_media').reset_index(drop=True)
 
 
 def generar_recomendaciones(df_pares: pd.DataFrame) -> pd.DataFrame:
@@ -394,8 +446,9 @@ def detectar_asignaturas_compartidas(df: pd.DataFrame) -> Dict:
     df_inter = comparar_inter_programa(df)
     df_inter = generar_recomendaciones(df_inter)
 
-    # Asignaturas idénticas
+    # Asignaturas idénticas (homónimas) y su divergencia de contenido
     df_identicas = detectar_asignaturas_identicas(df)
+    df_homonimas = divergencia_homonimas(df)
 
     n_programas = df['Programa'].nunique()
     programas_multi = df_intra['programa'].nunique() if not df_intra.empty else 0
@@ -406,7 +459,10 @@ def detectar_asignaturas_compartidas(df: pd.DataFrame) -> Dict:
         'pares_intra_sede': len(df_intra),
         'pares_inter_programa': len(df_inter),
         'pares_inter_identicos': len(df_inter[df_inter['categoria'] == 'IDENTICO']) if not df_inter.empty else 0,
-        'asignaturas_identicas': len(df_identicas)
+        'asignaturas_identicas': len(df_identicas),
+        'pares_inter_nombre_distinto': int((~df_inter['mismo_nombre']).sum()) if not df_inter.empty else 0,
+        'homonimas_divergentes': int(df_homonimas['divergente'].sum()) if not df_homonimas.empty else 0,
+        'pct_homonimas_divergentes': round(100 * df_homonimas['divergente'].mean(), 1) if not df_homonimas.empty else 0.0,
     }
 
     logger.info(f"Análisis completado: {resumen}")
@@ -414,6 +470,7 @@ def detectar_asignaturas_compartidas(df: pd.DataFrame) -> Dict:
         'intra_sede': df_intra,
         'inter_programa': df_inter,
         'asignaturas_identicas': df_identicas,
+        'homonimas': df_homonimas,
         'resumen': resumen
     }
 

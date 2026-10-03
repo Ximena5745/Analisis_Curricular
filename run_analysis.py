@@ -29,7 +29,7 @@ from src.validator import QualityValidator
 from src.report_generator import ReportGenerator
 from src.perfil_coverage_analyzer import analizar_cobertura_perfil_completa
 from src.shared_subjects_analyzer import detectar_asignaturas_compartidas
-from src.topic_modeler import asignar_topicos_a_programas
+from src.topic_modeler import modelar_topicos_consenso
 from src.run_tracker import RunTracker
 from src.llm_integration import generar_resumen_narrativo
 from config import INPUT_FOLDER, OUTPUT_FOLDER, MESSAGES, CONFIG
@@ -224,22 +224,22 @@ def main():
         else:
             print("   [!]  Datos insuficientes para análisis de asignaturas\n")
 
-        print("[ML] Entrenando modelo de tópicos (LDA)...")
-        ra_all = pd.concat(
-            [r['data'].get('resultados_aprendizaje', pd.DataFrame()) for r in all_results],
-            ignore_index=True
-        )
-        if not ra_all.empty and 'SaberAsociado' in ra_all.columns:
-            topicos = asignar_topicos_a_programas(ra_all, n_topics=10)
-            if topicos.get('model') is not None:
-                print(
-                    f"   [OK] {len(topicos['topics'])} tópicos extraídos, "
-                    f"{topicos.get('corpus_size', 0)} documentos\n"
-                )
-            else:
-                print("   [!]  Corpus insuficiente para LDA (mín. 5 docs)\n")
+        print("[ML] Entrenando modelo de tópicos (LDA de consenso)...")
+        topicos = modelar_topicos_consenso(micro_all) if not micro_all.empty else {'topics': []}
+        if topicos['topics']:
+            topicos_path = run_dir / 'consolidado' / 'topicos_lda.xlsx'
+            with pd.ExcelWriter(topicos_path) as writer:
+                pd.DataFrame([{'topico': t['topic_id'] + 1, 'palabras': ', '.join(t['top_words'][:10]),
+                               'topicos_agrupados': t['n_topicos_agrupados']} for t in topicos['topics']]
+                             ).to_excel(writer, sheet_name='Topicos', index=False)
+                topicos['asignatura_topico'].to_excel(writer, sheet_name='Asignaturas', index=False)
+                topicos['programa_dist'].to_excel(writer, sheet_name='Programas', index=False)
+            print(
+                f"   [OK] {len(topicos['topics'])} tópicos (consenso de {len(topicos['semillas'])} semillas), "
+                f"{topicos['corpus_size']} asignaturas -> {topicos_path}\n"
+            )
         else:
-            print("   [!]  No hay datos de SaberAsociado para topic modeling\n")
+            print("   [!]  Corpus insuficiente para el LDA de consenso\n")
 
     duracion = time.time() - t_inicio
     scores = [r['indicadores']['score_calidad'] for r in all_results] if all_results else []

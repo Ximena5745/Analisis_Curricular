@@ -1,0 +1,54 @@
+{
+ "etiqueta": "despues",
+ "elementos": 988,
+ "alertas": 49,
+ "pct_alertas": 5.0,
+ "corpus_docs": 6610,
+ "por_campo": {
+  "Perfil profesional": {
+   "elementos": 50,
+   "alertas": 0,
+   "pct": 0.0
+  },
+  "Perfil ocupacional": {
+   "elementos": 50,
+   "alertas": 0,
+   "pct": 0.0
+  },
+  "Saber": {
+   "elementos": 222,
+   "alertas": 5,
+   "pct": 2.3
+  },
+  "SaberHacer": {
+   "elementos": 222,
+   "alertas": 14,
+   "pct": 6.3
+  },
+  "SaberSer": {
+   "elementos": 222,
+   "alertas": 13,
+   "pct": 5.9
+  },
+  "Áreas profesionales": {
+   "elementos": 57,
+   "alertas": 4,
+   "pct": 7.0
+  },
+  "Tareas profesionales": {
+   "elementos": 60,
+   "alertas": 8,
+   "pct": 13.3
+  },
+  "Poblaciones actuación": {
+   "elementos": 53,
+   "alertas": 5,
+   "pct": 9.4
+  },
+  "Valor agregado": {
+   "elementos": 52,
+   "alertas": 0,
+   "pct": 0.0
+  }
+ }
+}

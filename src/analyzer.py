@@ -25,8 +25,22 @@ from config import (
     TAXONOMIA_BLOOM,
     TIPOS_SABER,
     COMPLEJIDAD_THRESHOLDS,
-    QUALITY_WEIGHTS
+    QUALITY_WEIGHTS,
+    PROGRESIONES_TAXONOMICAS,
+    COLUMNAS_COMPLETITUD,
 )
+import re
+from difflib import SequenceMatcher
+
+
+def _clave_texto(texto) -> str:
+    """Minúsculas, sin tildes, espacios comprimidos y sin puntuación final."""
+    t = unicodedata.normalize('NFKD', str(texto)).encode('ascii', 'ignore').decode().lower()
+    return re.sub(r'[\s\.;,:]+$', '', re.sub(r'\s+', ' ', t).strip())
+
+
+def _clave_letras(texto) -> str:
+    return re.sub(r'[^a-z]', '', _clave_texto(texto))
 
 # Configurar logging
 logging.basicConfig(
@@ -72,6 +86,15 @@ class CurricularAnalyzer:
 
         logger.info(f"Analizador inicializado para: {self.programa_nombre}")
 
+    def _ra_unicos(self) -> pd.DataFrame:
+        """RA únicos de la matriz (decisión D4): una fila por redacción
+        distinta de 'Resultados Aprendizaje', conservando la primera."""
+        if self.ra.empty or 'Resultados Aprendizaje' not in self.ra.columns:
+            return self.ra
+        ra = self.ra[self.ra['Resultados Aprendizaje'].notna()].copy()
+        ra['_clave_ra'] = ra['Resultados Aprendizaje'].map(_clave_texto)
+        return ra.drop_duplicates('_clave_ra').drop(columns='_clave_ra')
+
     def calcular_balance_tipo_saber(self) -> Dict[str, float]:
         """
         Calcula la distribución de tipos de saber (Saber, SaberHacer, SaberSer).
@@ -97,9 +120,12 @@ class CurricularAnalyzer:
             result['balanceado'] = True
             return result
 
-        # Contar por tipo
-        tipo_counts = self.ra['TipoSaber'].value_counts()
-        total = len(self.ra)
+        # Contar por tipo sobre RA únicos (D4; auditoría E3-4)
+        ra = self._ra_unicos()
+        tipo_counts = ra['TipoSaber'].map(
+            lambda t: {'saber': 'Saber', 'saberhacer': 'SaberHacer', 'saberser': 'SaberSer'}.get(_clave_letras(t), t)
+        ).value_counts()
+        total = len(ra)
 
         # Calcular porcentajes
         balance = {}
@@ -121,36 +147,38 @@ class CurricularAnalyzer:
         logger.info(f"Balance tipo saber: {balance}")
         return balance
 
-    def _get_nivel_taxonomico(self, verbo: str, nivel_dominio: str) -> int:
+    def _get_nivel_taxonomico(self, verbo: str, nivel_dominio: str,
+                              taxonomia: str = None, dominio: str = None) -> float:
         """
-        Determina el nivel taxonómico (1-6) de un verbo.
+        Determina el nivel de exigencia (escala común 1-6) de un RA.
 
-        ADR-04: Nivel Dominio es la fuente primaria; si no está disponible
-        se usa la taxonomía de Bloom como fallback.
+        ADR-04: Nivel Dominio es la fuente primaria. El nivel declarado se
+        ubica en la progresión de su taxonomía y dominio
+        (config.PROGRESIONES_TAXONOMICAS) y se traduce a 1-6 según su
+        posición: 1 + (posición - 1) × 5 / (n.º de niveles - 1). Si el nivel no
+        se reconoce, se usa el verbo en la taxonomía de Bloom (auditoría E3-2).
 
         Args:
             verbo (str): Verbo del RA
-            nivel_dominio (str): Nivel de dominio declarado
+            nivel_dominio (str): Nivel de dominio declarado (p. ej. 'AnálisisBAK')
+            taxonomia (str): 'Bloom' o 'BAK'
+            dominio (str): Dominio asociado (p. ej. 'ProcedimentalBAK')
 
         Returns:
-            int: Nivel taxonómico (1=Recordar, 6=Crear)
+            float: Nivel en la escala 1-6
         """
-        # 1. Intentar inferir del nivel_dominio (fuente primaria)
+        # 1. Nivel declarado, según la progresión de su taxonomía y dominio
         if not pd.isna(nivel_dominio):
-            nivel_str = str(nivel_dominio).lower()
-
-            if 'crea' in nivel_str or 'disena' in nivel_str:
-                return 6
-            elif 'evalua' in nivel_str or 'critica' in nivel_str:
-                return 5
-            elif 'analisis' in nivel_str or 'analis' in nivel_str:
-                return 4
-            elif 'aplic' in nivel_str:
-                return 3
-            elif 'comprend' in nivel_str or 'entiend' in nivel_str:
-                return 2
-            elif 'recuerd' in nivel_str or 'identific' in nivel_str or 'reconoc' in nivel_str:
-                return 1
+            tax = 'bak' if 'bak' in _clave_letras(taxonomia or nivel_dominio) else 'bloom'
+            dom = next((d for d in ('cognitivo', 'procedimental', 'actitudinal')
+                        if d in _clave_letras(dominio or '')), 'cognitivo')
+            progresion = PROGRESIONES_TAXONOMICAS[(tax, None if tax == 'bloom' else dom)]
+            base = re.sub(r'(bak|b)$', '', _clave_letras(nivel_dominio))
+            if base.startswith('conocimiento'):
+                base = 'conocimiento'
+            if base in progresion:
+                posicion = progresion.index(base) + 1
+                return round(1 + (posicion - 1) * 5 / (len(progresion) - 1), 2)
 
         # 2. Fallback: buscar en taxonomía de Bloom
         if not pd.isna(verbo):
@@ -271,32 +299,36 @@ class CurricularAnalyzer:
                 'indice_complejidad': 0.0
             }
 
-        # Obtener niveles taxonómicos
+        # Obtener niveles (escala común 1-6) de los RA únicos (D4)
         niveles = []
-        for _, row in self.ra.iterrows():
-            verbo = row.get('Verbo RA', '')
-            nivel_dominio = row.get('Nivel Dominio', '')
-            nivel = self._get_nivel_taxonomico(verbo, nivel_dominio)
+        for _, row in self._ra_unicos().iterrows():
+            nivel = self._get_nivel_taxonomico(row.get('Verbo RA', ''), row.get('Nivel Dominio', ''),
+                                               row.get('Taxonomía'), row.get('Dominio Asociado'))
             niveles.append(nivel)
 
         total = len(niveles)
 
-        # Clasificar por complejidad
-        basico = sum(1 for n in niveles if COMPLEJIDAD_THRESHOLDS['BASICO'][0] <= n <= COMPLEJIDAD_THRESHOLDS['BASICO'][1])
-        intermedio = sum(1 for n in niveles if COMPLEJIDAD_THRESHOLDS['INTERMEDIO'][0] <= n <= COMPLEJIDAD_THRESHOLDS['INTERMEDIO'][1])
-        avanzado = sum(1 for n in niveles if COMPLEJIDAD_THRESHOLDS['AVANZADO'][0] <= n <= COMPLEJIDAD_THRESHOLDS['AVANZADO'][1])
+        # Clasificar por complejidad. Con niveles reescalados (p. ej. 2,25 o
+        # 4,33) se usan los cortes continuos equivalentes a las bandas enteras
+        # 1-2 / 3-4 / 5-6: básico < 2,5 ≤ intermedio < 4,5 ≤ avanzado.
+        corte_bajo = (COMPLEJIDAD_THRESHOLDS['BASICO'][1] + COMPLEJIDAD_THRESHOLDS['INTERMEDIO'][0]) / 2
+        corte_alto = (COMPLEJIDAD_THRESHOLDS['INTERMEDIO'][1] + COMPLEJIDAD_THRESHOLDS['AVANZADO'][0]) / 2
+        basico = sum(1 for n in niveles if n < corte_bajo)
+        intermedio = sum(1 for n in niveles if corte_bajo <= n < corte_alto)
+        avanzado = sum(1 for n in niveles if n >= corte_alto)
 
         # Calcular porcentajes
+        promedio = float(np.mean(niveles)) if niveles else 0
         resultado = {
             'Básico': round((basico / total * 100), 1) if total > 0 else 0,
             'Intermedio': round((intermedio / total * 100), 1) if total > 0 else 0,
             'Avanzado': round((avanzado / total * 100), 1) if total > 0 else 0,
-            'nivel_promedio': round(np.mean(niveles), 1) if niveles else 0
+            'nivel_promedio': round(promedio, 1)
         }
 
         # Calcular índice de complejidad (0-100)
         # Fórmula: (promedio - 1) / 5 * 100
-        indice = ((resultado['nivel_promedio'] - 1) / 5 * 100) if resultado['nivel_promedio'] > 0 else 0
+        indice = ((promedio - 1) / 5 * 100) if promedio > 0 else 0
         resultado['indice_complejidad'] = round(indice, 1)
 
         logger.info(f"Complejidad cognitiva: {resultado}")
@@ -323,15 +355,25 @@ class CurricularAnalyzer:
                 'promedio_ra_por_competencia': 0.0
             }
 
-        # Contar RA por competencia
-        if 'Competencia por desarrollar' in self.ra.columns:
-            ra_por_comp = self.ra['Competencia por desarrollar'].value_counts()
-            competencias_con_ra = len(ra_por_comp)
+        # Emparejar cada competencia del Paso 2 con los RA que la citan en
+        # 'Competencia por desarrollar' (auditoría E3-5). El Paso 3 suele citar
+        # la competencia abreviada, por eso se acepta prefijo o similitud ≥ 0,80.
+        if 'Redacción competencia' in self.competencias.columns:
+            comps = [_clave_texto(c) for c in self.competencias['Redacción competencia'].dropna()]
         else:
-            competencias_con_ra = 0
-            ra_por_comp = pd.Series()
+            comps = []
+        citas = ([_clave_texto(c) for c in self.ra['Competencia por desarrollar'].dropna()]
+                 if 'Competencia por desarrollar' in self.ra.columns else [])
 
-        total_comp = len(self.competencias)
+        def _cita_a(comp: str, cita: str) -> bool:
+            return (comp.startswith(cita) or cita.startswith(comp)
+                    or (len(cita) > 15 and cita[:25] in comp)
+                    or SequenceMatcher(None, comp, cita).ratio() >= 0.80)
+
+        ra_por_comp = pd.Series([sum(_cita_a(c, x) for x in citas) for c in comps], dtype=float)
+        competencias_con_ra = int((ra_por_comp > 0).sum())
+
+        total_comp = len(comps)
         porcentaje = (competencias_con_ra / total_comp * 100) if total_comp > 0 else 0
         promedio_ra = ra_por_comp.mean() if not ra_por_comp.empty else 0
 
@@ -432,20 +474,33 @@ class CurricularAnalyzer:
                 'completitud_total': 89.5
             }
         """
-        def calcular_completitud_df(df: pd.DataFrame) -> float:
-            """Calcula completitud de un DataFrame."""
+        def calcular_completitud_df(df: pd.DataFrame, columnas) -> float:
+            """% de celdas diligenciadas en las columnas clave (una columna
+            ausente cuenta como vacía) sobre las filas de la unidad del paso."""
             if df.empty:
                 return 0.0
+            llenas = sum(int(df[c].notna().sum()) if c in df.columns else 0 for c in columnas)
+            total_cells = len(df) * len(columnas)
+            return (llenas / total_cells * 100) if total_cells > 0 else 0.0
 
-            total_cells = df.shape[0] * df.shape[1]
-            filled_cells = df.count().sum()  # Cuenta celdas no-NaN
+        def filas_con(df: pd.DataFrame, col: str) -> pd.DataFrame:
+            return df[df[col].notna()] if col in df.columns else df.iloc[0:0]
 
-            return (filled_cells / total_cells * 100) if total_cells > 0 else 0.0
+        # Unidades (auditoría E3-3; decisiones D4-D6): una fila por competencia,
+        # por RA único, por estrategia declarada y por asignatura (sin la fila
+        # de totales ni los espacios electivos, que no declaran contenido; N1).
+        competencias = filas_con(self.competencias, 'Redacción competencia')
+        estrategias = filas_con(self.estrategias_meso, 'Estrategia del programa')
+        asignaturas = filas_con(self.estrategias_micro, 'Nombre asignatura o módulo')
+        if not asignaturas.empty:
+            nombres = asignaturas['Nombre asignatura o módulo'].astype(str).str.strip()
+            asignaturas = asignaturas[~nombres.str.fullmatch(r'[\d\.\s]+')
+                                      & ~nombres.str.lower().str.startswith('electiva')]
 
-        comp_competencias = calcular_completitud_df(self.competencias)
-        comp_ra = calcular_completitud_df(self.ra)
-        comp_meso = calcular_completitud_df(self.estrategias_meso)
-        comp_micro = calcular_completitud_df(self.estrategias_micro)
+        comp_competencias = calcular_completitud_df(competencias, COLUMNAS_COMPLETITUD['competencias'])
+        comp_ra = calcular_completitud_df(self._ra_unicos(), COLUMNAS_COMPLETITUD['ra'])
+        comp_meso = calcular_completitud_df(estrategias, COLUMNAS_COMPLETITUD['estrategias_meso'])
+        comp_micro = calcular_completitud_df(asignaturas, COLUMNAS_COMPLETITUD['estrategias_micro'])
 
         # Promedio ponderado (más peso a competencias y RA)
         completitud_total = (
@@ -470,37 +525,29 @@ class CurricularAnalyzer:
         """
         Calcula un score general de calidad (0-100).
 
-        Combina múltiples indicadores con pesos configurables.
+        Combina los tres componentes que discriminan entre programas:
+        exigencia (40 %), equilibrio de saberes (30 %) y variedad de
+        estrategias (30 %). Completitud y cobertura de competencias se
+        reportan como condiciones verificadas (generar_reporte_indicadores) y
+        no entran al puntaje: valen 100 % en todo el corpus (auditoría E3-7).
 
         Returns:
             float: Score de calidad (0-100)
         """
-        # Calcular todos los indicadores
-        completitud = self.calcular_completitud()
         complejidad = self.calcular_complejidad_cognitiva()
         balance = self.calcular_balance_tipo_saber()
-        cobertura = self.calcular_cobertura_competencias()
         diversidad = self.calcular_diversidad_metodologica()
 
         # Normalizar indicadores a 0-100
-        score_completitud = completitud['completitud_total']
         score_complejidad = complejidad['indice_complejidad']
         score_balance = 100 - balance['desviacion_estandar'] * 5  # Menor desviación = mejor
         score_balance = max(0, min(100, score_balance))
-        score_cobertura = cobertura['porcentaje_cobertura']
         score_diversidad = min(100, diversidad['num_estrategias_unicas'] * 8)  # 12+ estrategias = 100
 
-        # Calidad de redacción (simplificado - requeriría validador)
-        score_redaccion = 80.0  # Placeholder
-
-        # Calcular score ponderado
         score_total = (
-            score_completitud * QUALITY_WEIGHTS['completitud'] +
             score_complejidad * QUALITY_WEIGHTS['complejidad_cognitiva'] +
             score_balance * QUALITY_WEIGHTS['balance_tipo_saber'] +
-            score_diversidad * QUALITY_WEIGHTS['diversidad_metodologica'] +
-            score_cobertura * QUALITY_WEIGHTS['cobertura_competencias'] +
-            score_redaccion * QUALITY_WEIGHTS['calidad_redaccion']
+            score_diversidad * QUALITY_WEIGHTS['diversidad_metodologica']
         )
 
         return round(score_total, 1)
@@ -540,11 +587,20 @@ class CurricularAnalyzer:
             'cobertura_competencias': self.calcular_cobertura_competencias(),
             'diversidad_metodologica': self.calcular_diversidad_metodologica(),
             'completitud': self.calcular_completitud(),
+            # Condiciones que el formato garantiza (100 % en el corpus): se
+            # informan, no puntúan (auditoría E3-7)
+            'condiciones_verificadas': {
+                'completitud_total': self.calcular_completitud()['completitud_total'],
+                'cobertura_competencias': self.calcular_cobertura_competencias()['porcentaje_cobertura'],
+            },
+            # Unidades de las decisiones D4-D6 de la auditoría
             'resumen': {
-                'total_competencias': len(self.competencias),
-                'total_ra': self._contar_asignaturas_unicas(),
-                'total_estrategias_meso': len(self.estrategias_meso),
-                'total_estrategias_micro': len(self.estrategias_micro)
+                'total_competencias': int(self.competencias['Redacción competencia'].notna().sum())
+                if 'Redacción competencia' in self.competencias.columns else len(self.competencias),
+                'total_ra': len(self._ra_unicos()),
+                'total_estrategias_meso': int(self.estrategias_meso['Estrategia del programa'].notna().sum())
+                if 'Estrategia del programa' in self.estrategias_meso.columns else len(self.estrategias_meso),
+                'total_estrategias_micro': self._contar_asignaturas_unicas()
             }
         }
 

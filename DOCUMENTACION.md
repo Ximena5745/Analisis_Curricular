@@ -505,18 +505,15 @@ La combinación de 7 filtros basados en reglas + score académico + Isolation Fo
 
 ### 6.1 Score de Calidad Compuesto
 
-Calcula 6 indicadores y los combina en un score 0-100 mediante promedio ponderado:
+Combina en un score 0-100 los tres indicadores que discriminan entre programas; completitud y cobertura de competencias se reportan como condiciones verificadas (auditoría E3-7):
 
 ```
-score_total = (score_completitud × 0.25) +
-              (score_complejidad × 0.20) +
-              (score_balance × 0.15) +
-              (score_diversidad × 0.15) +
-              (score_cobertura × 0.15) +
-              (80.0 × 0.10)
+score_total = (score_complejidad × 0.40) +
+              (score_balance × 0.30) +
+              (score_diversidad × 0.30)
 ```
 
-El peso de `calidad_redaccion` es fijo en 80.0 como placeholder (pendiente de implementación completa de análisis lingüístico).
+El componente `calidad_redaccion` (constante 80.0) se eliminó en la auditoría E3-1 (2026-10-02). Completitud y cobertura de competencias se reportan como condiciones verificadas y no puntúan (E3-7); los pesos de exigencia, equilibrio y variedad (20/15/15) se reescalan a 100 %.
 
 ### 6.2 Indicador 1: Completitud (peso 0.25)
 
@@ -984,7 +981,17 @@ Retorna:
 
 ### 9.1 Propósito
 
-Aplica **Latent Dirichlet Allocation (LDA)** no supervisado sobre el corpus textual de los SaberAsociado (Resultados de Aprendizaje) para descubrir automáticamente los temas subyacentes del currículo, complementando la detección basada en keywords fijas.
+Aplica **Latent Dirichlet Allocation (LDA)** no supervisado sobre los **núcleos temáticos depurados** (Paso 5; un documento = un núcleo, construido con `corpus_nucleos()`) para descubrir los temas subyacentes del currículo, complementando la detección basada en keywords fijas. Hasta la auditoría del 2026-10-02 se entrenaba con `SaberAsociado` del Paso 3.
+
+> **Modelo vigente (auditoría P14, 2026-10-02): `modelar_topicos_consenso(df_micro)`.**
+> - Documento = asignatura con sus núcleos depurados (`corpus_asignaturas`), una matriz por programa (1.192 documentos).
+> - Lemas de spaCy (sustantivos, adjetivos, nombres propios), palabras vacías del proyecto + español + inglés.
+> - `CONSENSO_LDA`: k = 13, 10 semillas, 500 iteraciones, alfa 0,1, beta 0,01, min_df 5, max_df 0,3, 600 términos.
+> - Los 130 tópicos se agrupan por coseno (clúster jerárquico promedio) en 13 y se promedian; la distribución de cada asignatura es el promedio entre semillas.
+> - k = 13: máxima coherencia NPMI y estabilidad para k = 5…30 (`auditoria/scripts/prueba_lda_mejorado.py`). Coincidencia entre dos consensos 59 % (LDA simple 22 %).
+> - `run_analysis.py` guarda `consolidado/topicos_lda.xlsx` (Topicos, Asignaturas, Programas).
+>
+> `entrenar_lda` y `asignar_topicos_a_programas` se conservan para compatibilidad.
 
 ### 9.2 Constantes
 
@@ -1071,17 +1078,14 @@ confianza = float(doc_topic.max())
 ### 9.4 Asignación de Tópicos por Programa
 
 ```python
-def asignar_topicos_a_programas(df_ra, n_topics=10) → Dict
+def corpus_nucleos(df_micro) → DataFrame            # Programa, Nucleo
+def asignar_topicos_a_programas(df, n_topics=10, columna='SaberAsociado') → Dict
 ```
 
-1. Agrupa `SaberAsociado` por programa (columna `Programa`)
-2. Concatena todos los textos de cada programa
+1. `run_analysis.py` construye el corpus con `corpus_nucleos(micro_all)` y llama con `columna='Nucleo'`
+2. Filtra textos vacíos o de ≤ 5 caracteres (las filas de la distribución quedan alineadas con su programa)
 3. Entrena LDA sobre el corpus completo
-4. Para cada programa:
-   - Vectoriza su texto concatenado
-   - Obtiene distribución de tópicos con `model.transform()`
-   - Asigna tópico dominante (mayor probabilidad)
-   - Registra confianza
+4. Para cada documento asigna el tópico dominante (mayor probabilidad) y su confianza
 
 Retorna:
 ```python
@@ -1444,7 +1448,7 @@ donde `p_i` = frecuencia relativa del núcleo `i` y `n` = núcleos únicos.
 - Tabla detallada: cada fila = keyword encontrado, columna = campo donde se encontró (núcleos / indicadores / actividades)
 - Configuración cargada desde `config_tendencias.json`
 
-**Lógica:** Búsqueda case-insensitive de keywords en 3 campos, conteo de asignaturas únicas que mencionan cada temática.
+**Lógica:** Búsqueda de cada keyword como **palabra completa**, sin tildes ni mayúsculas (`_contiene_termino`), en los campos de la asignatura; conteo de asignaturas únicas que mencionan cada temática. Antes de la auditoría (2026-10-02) se buscaba por subcadena y "IA" coincidía dentro de "sociales".
 
 #### 13.3.6 Minería de Texto (`pagina_nlp`)
 
@@ -1549,7 +1553,7 @@ main()
 │   ├─ Resumen de temáticas
 │   ├─ Excel maestro (15 hojas)
 │   ├─ Asignaturas compartidas (todas las estrategias micro)
-│   └─ Topic modeling LDA (todos los SaberAsociado)
+│   └─ Topic modeling LDA (núcleos temáticos depurados)
 │
 └─ Resumen final: scores, top 5, errores
 ```
@@ -1685,13 +1689,13 @@ NUCLEOS_CONFIG = {
 
 ```python
 QUALITY_WEIGHTS = {
-    'completitud': 0.25,
-    'complejidad_cognitiva': 0.20,
-    'balance_tipo_saber': 0.15,
-    'diversidad_metodologica': 0.15,
-    'cobertura_competencias': 0.15,
-    'calidad_redaccion': 0.10
+    'complejidad_cognitiva': 20 / 50,
+    'balance_tipo_saber': 15 / 50,
+    'diversidad_metodologica': 15 / 50,
 }
+# Auditoría Etapa 3 (2026-10-02): se eliminó 'calidad_redaccion' (constante 80)
+# y completitud / cobertura de competencias pasan a condiciones verificadas
+# (100 % en los 50 programas); pesos declarados 20/15/15 reescalados a 100 %.
 ```
 
 ### 16.9 Constantes Generales

@@ -1,0 +1,18 @@
+{
+ "etiqueta": "antes",
+ "segundos": 45.5,
+ "resumen": {
+  "total_programas": 39.0,
+  "programas_multi_sede": 8.0,
+  "pares_intra_sede": 14.0,
+  "pares_inter_programa": 454.0,
+  "pares_inter_identicos": 319.0,
+  "asignaturas_identicas": 179.0
+ },
+ "filas": {
+  "intra_sede": 14,
+  "inter_programa": 454,
+  "asignaturas_identicas": 179
+ },
+ "inter_programas_distintos": 454
+}
