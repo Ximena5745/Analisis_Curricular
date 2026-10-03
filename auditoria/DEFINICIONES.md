@@ -1,6 +1,6 @@
 # Definiciones finales de la auditoría
 
-Fuente única de las definiciones usadas para verificar el artículo curricular. Fecha de verificación: 2026-10-01 17:37.
+Fuente única de las definiciones usadas para verificar el artículo curricular. Fecha de verificación: 2026-10-02 13:21.
 Las mismas definiciones están en el Word (sección "Definiciones finales") y en el Excel (hoja "Definiciones").
 
 | Término | Definición | Dónde está el dato | Regla de conteo | Valor final | Decisión |
@@ -21,6 +21,10 @@ Las mismas definiciones están en el Word (sección "Definiciones finales") y en
 | Espacio electivo | Registro de asignatura cuyo contenido depende de la electiva elegida ("Electiva 1…4", "Electiva I…IV", "Electiva"). No declara núcleos; es rasgo del diseño, no omisión. | Paso 5, columna D | Registros de asignatura sin núcleos temáticos. | 141 (4 por matriz de pregrado profesional; 1 en 5 de posgrado) | N1 |
 | Núcleo temático | Ítem numerado ("1. …", "2. …") de la celda de núcleos de una asignatura, aunque ocupe varias líneas. Si la celda no está numerada, cada línea es un núcleo. | Paso 5, columna "Núcleos temáticos", fila de inicio de cada asignatura (celda combinada, se cuenta una vez) | Separar solo por la numeración al inicio de línea. No se corta por comas ni por saltos de línea internos; no se aplica el filtro es_nucleo_valido. | 6.671 (2.815 únicos) | D7 |
 | Densidad de núcleos | Número de núcleos por asignatura con núcleos, dentro de cada matriz. | Paso 5 | Núcleos / asignaturas con núcleos, por matriz (no agrupar por nombre en todo el corpus). | media 4,1; mediana 4 | D7 |
+| Nivel de exigencia de un RA | Nivel declarado (Nivel Dominio) traducido a una escala común 1–6 según su posición en la progresión de su taxonomía y dominio. | Paso 3, columnas Taxonomía, Dominio Asociado y Nivel Dominio | nivel = 1 + (posición − 1) × 5 / (n.º de niveles − 1); índice del programa = (nivel medio de sus RA únicos − 1) / 5 × 100. | media de los 50 programas: 51,4 | D8 |
+| Puntaje de calidad del diseño | Exigencia 40 % + equilibrio de saberes 30 % + variedad de estrategias 30 %. Completitud y cobertura de competencias se informan como condiciones verificadas (100 %). | src/analyzer.py (calcular_score_calidad) | Pesos declarados 20/15/15 reescalados a 100 %. | 17,4 – 71,6 (media 44,7) | D8 |
+| Elemento del perfil para cobertura | Celda con contenido de cualquiera de los 9 campos del Paso 1, sin dividir, agrupada en Perfil, Saberes, Campo de actuación o Valor agregado. | Paso 1, columnas C a K | Alerta si el puntaje híbrido (0,6 × coseno top-3 + 0,4 × BM25) < umbral del campo; corpus = contenidos de las asignaturas. | 988 elementos; 49 alertas (5,0 %) | D9 |
+| Asignatura homónima divergente | Denominación normalizada presente en 2 o más programas cuyas versiones de programas distintos tienen similitud media de contenido < 0,60. | Paso 5: núcleos temáticos e indicadores de logro de cada asignatura | Coseno TF-IDF; solo pares de programas distintos; sin electivas. | 159 homónimas; 15 divergentes (9,4 %) | D10 |
 
 ## Decisiones de método
 
@@ -31,7 +35,21 @@ Las mismas definiciones están en el Word (sección "Definiciones finales") y en
 - **D5** — Estrategia = nombre en la columna B del Paso 4; las filas con RA son vínculos.
 - **D6** — Registro de asignatura = una asignatura por matriz, sin la fila de totales.
 - **D7** — Núcleo temático = ítem numerado de la celda de núcleos.
+- **D8** — Puntaje de calidad = exigencia 40 % + equilibrio 30 % + variedad 30 %; exigencia por nivel declarado en escala común 1–6; completitud y cobertura de competencias como condiciones verificadas.
+- **D9** — Cobertura del perfil: elemento = celda de los 9 campos (988); corpus = contenidos de las asignaturas (sin SaberAsociado ni RA); resultados por grupo.
+- **D10** — Asignaturas compartidas: contenido = núcleos + indicadores; todas las asignaturas, solo entre programas distintos; umbral 0,60 no calibrado.
+- **D21** — Lista oficial de 15 tendencias (sector empresarial y educativo) con regla única: término en el nombre o ≥ 2 puntos en el contenido.
+- **D19** — R7: Kruskal-Wallis de V2, V4 y V5 entre sedes con 49 matrices y 38 programas; sin diferencias. Tabla 11; sin Figura 8.
+- **D18** — R6: no se interpretan correlaciones (V1 y V3 constantes, V2 binaria, V5 casi nula); Figura 5 = distribución por matriz.
+- **D17** — V5: todos los indicadores son de logro; nivel de evidencia N1 Implementación, N2 Percepción y reacción, N3 Aprendizaje demostrado, N4 Transferencia, N5 Efecto externo. V5 = % de estrategias con evidencia directa (N3–N4) = 0,8 %.
+- **D16** — V4 = RA únicos (341, incluido el genérico institucional) vinculados a una estrategia meso con indicador e instrumento: 87,1 % (sin el genérico 98,0 %); cobertura micro 100 %.
+- **D15** — V3 = RA únicos con verbo observable (en SaberSer se admite el verbo afectivo) y finalidad o producto declarado: 100 %, condición estructural.
+- **D14** — V2 = % de matrices sin verbo repetido entre competencias específicas (90 %); la competencia genérica institucional no cuenta como repetición.
+- **D13** — V1 = correspondencia competencia–RA, condición estructural (100 %); fuera del radar y de las correlaciones; tramo al perfil no verificable.
+- **D11** — Análisis temático: LDA de consenso (10 semillas) con k = 13 sobre los núcleos depurados agrupados por asignatura, una matriz por programa y lematización.
+- **D12** — Los temas de agenda global se buscan como palabra completa y sin tildes.
 - **N1** — Los espacios electivos sin núcleos se documentan como nota de datos, no como hallazgo.
+- **N2** — 2026-10-02: la autora corrigió la numeración "1," → "1." en los núcleos de EspGerTributaria_PBOG; ninguna cifra cambió.
 
 ## Reproducción
 

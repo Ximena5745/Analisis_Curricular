@@ -1,0 +1,513 @@
+{
+ "etiqueta": "despues",
+ "media": {
+  "score_calidad": 44.7,
+  "completitud": 100.0,
+  "exigencia": 51.4,
+  "balance_desv": 13.8,
+  "cobertura_comp": 100.0,
+  "diversidad": 6.2
+ },
+ "por_matriz": [
+  {
+   "archivo": "AdmonEmpresas_HMED",
+   "score_calidad": 50.6,
+   "completitud": 100.0,
+   "exigencia": 64.3,
+   "balance_desv": 17.8,
+   "cobertura_comp": 100.0,
+   "diversidad": 9,
+   "posicion": 20
+  },
+  {
+   "archivo": "AdmonEmpresas_PBOG",
+   "score_calidad": 53.0,
+   "completitud": 100.0,
+   "exigencia": 64.3,
+   "balance_desv": 17.8,
+   "cobertura_comp": 100.0,
+   "diversidad": 10,
+   "posicion": 13
+  },
+  {
+   "archivo": "AdmonHotelGastro_PBOG",
+   "score_calidad": 39.2,
+   "completitud": 100.0,
+   "exigencia": 28.0,
+   "balance_desv": 18.9,
+   "cobertura_comp": 100.0,
+   "diversidad": 11,
+   "posicion": 35
+  },
+  {
+   "archivo": "AdmonPub_VNAL",
+   "score_calidad": 51.2,
+   "completitud": 100.0,
+   "exigencia": 55.7,
+   "balance_desv": 13.5,
+   "cobertura_comp": 100.0,
+   "diversidad": 8,
+   "posicion": 16
+  },
+  {
+   "archivo": "ComunicacionDigital_PMED",
+   "score_calidad": 50.9,
+   "completitud": 100.0,
+   "exigencia": 42.9,
+   "balance_desv": 13.5,
+   "cobertura_comp": 100.0,
+   "diversidad": 10,
+   "posicion": 18
+  },
+  {
+   "archivo": "ComunicacionSocialPeriodismo_PBOG",
+   "score_calidad": 61.1,
+   "completitud": 100.0,
+   "exigencia": 56.7,
+   "balance_desv": 13.6,
+   "cobertura_comp": 100.0,
+   "diversidad": 12,
+   "posicion": 7
+  },
+  {
+   "archivo": "ComunicacionSocial_VNAL",
+   "score_calidad": 33.9,
+   "completitud": 100.0,
+   "exigencia": 62.3,
+   "balance_desv": 15.6,
+   "cobertura_comp": 100.0,
+   "diversidad": 1,
+   "posicion": 39
+  },
+  {
+   "archivo": "ContPub_HMED",
+   "score_calidad": 41.8,
+   "completitud": 100.0,
+   "exigencia": 40.0,
+   "balance_desv": 15.6,
+   "cobertura_comp": 100.0,
+   "diversidad": 8,
+   "posicion": 30
+  },
+  {
+   "archivo": "ContPub_PBOG",
+   "score_calidad": 46.6,
+   "completitud": 100.0,
+   "exigencia": 40.0,
+   "balance_desv": 15.6,
+   "cobertura_comp": 100.0,
+   "diversidad": 10,
+   "posicion": 25
+  },
+  {
+   "archivo": "ContPub_VNAL",
+   "score_calidad": 41.8,
+   "completitud": 100.0,
+   "exigencia": 40.0,
+   "balance_desv": 15.6,
+   "cobertura_comp": 100.0,
+   "diversidad": 8,
+   "posicion": 31
+  },
+  {
+   "archivo": "Derecho_HMED",
+   "score_calidad": 30.4,
+   "completitud": 100.0,
+   "exigencia": 40.0,
+   "balance_desv": 20.5,
+   "cobertura_comp": 100.0,
+   "diversidad": 6,
+   "posicion": 41
+  },
+  {
+   "archivo": "Derecho_VNAL",
+   "score_calidad": 18.4,
+   "completitud": 100.0,
+   "exigencia": 40.0,
+   "balance_desv": 20.5,
+   "cobertura_comp": 100.0,
+   "diversidad": 1,
+   "posicion": 49
+  },
+  {
+   "archivo": "DisenoDigital_VNAL",
+   "score_calidad": 26.5,
+   "completitud": 100.0,
+   "exigencia": 51.9,
+   "balance_desv": 17.8,
+   "cobertura_comp": 100.0,
+   "diversidad": 1,
+   "posicion": 44
+  },
+  {
+   "archivo": "DisenoGrafico_PBOG",
+   "score_calidad": 41.0,
+   "completitud": 100.0,
+   "exigencia": 48.6,
+   "balance_desv": 21.2,
+   "cobertura_comp": 100.0,
+   "diversidad": 9,
+   "posicion": 32
+  },
+  {
+   "archivo": "DisenoGrafico_PMED",
+   "score_calidad": 41.0,
+   "completitud": 100.0,
+   "exigencia": 48.6,
+   "balance_desv": 21.2,
+   "cobertura_comp": 100.0,
+   "diversidad": 9,
+   "posicion": 33
+  },
+  {
+   "archivo": "DisenoIndustrial_PBOG",
+   "score_calidad": 56.1,
+   "completitud": 100.0,
+   "exigencia": 39.3,
+   "balance_desv": 9.1,
+   "cobertura_comp": 100.0,
+   "diversidad": 10,
+   "posicion": 10
+  },
+  {
+   "archivo": "DisenoInteractivo_PBOG",
+   "score_calidad": 49.6,
+   "completitud": 100.0,
+   "exigencia": 55.7,
+   "balance_desv": 17.8,
+   "cobertura_comp": 100.0,
+   "diversidad": 10,
+   "posicion": 22
+  },
+  {
+   "archivo": "DisenoModas_PBOG",
+   "score_calidad": 43.8,
+   "completitud": 100.0,
+   "exigencia": 33.3,
+   "balance_desv": 12.5,
+   "cobertura_comp": 100.0,
+   "diversidad": 8,
+   "posicion": 28
+  },
+  {
+   "archivo": "Esp.LogisGestCadAbast_PBOG",
+   "score_calidad": 58.3,
+   "completitud": 100.0,
+   "exigencia": 67.0,
+   "balance_desv": 11.8,
+   "cobertura_comp": 100.0,
+   "diversidad": 8,
+   "posicion": 9
+  },
+  {
+   "archivo": "EspGerMercadeo_VNAL",
+   "score_calidad": 66.3,
+   "completitud": 100.0,
+   "exigencia": 66.7,
+   "balance_desv": 0.0,
+   "cobertura_comp": 100.0,
+   "diversidad": 4,
+   "posicion": 2
+  },
+  {
+   "archivo": "EspGerTributaria_PBOG",
+   "score_calidad": 71.6,
+   "completitud": 100.0,
+   "exigencia": 80.0,
+   "balance_desv": 0.0,
+   "cobertura_comp": 100.0,
+   "diversidad": 4,
+   "posicion": 1
+  },
+  {
+   "archivo": "EspGerenProyInteligenciaNegocios_VNAL",
+   "score_calidad": 46.7,
+   "completitud": 100.0,
+   "exigencia": 80.0,
+   "balance_desv": 11.8,
+   "cobertura_comp": 100.0,
+   "diversidad": 1,
+   "posicion": 24
+  },
+  {
+   "archivo": "EspGestionEducativa_VNAL",
+   "score_calidad": 40.7,
+   "completitud": 100.0,
+   "exigencia": 56.0,
+   "balance_desv": 9.4,
+   "cobertura_comp": 100.0,
+   "diversidad": 1,
+   "posicion": 34
+  },
+  {
+   "archivo": "Ing.Telecomunicaciones_PBOG",
+   "score_calidad": 51.1,
+   "completitud": 99.9,
+   "exigencia": 30.9,
+   "balance_desv": 11.8,
+   "cobertura_comp": 100.0,
+   "diversidad": 11,
+   "posicion": 17
+  },
+  {
+   "archivo": "IngIndustrial_PBOG",
+   "score_calidad": 45.9,
+   "completitud": 100.0,
+   "exigencia": 35.9,
+   "balance_desv": 18.2,
+   "cobertura_comp": 100.0,
+   "diversidad": 12,
+   "posicion": 26
+  },
+  {
+   "archivo": "IngIndustrial_PMED",
+   "score_calidad": 45.9,
+   "completitud": 100.0,
+   "exigencia": 35.9,
+   "balance_desv": 18.2,
+   "cobertura_comp": 100.0,
+   "diversidad": 12,
+   "posicion": 27
+  },
+  {
+   "archivo": "IngIndustrial_VNAL",
+   "score_calidad": 19.5,
+   "completitud": 100.0,
+   "exigencia": 35.9,
+   "balance_desv": 18.2,
+   "cobertura_comp": 100.0,
+   "diversidad": 1,
+   "posicion": 48
+  },
+  {
+   "archivo": "IngSistemas_PBOG",
+   "score_calidad": 65.7,
+   "completitud": 100.0,
+   "exigencia": 72.7,
+   "balance_desv": 15.6,
+   "cobertura_comp": 100.0,
+   "diversidad": 14,
+   "posicion": 4
+  },
+  {
+   "archivo": "IngSistemas_PMED",
+   "score_calidad": 65.7,
+   "completitud": 100.0,
+   "exigencia": 72.7,
+   "balance_desv": 15.6,
+   "cobertura_comp": 100.0,
+   "diversidad": 14,
+   "posicion": 5
+  },
+  {
+   "archivo": "IngSoftware_VNAL",
+   "score_calidad": 26.9,
+   "completitud": 100.0,
+   "exigencia": 52.9,
+   "balance_desv": 17.8,
+   "cobertura_comp": 100.0,
+   "diversidad": 1,
+   "posicion": 43
+  },
+  {
+   "archivo": "LCS_VNAL",
+   "score_calidad": 34.4,
+   "completitud": 100.0,
+   "exigencia": 56.1,
+   "balance_desv": 13.6,
+   "cobertura_comp": 100.0,
+   "diversidad": 1,
+   "posicion": 38
+  },
+  {
+   "archivo": "LicEduInfantil_VNAL",
+   "score_calidad": 32.4,
+   "completitud": 100.0,
+   "exigencia": 52.5,
+   "balance_desv": 15.6,
+   "cobertura_comp": 100.0,
+   "diversidad": 2,
+   "posicion": 40
+  },
+  {
+   "archivo": "LicEducacionBasicaPrimaria_VNAL",
+   "score_calidad": 26.4,
+   "completitud": 100.0,
+   "exigencia": 37.8,
+   "balance_desv": 15.7,
+   "cobertura_comp": 100.0,
+   "diversidad": 2,
+   "posicion": 45
+  },
+  {
+   "archivo": "MCE_PBOG",
+   "score_calidad": 59.7,
+   "completitud": 100.0,
+   "exigencia": 62.2,
+   "balance_desv": 0.0,
+   "cobertura_comp": 100.0,
+   "diversidad": 2,
+   "posicion": 8
+  },
+  {
+   "archivo": "MEDSTEM_VNAL",
+   "score_calidad": 49.8,
+   "completitud": 100.0,
+   "exigencia": 94.4,
+   "balance_desv": 13.6,
+   "cobertura_comp": 100.0,
+   "diversidad": 1,
+   "posicion": 21
+  },
+  {
+   "archivo": "MGEM_VNAL",
+   "score_calidad": 66.3,
+   "completitud": 100.0,
+   "exigencia": 66.7,
+   "balance_desv": 0.0,
+   "cobertura_comp": 100.0,
+   "diversidad": 4,
+   "posicion": 3
+  },
+  {
+   "archivo": "MGerTalentoHumano_VNAL",
+   "score_calidad": 63.7,
+   "completitud": 100.0,
+   "exigencia": 78.3,
+   "balance_desv": 0.0,
+   "cobertura_comp": 100.0,
+   "diversidad": 1,
+   "posicion": 6
+  },
+  {
+   "archivo": "MInnovacionEducativa_VNAL",
+   "score_calidad": 38.7,
+   "completitud": 100.0,
+   "exigencia": 60.0,
+   "balance_desv": 11.8,
+   "cobertura_comp": 100.0,
+   "diversidad": 1,
+   "posicion": 36
+  },
+  {
+   "archivo": "Matemáticas_HBOG",
+   "score_calidad": 48.8,
+   "completitud": 100.0,
+   "exigencia": 50.0,
+   "balance_desv": 13.6,
+   "cobertura_comp": 100.0,
+   "diversidad": 8,
+   "posicion": 23
+  },
+  {
+   "archivo": "MercadeoyPublicidad_PBOG",
+   "score_calidad": 52.6,
+   "completitud": 100.0,
+   "exigencia": 55.0,
+   "balance_desv": 15.6,
+   "cobertura_comp": 100.0,
+   "diversidad": 10,
+   "posicion": 14
+  },
+  {
+   "archivo": "MercadeoyPublicidad_PMED",
+   "score_calidad": 52.6,
+   "completitud": 100.0,
+   "exigencia": 55.0,
+   "balance_desv": 15.6,
+   "cobertura_comp": 100.0,
+   "diversidad": 10,
+   "posicion": 15
+  },
+  {
+   "archivo": "NegIntl_PBOG",
+   "score_calidad": 53.5,
+   "completitud": 100.0,
+   "exigencia": 49.7,
+   "balance_desv": 13.6,
+   "cobertura_comp": 100.0,
+   "diversidad": 10,
+   "posicion": 11
+  },
+  {
+   "archivo": "NegIntl_PMED",
+   "score_calidad": 53.5,
+   "completitud": 100.0,
+   "exigencia": 49.7,
+   "balance_desv": 13.6,
+   "cobertura_comp": 100.0,
+   "diversidad": 10,
+   "posicion": 12
+  },
+  {
+   "archivo": "NegIntl_VNAL",
+   "score_calidad": 36.7,
+   "completitud": 100.0,
+   "exigencia": 49.7,
+   "balance_desv": 13.6,
+   "cobertura_comp": 100.0,
+   "diversidad": 3,
+   "posicion": 37
+  },
+  {
+   "archivo": "TecProfJudicial_VNAL",
+   "score_calidad": 22.7,
+   "completitud": 100.0,
+   "exigencia": 26.7,
+   "balance_desv": 13.6,
+   "cobertura_comp": 100.0,
+   "diversidad": 1,
+   "posicion": 46
+  },
+  {
+   "archivo": "TecnolDesarrolloSoftware_PBOG",
+   "score_calidad": 43.5,
+   "completitud": 100.0,
+   "exigencia": 44.2,
+   "balance_desv": 15.6,
+   "cobertura_comp": 100.0,
+   "diversidad": 8,
+   "posicion": 29
+  },
+  {
+   "archivo": "TecnolGestAmbiental_VNAL",
+   "score_calidad": 22.6,
+   "completitud": 100.0,
+   "exigencia": 26.2,
+   "balance_desv": 13.5,
+   "cobertura_comp": 100.0,
+   "diversidad": 1,
+   "posicion": 47
+  },
+  {
+   "archivo": "TecnolGuianzaTuris_VNAL",
+   "score_calidad": 29.7,
+   "completitud": 100.0,
+   "exigencia": 44.2,
+   "balance_desv": 13.6,
+   "cobertura_comp": 100.0,
+   "diversidad": 1,
+   "posicion": 42
+  },
+  {
+   "archivo": "TecnolLogistica_VNAL",
+   "score_calidad": 17.4,
+   "completitud": 100.0,
+   "exigencia": 29.3,
+   "balance_desv": 17.8,
+   "cobertura_comp": 100.0,
+   "diversidad": 1,
+   "posicion": 50
+  },
+  {
+   "archivo": "TecnolMercadeoyPublicidad_PMED",
+   "score_calidad": 50.9,
+   "completitud": 100.0,
+   "exigencia": 43.3,
+   "balance_desv": 13.6,
+   "cobertura_comp": 100.0,
+   "diversidad": 10,
+   "posicion": 19
+  }
+ ]
+}

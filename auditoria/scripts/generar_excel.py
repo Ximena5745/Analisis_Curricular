@@ -95,6 +95,9 @@ def build(g):
                                   'Es un rasgo del diseño (el contenido lo define la electiva elegida), no una omisión. La misma electiva se escribe '
                                   'de 9 formas distintas, lo que debe considerarse al contar denominaciones y asignaturas compartidas. '
                                   'Detalle por matriz: Evidencia_por_matriz.'),
+        ('N2 Corrección de datos crudos', '2026-10-02: la autora corrigió en FormatoRA_EspGerTributaria_PBOG.xlsx (Paso 5, núcleos temáticos) la numeración "1, …" '
+                                          'por "1. …". SHA-256 anterior 56c3b9bb…59cf35; nuevo eb6e12f9…95ee9a (Inventario_archivos). Se re-ejecutó toda la verificación: '
+                                          'ninguna cifra auditada cambió (6.671 núcleos, 2.815 únicos, 709 denominaciones, 222 competencias, 341 RA, 391 estrategias, 1.757 asignaturas).'),
         ('', ''),
         ('Tipos de error', 'Cálculo (conteo u operación mal hechos) · Método (filtros, reglas o unidad inadecuados o no '
                            'reproducibles) · Redacción (el número es correcto pero se nombra o interpreta mal).'),
@@ -141,6 +144,18 @@ def build(g):
     _tabla(ws, ['ID', 'Fecha', 'Tema', 'Decisión', 'Afecta a'], [list(d) for d in DEC], [6, 12, 26, 90, 30])
     ws = wb.create_sheet('Redaccion_corregida')
     _tabla(ws, ['Versión', 'Texto'], [list(r) for r in RED], [28, 150])
+
+    # Textos corregidos del artículo
+    import textos_articulo as TXT
+    ws = wb.create_sheet('Textos_corregidos')
+    filas_t = []
+    for tit, bloques in TXT.SECCIONES:
+        for b in bloques:
+            if b[0] in ('p', 'n', 'h', 'fig'):
+                filas_t.append([tit, {'p': 'Párrafo', 'n': 'Nota', 'h': 'Subtítulo', 'fig': 'Figura'}[b[0]], b[1]])
+            else:
+                filas_t.append([tit, 'Tabla', b[1] + '\n' + ' | '.join(b[2]) + '\n' + '\n'.join(' | '.join(f) for f in b[3])])
+    _tabla(ws, ['Sección', 'Tipo', 'Texto'], filas_t, [26, 10, 150])
 
     # 5. Tabla 1
     ws = wb.create_sheet('Tabla1_corpus')
@@ -252,17 +267,7 @@ def build(g):
         ws.cell(i, 1).fill = PatternFill('solid', fgColor=color.get(ws.cell(i, 1).value, 'FFFFFF'))
 
     # 15. Pendientes
-    pend = [
-        ('Corpus', 'Fuente del 63 % de la oferta', 'Citar documento institucional, fecha de corte y total de programas.'),
-        ('Etapa 2', 'LDA y tópicos estimados con n = 5.780', 'Re-estimar con los 6.671 núcleos numerados (D7) y comparar tópicos.'),
-        ('Resultados', 'A7 evaluabilidad 98,3 %', 'Ubicar el cálculo; unificar la definición (p68 vs p166).'),
-        ('Resultados', 'A8 trazabilidad 52,3 % (auditoría ~86 %)', 'Revisar el cálculo y los párrafos que lo interpretan.'),
-        ('Resultados', 'A9 perfil sin respaldo 10,6 %', 'Recalcular sobre 100 textos de perfil (D3).'),
-        ('Resultados', 'A10 divergencia 28,9 %', 'Conservar el script; definir "compartida" con D1.'),
-        ('Resultados', 'A11 IA 3,3 % de registros', 'Recalcular sobre 1.757 registros (tablas en líneas ' +
-         ', '.join(str(m[0]) for m in g['MENCIONES_39']) + ' del .md).'),
-        ('Inferencia', 'Pruebas por sede/nivel con matrices multisede idénticas', 'Repetir con una matriz por programa (sensibilidad).'),
-    ]
+    pend = [(x[2], f'{x[0]} · {x[1]}', x[3]) for x in g['PENDIENTES_AFIRM']]
     ws = wb.create_sheet('Pendientes')
     _tabla(ws, ['Etapa', 'Ítem', 'Qué verificar'], [list(p) for p in pend], [14, 50, 80])
 

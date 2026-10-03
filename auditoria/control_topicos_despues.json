@@ -1,0 +1,37 @@
+{
+ "asignaturas": 1192,
+ "programas": 39,
+ "k": 13,
+ "jaccard_entre_consensos": 0.592,
+ "topicos_estables_ge_0_5": "8/13",
+ "asignaturas_por_topico": {
+  "1": 330,
+  "2": 49,
+  "3": 93,
+  "4": 146,
+  "5": 177,
+  "6": 130,
+  "7": 35,
+  "8": 45,
+  "9": 59,
+  "10": 43,
+  "12": 43,
+  "13": 42
+ },
+ "confianza_media": 0.423,
+ "topicos": [
+  "1: digital, comunicacion, estrategico, control, mercadeo, planeacion, diseno, organizacion",
+  "2: movimiento, dinamica, ley, estructura, energia, lenguaje, publicitario, imagen",
+  "3: publico, derecho, estructura, dato, social, administrativo, espacio, colombia",
+  "4: diseno, usuario, experiencia, experiencia usuario, negocio, comprension, empatia, usuario diseno",
+  "5: educativo, educacion, investigacion, proyecto, pedagogico, innovacion, social, diseno",
+  "6: proyecto, concepto, financiero, ingenieria, basico, produccion, herramientas, concepto basico",
+  "7: sostenible, politicas, negocios, alternativa, publicas, aporte, ciudadania, busqueda",
+  "8: pensamiento, numerico, representacion, relacion, algebraico, pensamiento algebraico, numerico pensamiento, interpretacion",
+  "9: probabilidad, distribucion, variable, probabilidad variable, continuo, distribucion probabilidad, estadistica, estructura",
+  "10: social, ambiental, sociedad, perspectiva, cultural, plan, tecnologico, colombiano",
+  "11: informacion, integral, innovacion, tecnicas, organizacional, turismo, vida, turistico",
+  "12: expresion, contexto, construccion, dinamico, relacion, digital, construccion expresion, dinamico construccion",
+  "13: estudio, caso, inteligencia, datos, inteligencia artificial, artificial, contextualizacion, visualizacion"
+ ]
+}

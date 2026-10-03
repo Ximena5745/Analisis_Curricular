@@ -609,6 +609,14 @@ TENDENCIAS_DEFAULT = {
     }
 }
 
+# Lista oficial (D21): config_tendencias.json, 15 tendencias del sector empresarial y educativo.
+# La lista anterior queda solo como respaldo si el archivo no está disponible.
+from src.tendencias import cargar_config as _cargar_config_tendencias, terminos_presentes
+try:
+    TENDENCIAS_DEFAULT, _REGLA_TENDENCIAS = _cargar_config_tendencias()
+except (OSError, ValueError, KeyError):
+    _REGLA_TENDENCIAS = None
+
 STOPWORDS_ES = set([
     'el', 'la', 'de', 'que', 'y', 'a', 'en', 'un', 'ser', 'se', 'no', 'haber',
     'por', 'con', 'su', 'para', 'como', 'estar', 'tener', 'le', 'lo', 'todo',
@@ -1098,6 +1106,13 @@ def analizar_cobertura(df: pd.DataFrame) -> Dict:
     }
 
 
+def _contiene_termino(texto, termino: str) -> bool:
+    """Coincidencia por palabra completa, sin tildes: 'ia' no coincide dentro de 'sociales'."""
+    def _n(t):
+        return unicodedata.normalize('NFKD', str(t)).encode('ascii', 'ignore').decode('ascii').lower()
+    return re.search(r'\b' + re.escape(_n(termino)) + r'\b', _n(texto)) is not None
+
+
 def analizar_tendencias(df: pd.DataFrame, tendencias: Dict) -> Dict:
     """Detecta tendencias globales en los datos.
 
@@ -1126,7 +1141,8 @@ def analizar_tendencias(df: pd.DataFrame, tendencias: Dict) -> Dict:
 
         for tid, tinfo in tendencias.items():
             # Recolectar TODAS las keywords que coinciden en este texto
-            kws_match = [kw for kw in tinfo['keywords'] if kw.lower() in texto]
+            # Regla única (src/tendencias.py, D21): término en el nombre o ≥ 2 puntos en el contenido
+            kws_match = terminos_presentes(asig_str, texto, tinfo['keywords'], _REGLA_TENDENCIAS)
             if not kws_match:
                 continue
             # Contar la fila UNA sola vez para no inflar la matriz
@@ -1141,16 +1157,16 @@ def analizar_tendencias(df: pd.DataFrame, tendencias: Dict) -> Dict:
             for kw in kws_match:
                 campos = []
                 textos = {}
-                if kw.lower() in _ra.lower():
+                if _contiene_termino(_ra, kw):
                     campos.append('RA')
                     textos['RA'] = _ra
-                if kw.lower() in _nuc.lower():
+                if _contiene_termino(_nuc, kw):
                     campos.append('Nucleos')
                     textos['Nucleos'] = _nuc
-                if kw.lower() in _ind.lower():
+                if _contiene_termino(_ind, kw):
                     campos.append('Indicadores')
                     textos['Indicadores'] = _ind
-                if kw.lower() in _proc.lower():
+                if _contiene_termino(_proc, kw):
                     campos.append('Proceso')
                     textos['Proceso'] = _proc
                 detalle[tid][programa].append({

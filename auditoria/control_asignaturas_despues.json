@@ -1,0 +1,28 @@
+{
+ "etiqueta": "despues",
+ "segundos": 11.5,
+ "resumen": {
+  "total_programas": 39.0,
+  "programas_multi_sede": 8.0,
+  "pares_intra_sede": 14.0,
+  "pares_inter_programa": 6268.0,
+  "pares_inter_identicos": 5585.0,
+  "asignaturas_identicas": 159.0,
+  "pares_inter_nombre_distinto": 203.0,
+  "homonimas_divergentes": 15.0,
+  "pct_homonimas_divergentes": 9.4
+ },
+ "filas": {
+  "intra_sede": 14,
+  "inter_programa": 6268,
+  "asignaturas_identicas": 159,
+  "homonimas": 159
+ },
+ "inter_programas_distintos": 6268,
+ "inter_nombres_distintos": 203,
+ "homonimas": {
+  "asignaturas": 159,
+  "divergentes": 15,
+  "pct": 9.4
+ }
+}

@@ -35,12 +35,12 @@ def _normalizar(texto: str) -> str:
 
 
 def cargar_corpus() -> list:
-    """Carga todos los archivos Excel y extrae SaberAsociado."""
+    """Carga todos los archivos Excel y extrae los núcleos temáticos depurados."""
     from config import INPUT_FOLDER
     from src.extractor import ExcelExtractor
 
     input_folder = Path(INPUT_FOLDER)
-    excel_files = list(input_folder.rglob('*.xlsx'))
+    excel_files = sorted(input_folder.rglob('*.xlsx'))
 
     if not excel_files:
         print(f"[X] No se encontraron archivos en: {input_folder}")
@@ -53,17 +53,14 @@ def cargar_corpus() -> list:
     for i, fp in enumerate(excel_files, 1):
         try:
             extractor = ExcelExtractor(str(fp))
-            data = extractor.extract_all()
-            df_ra = data.get('resultados_aprendizaje', pd.DataFrame())
-            if not df_ra.empty and 'SaberAsociado' in df_ra.columns:
-                textos = df_ra['SaberAsociado'].dropna().tolist()
-                corpus.extend([_normalizar(t) for t in textos if pd.notna(t) and len(str(t)) > 10])
+            from src.topic_modeler import corpus_nucleos
+            nuc = corpus_nucleos(extractor.extract_estrategias_micro())
+            corpus.extend([_normalizar(t) for t in nuc['Nucleo'] if len(str(t)) > 5])
             print(f"  [{i}/{len(excel_files)}] {fp.name} — {len(corpus)} docs acumulados")
         except Exception as e:
             errores += 1
             print(f"  [!] Error en {fp.name}: {e}")
 
-    corpus = [t for t in corpus if len(t.split()) >= 3]
     print(f"\n[OK] Corpus final: {len(corpus)} documentos ({errores} archivos con error)\n")
     return corpus
 
@@ -176,7 +173,7 @@ def generar_reporte(resultados: dict, output_path: str | None):
         lines2, labels2 = ax2.get_legend_handles_labels()
         ax1.legend(lines1 + lines2, labels1 + labels2, loc='upper right')
 
-        plt.title('Calibración LDA — Corpus SaberAsociado\nSistema Análisis Microcurricular')
+        plt.title('Calibración LDA — Núcleos temáticos\nSistema Análisis Microcurricular')
         plt.tight_layout()
 
         img_path = output_path or 'docs/lda_calibracion.png'

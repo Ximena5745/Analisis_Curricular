@@ -350,18 +350,24 @@ def analisis_cobertura_tematica(df: pd.DataFrame) -> Dict:
     # 1.1 Extraer nucleos tematicos unicos
     print("[1.1] Extrayendo nucleos tematicos...")
 
+    # Separacion por numeracion de cada nucleo (D7), la misma regla del
+    # pipeline de src/nucleos_cleaner.py; no se corta por comas.
+    from src.nucleos_cleaner import tokenizar_nucleo_celda, es_nucleo_valido
+
     nucleos_list = []
     for idx, row in df_bloques.iterrows():
-        nucleos_raw = str(row['Nucleos tematicos'])
-        if nucleos_raw and nucleos_raw != 'nan':
-            # Separar por coma, punto y coma, salto de linea
-            nucleos = re.split(r'[,;\n]+', nucleos_raw)
-            nucleos = [n.strip() for n in nucleos if n.strip() and len(n.strip()) > 3]
-            nucleos_list.extend(nucleos)
+        nucleos_raw = row['Nucleos tematicos']
+        nucleos = [n for n in tokenizar_nucleo_celda(nucleos_raw) if es_nucleo_valido(n)[0]]
+        nucleos_list.extend(nucleos)
 
     # Frecuencia de nucleos
     nucleos_counter = Counter(nucleos_list)
-    total_nucleos_unicos = len(nucleos_counter)
+    # Unicos sin distinguir mayusculas, tildes ni puntuacion
+    total_nucleos_unicos = len({
+        re.sub(r'[^a-z0-9 ]', '', unicodedata.normalize('NFKD', re.sub(r'\s+', ' ', n).strip().lower())
+               .encode('ascii', 'ignore').decode())
+        for n in nucleos_list
+    })
     total_menciones = sum(nucleos_counter.values())
 
     print(f"    Nucleos tematicos unicos: {total_nucleos_unicos}")
@@ -375,9 +381,13 @@ def analisis_cobertura_tematica(df: pd.DataFrame) -> Dict:
     # 1.2 Densidad tematica por asignatura
     print("\n[1.2] Calculando densidad tematica por asignatura...")
 
-    densidad_por_asignatura = df_bloques.groupby('Nombre asignatura o modulo')['Nucleos tematicos'].apply(
-        lambda x: len(re.split(r'[,;\n]+', ' '.join(x.fillna('').astype(str))))
-    ).sort_values(ascending=False)
+    # Por asignatura dentro de cada matriz (no por nombre en todo el corpus:
+    # una asignatura comun a 40 matrices sumaria los nucleos de todas).
+    densidad_por_asignatura = df_bloques.groupby(['Programa', 'Nombre asignatura o modulo'])['Nucleos tematicos'].apply(
+        lambda x: sum(len(tokenizar_nucleo_celda(v)) for v in x)
+    )
+    densidad_por_asignatura = densidad_por_asignatura[densidad_por_asignatura > 0].sort_values(ascending=False)
+    densidad_por_asignatura.index = [f"{asig} ({prog})" for prog, asig in densidad_por_asignatura.index]
 
     promedio_densidad = densidad_por_asignatura.mean()
 
@@ -434,6 +444,16 @@ def analisis_cobertura_tematica(df: pd.DataFrame) -> Dict:
 # ANALISIS 2: ALINEACION CON TENDENCIAS GLOBALES
 # ============================================================================
 
+def _sin_tildes(texto) -> str:
+    t = unicodedata.normalize('NFKD', str(texto)).encode('ascii', 'ignore').decode('ascii')
+    return t.lower()
+
+
+def _contiene_termino(texto, termino: str) -> bool:
+    """Coincidencia por palabra completa: 'ia' no coincide dentro de 'sociales'."""
+    return re.search(r'\b' + re.escape(_sin_tildes(termino)) + r'\b', _sin_tildes(texto)) is not None
+
+
 def analisis_tendencias_globales(df: pd.DataFrame, tendencias: Dict = TENDENCIAS_GLOBALES) -> Dict:
     """Detecta presencia de tendencias globales en los programas."""
     print("\n" + "="*70)
@@ -451,35 +471,34 @@ def analisis_tendencias_globales(df: pd.DataFrame, tendencias: Dict = TENDENCIAS
     # Detalle: Tendencia -> Programa -> campos donde aparece
     detalle_tendencias = {t: {p: [] for p in programas} for t in tendencias.keys()}
 
-    # Buscar en cada registro
+    # Regla única de asignación (src/tendencias.py, D21): término en el nombre de la asignatura,
+    # o ≥ 2 puntos en el contenido; palabra completa y sin tildes
+    from src.tendencias import cargar_config, terminos_presentes
+    _, regla = cargar_config()
     for idx, row in df.iterrows():
         programa = row['Programa']
-        texto_completo = row['Texto_Completo'].lower()
+        texto_completo = row['Texto_Completo']
 
         for tendencia_id, tendencia_info in tendencias.items():
-            keywords = tendencia_info['keywords']
-
-            # Buscar keywords
-            for keyword in keywords:
-                if keyword.lower() in texto_completo:
-                    matriz_tendencias.loc[programa, tendencia_id] += 1
-
-                    # Identificar en que campo aparece
-                    campos = []
-                    if keyword.lower() in str(row['Resultado de aprendizaje']).lower():
-                        campos.append('RA')
-                    if keyword.lower() in str(row['Nucleos tematicos']).lower():
-                        campos.append('Nucleos')
-                    if keyword.lower() in str(row['Indicadores de logro asignatura o modulo']).lower():
-                        campos.append('Indicadores')
-
-                    if campos:
-                        detalle_tendencias[tendencia_id][programa].append({
-                            'keyword': keyword,
-                            'campos': campos,
-                            'asignatura': row['Nombre asignatura o modulo']
-                        })
-                    break  # Solo contar una vez por registro
+            terminos = terminos_presentes(row['Nombre asignatura o modulo'], texto_completo,
+                                          tendencia_info['keywords'], regla)
+            if not terminos:
+                continue
+            matriz_tendencias.loc[programa, tendencia_id] += 1   # una vez por registro
+            for keyword in terminos:
+                campos = []
+                if _contiene_termino(row['Resultado de aprendizaje'], keyword):
+                    campos.append('RA')
+                if _contiene_termino(row['Nucleos tematicos'], keyword):
+                    campos.append('Nucleos')
+                if _contiene_termino(row['Indicadores de logro asignatura o modulo'], keyword):
+                    campos.append('Indicadores')
+                if campos:
+                    detalle_tendencias[tendencia_id][programa].append({
+                        'keyword': keyword,
+                        'campos': campos,
+                        'asignatura': row['Nombre asignatura o modulo']
+                    })
 
     # Calcular % cobertura (presencia/ausencia)
     cobertura_tendencias = (matriz_tendencias > 0).sum(axis=0)

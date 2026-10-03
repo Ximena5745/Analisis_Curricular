@@ -253,13 +253,13 @@ TAXONOMIA_BLOOM = {
 
 ```python
 QUALITY_WEIGHTS = {
-    'completitud': 0.25,
-    'complejidad_cognitiva': 0.20,
-    'balance_tipo_saber': 0.15,
-    'diversidad_metodologica': 0.15,
-    'cobertura_competencias': 0.15,
-    'calidad_redaccion': 0.10
+    'complejidad_cognitiva': 20 / 50,
+    'balance_tipo_saber': 15 / 50,
+    'diversidad_metodologica': 15 / 50,
 }
+# Auditoría Etapa 3 (2026-10-02): se eliminó 'calidad_redaccion' (constante 80)
+# y completitud / cobertura de competencias pasan a condiciones verificadas
+# (100 % en los 50 programas); pesos declarados 20/15/15 reescalados a 100 %.
 ```
 
 ---

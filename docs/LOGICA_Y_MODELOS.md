@@ -194,12 +194,10 @@ completitud_total = comp(30%) + RA(40%) + meso(15%) + micro(15%)
 
 **Score de calidad (`analyzer.py:470-507`):**
 ```
-score_completitud  = completitud_total              (peso 25%)
-score_complejidad  = indice_complejidad             (peso 20%)
-score_balance      = 100 - desviacion * 5           (peso 15%)
-score_cobertura    = % cobertura                    (peso 15%)
-score_diversidad   = min(100, num_estrategias * 8)  (peso 15%)
-score_redaccion    = 80.0 (placeholder)             (peso 10%)
+score_complejidad  = indice_complejidad             (peso 40%)
+score_balance      = 100 - desviacion * 5           (peso 30%)
+score_diversidad   = min(100, num_estrategias * 8)  (peso 30%)
+# completitud y % cobertura: condiciones verificadas, no puntúan (auditoría E3-7)
 
 score_total = Σ(score_i * peso_i)
 ```
@@ -947,7 +945,7 @@ Diversidad:          72.5/100
 ### 7.1 Score de Calidad
 
 ```
-Score = C × 0.25 + CC × 0.20 + B × 0.15 + D × 0.15 + CB × 0.15 + R × 0.10
+Score = CC × 0.40 + B × 0.30 + D × 0.30   (auditoría Etapa 3, 2026-10-02)
 
 Donde:
   C  = Completitud total (%)
@@ -1140,13 +1138,13 @@ Donde A y B son vectores TF-IDF de dos programas o asignaturas
 
 ```python
 QUALITY_WEIGHTS = {
-    'completitud': 0.25,           # 25%
-    'complejidad_cognitiva': 0.20, # 20%
-    'balance_tipo_saber': 0.15,    # 15%
-    'diversidad_metodologica': 0.15, # 15%
-    'cobertura_competencias': 0.15, # 15%
-    'calidad_redaccion': 0.10      # 10%
+    'complejidad_cognitiva': 20 / 50,
+    'balance_tipo_saber': 15 / 50,
+    'diversidad_metodologica': 15 / 50,
 }
+# Auditoría Etapa 3 (2026-10-02): se eliminó 'calidad_redaccion' (constante 80)
+# y completitud / cobertura de competencias pasan a condiciones verificadas
+# (100 % en los 50 programas); pesos declarados 20/15/15 reescalados a 100 %.
 # Deben sumar exactamente 1.0 (validado en validate_config())
 ```
 

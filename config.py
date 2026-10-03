@@ -331,14 +331,43 @@ TIPOS_SABER = ['Saber', 'SaberHacer', 'SaberSer']
 # INDICADORES Y MÉTRICAS
 # ============================================================================
 
-# Pesos para el cálculo del score de calidad (deben sumar 1.0)
+# Pesos para el cálculo del score de calidad (deben sumar 1.0).
+# Auditoría Etapa 3 (2026-10-02):
+#  - E3-1: se eliminó 'calidad_redaccion' (10 %), constante de 80 sin evaluación.
+#  - E3-7: completitud y cobertura de competencias valen 100 % en los 50
+#    programas (el formato de la matriz las garantiza); se reportan como
+#    condiciones verificadas (CONDICIONES_VERIFICADAS) y no entran al puntaje.
+# Los tres componentes que discriminan conservan sus pesos declarados
+# (20/15/15) reescalados a 100 %.
 QUALITY_WEIGHTS = {
-    'completitud': 0.25,
-    'complejidad_cognitiva': 0.20,
-    'balance_tipo_saber': 0.15,
-    'diversidad_metodologica': 0.15,
-    'cobertura_competencias': 0.15,
-    'calidad_redaccion': 0.10
+    'complejidad_cognitiva': 20 / 50,
+    'balance_tipo_saber': 15 / 50,
+    'diversidad_metodologica': 15 / 50,
+}
+CONDICIONES_VERIFICADAS = ['completitud', 'cobertura_competencias']
+
+# Progresión de niveles por taxonomía y dominio, de menor a mayor exigencia.
+# Cada nivel se traduce a una escala común 1-6 según su posición dentro de su
+# propio dominio: nivel = 1 + (posición - 1) × 5 / (n.º de niveles - 1).
+# Bloom clásico usa los mismos seis niveles en los tres dominios
+# (auditoría E3-2, aprobada 2026-10-02).
+PROGRESIONES_TAXONOMICAS = {
+    ('bloom', None): ['conocimiento', 'comprension', 'aplicacion', 'analisis', 'sintesis', 'evaluacion'],
+    ('bak', 'cognitivo'): ['conocimiento', 'comprension', 'aplicacion', 'analisis', 'sintesis', 'evaluacion'],
+    ('bak', 'procedimental'): ['imitacion', 'manipulacion', 'precision', 'control'],
+    ('bak', 'actitudinal'): ['percepcion', 'responder', 'valorar', 'organizar', 'caracterizar'],
+}
+
+# Columnas clave por paso para la completitud (auditoría E3-3)
+COLUMNAS_COMPLETITUD = {
+    'competencias': ['Verbo competencia', 'Objeto conceptual', 'Finalidad',
+                     'Condición de contexto o referencia', 'Redacción competencia', 'Tipo de competencia'],
+    'ra': ['Competencia por desarrollar', 'TipoSaber', 'SaberAsociado', 'Taxonomía',
+           'Dominio Asociado', 'Nivel Dominio', 'Verbo RA', 'Resultados Aprendizaje'],
+    'estrategias_meso': ['Estrategia del programa', 'Descripción', 'Indicador de Impacto de la Estrategia',
+                         'Acciones de retroalimentación para los estudiantes', 'Instrumentos de medición'],
+    'estrategias_micro': ['Semestre', 'Nombre asignatura o módulo', 'Indicadores de logro asignatura o módulo',
+                          'Créditos', 'Núcleos temáticos', 'Actividades de aprendizaje', 'Actividades de evaluación'],
 }
 
 # Umbrales para clasificación de complejidad cognitiva
@@ -363,6 +392,11 @@ NUCLEOS_CONFIG = {
     'MIN_LONGITUD': 4,
     'MAX_LONGITUD': 150,
     'MIN_PALABRAS': 2,
+    # Filtros heurísticos de es_nucleo_valido (longitud, nº de palabras,
+    # inicio con artículo/preposición, letra final suelta, patrones de
+    # encabezado). Desactivados: con la separación por numeración (D7)
+    # rechazaban 926 de 6.671 núcleos legítimos (auditoría P5, 2026-10-02).
+    'FILTROS_ESTRICTOS': False,
     'CONTAMINATION_IF': 0.15,
     'USE_SPACY': False,
     'SPACY_MODEL': 'es_core_news_sm',
@@ -430,6 +464,21 @@ COLUMNAS_PERFIL = [
     'Áreas profesionales', 'Tareas profesionales',
     'Poblaciones actuación', 'Valor agregado'
 ]
+
+# Grupos para reportar la cobertura del perfil (auditoría Etapa 4, opción 1,
+# 2026-10-02). Cada celda se evalúa con el umbral de su campo; los grupos solo
+# agregan los resultados.
+GRUPOS_PERFIL = {
+    'Perfil profesional': 'Perfil',
+    'Perfil ocupacional': 'Perfil',
+    'Saber': 'Saberes',
+    'SaberHacer': 'Saberes',
+    'SaberSer': 'Saberes',
+    'Áreas profesionales': 'Campo de actuación',
+    'Tareas profesionales': 'Campo de actuación',
+    'Poblaciones actuación': 'Campo de actuación',
+    'Valor agregado': 'Valor agregado',
+}
 
 # ============================================================================
 # CONFIGURACIÓN DE PROCESAMIENTO
