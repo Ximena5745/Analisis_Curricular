@@ -400,12 +400,106 @@ DISCUSION_APORTES = [
           'dependen de enunciados (V1, V3) y de su articulación (V2, V4) se acercan al techo, mientras que solo el 0,8 % de las '
           'estrategias declara un indicador de aprendizaje demostrado (V5). Las brechas son puntuales y localizables —15 asignaturas '
           'homónimas divergentes, 14 variantes de denominación, 49 elementos del perfil sin respaldo, seis RA de programa sin '
-          'estrategia— y se entregan como listados nominales. La IA tiene amplitud (82 % de los programas) sin profundidad (5 % de las '
+          'estrategia— y se entregan como listados nominales. La IA tiene amplitud (79,5 % de los programas) sin profundidad (3,8 % de las '
           'asignaturas); la sostenibilidad combina ambas. El procedimiento es transferible a otra institución multisede con matrices '
           'estandarizadas: identificar campos obligatorios y opcionales, medir la cobertura de los segundos y comparar la variabilidad '
           'dentro y entre unidades académicas.'),
 ]
 
+
+# Discusión (versión auditada; cifras verificadas contra auditoria/evidencia_*.json)
+DISCUSION = [
+    ('p', '4. Discusión. Los resultados permiten examinar cuatro proposiciones sobre el uso de inteligencia artificial generativa (IAg) '
+          'y análisis determinista en la gestión curricular: la coherencia como producto de la asistencia analítica, los indicadores '
+          'como base de decisión, la trazabilidad como condición de legitimidad y la escala como aporte institucional.'),
+    ('h2', '4.1 Coherencia y alineación curricular'),
+    ('p', 'La IAg puede asistir la estructuración de las matrices y la programación del aplicativo, mientras la detección de desajustes '
+          'corresponde al análisis determinista y la decisión a los equipos académicos (Liu et al., 2024; Pusporini & Nurdiyanto, 2024). '
+          'Los resultados matizan esta proposición. V1 y V3 alcanzan el 100 % y la paridad de tipos de saber (Saber 37,9 %, SaberHacer '
+          '31,1 % y SaberSer 31,1 % de los registros) es constante porque la plantilla fija la referencia a la competencia, la estructura '
+          'del RA y su descomposición por saber (R1–R3). Estos valores describen el instrumento, no la calidad del diseño, y no deben '
+          'leerse como fortaleza.'),
+    ('p', 'Las inconsistencias reales son escasas y localizables: cinco matrices de tres programas (3 de 39; 7,7 %) repiten un verbo '
+          'entre competencias específicas (V2 = 90 %). La alta frecuencia de Analizar no es una inconsistencia, pues 40 de sus 50 '
+          'ocurrencias corresponden a la competencia genérica institucional. Por la misma razón, los rangos de referencia por tipo de '
+          'saber (SaberHacer 35–60 %) no son aplicables a registros con esta estructura: aplicarlos atribuiría un déficit práctico a '
+          'todas las matrices. Sobre los 341 RA únicos, SaberSer representa el 15,8 %, lo que indica que el componente actitudinal se '
+          'formula con pocos RA reutilizados en varias competencias.'),
+    ('h2', '4.2 Indicadores y toma de decisiones curriculares'),
+    ('p', 'La educación orientada a resultados supone que los indicadores permiten decidir sobre el logro. Los datos no respaldan esta '
+          'proposición en su forma actual. De 1.185 indicadores declarados en el Paso 4, el 99,5 % es evidencia indirecta: informa si la '
+          'estrategia se implementó (N1, 808) o cómo fue valorada (N2, 371), pero no si el RA se alcanzó. Solo cinco demuestran '
+          'aprendizaje (N3), ninguno transferencia (N4) y uno un efecto externo (N5); en consecuencia, solo 3 de las 391 estrategias (0,8 %) '
+          'declaran evidencia directa del logro (V5, R5).'),
+    ('p', 'Tampoco puede sostenerse una relación entre variables. Ninguna correlación fue significativa (V2–V4 ρ = −0,03; V2–V5 '
+          'ρ = 0,07; V4–V5 ρ = −0,13; n = 50) y ninguna variable difiere entre sedes (R6, R7). Esta ausencia no prueba independencia: '
+          'V1 y V3 son constantes, V2 casi binaria y V5 distinta de cero en dos matrices, de modo que solo V4 varía entre programas. Con '
+          'la plantilla actual, la mayoría de las variables mide el cumplimiento del formato y no decisiones de diseño.'),
+    ('p', 'El aporte atribuible al sistema se sitúa, por tanto, menos en generar indicadores que en hacer visible su nivel. Para '
+          'sostener decisiones de mejora, el Paso 4 debería exigir por estrategia al menos un indicador de aprendizaje demostrado (N3), '
+          'con criterio de desempeño y umbral de suficiencia, y uno de transferencia (N4) cuando la estrategia ocurra en contexto real.'),
+    ('h2', '4.3 Trazabilidad, gobernanza y control humano'),
+    ('p', 'La trazabilidad legitima las decisiones curriculares porque permite reconstruir, ante estudiantes, docentes y pares, la '
+          'cadena entre perfil y evidencia de evaluación; el marco de riesgos de IA la sitúa en las funciones Map y Measure (NIST, '
+          '2023). El 87,1 % de los 341 RA únicos tiene al menos una estrategia mesocurricular, y todos se evalúan en alguna asignatura '
+          '(R4). La brecha no es estructural y tiene dos fuentes: una regla común —el RA de la competencia genérica institucional carece '
+          'de estrategia meso en 38 de 40 matrices, porque los programas no la planean en el Paso 4— y decisiones de programa, que '
+          'explican seis RA en cinco matrices (98,0 % de trazabilidad sin el RA genérico).'),
+    ('p', 'La primera fuente pertenece al diseño del instrumento: si el formulario permite cerrar una matriz sin estrategia para un '
+          'RA, la omisión se reproduce en todas las sedes. Corresponde definir institucionalmente la planeación meso de la competencia '
+          'genérica y vincular el Paso 4 al Paso 3 mediante lista desplegable, para que una reformulación del RA no rompa el vínculo. '
+          'La ausencia documental impide verificar la articulación, pero no prueba que no ocurra.'),
+    ('p', 'El análisis automatizado concentra, además, influencia institucional: examina 50 matrices y emite alertas sobre 988 '
+          'elementos del perfil. Si umbrales, listas y pesos son opacos, la decisión se desplaza de los equipos a parámetros técnicos; '
+          'por ello cada parámetro y cada intervención deben registrarse (P4, P9). El control humano debe ser, además, efectivo: '
+          'revisar 189 pares candidatos a homologación exige tiempo experto real, y aprobarlos en bloque reproduciría el problema que P3 '
+          'busca evitar. La capacidad de revisión debe guardar proporción con el volumen de propuestas que el sistema genera.'),
+    ('h2', '4.4 Escala institucional y límites del análisis automatizado'),
+    ('p', 'El principal aporte de estas herramientas es el alcance, no la velocidad. Un equipo puede comparar dos versiones de una '
+          'asignatura, pero difícilmente 159 asignaturas homónimas, 203 pares de nombre distinto o 988 elementos del perfil frente al '
+          'corpus completo. Ese alcance solo tiene valor si se traduce en acciones; por ello el producto útil no es el indicador '
+          'agregado, sino el listado nominal. La consistencia de las homónimas (media 0,928) y la cobertura del perfil (95,0 %) '
+          'describen un currículo articulado; la acción depende de identificar las 15 asignaturas homónimas divergentes, las 14 '
+          'variantes de denominación y los 49 elementos del perfil sin respaldo (R8), que permiten asignar responsables y verificar '
+          'las correcciones.'),
+    ('p', 'Estos hallazgos son transversales: la cobertura del perfil concierne al aseguramiento de la calidad y al registro '
+          'calificado, pero también a la comunicación institucional, que difunde el perfil, y a los comités curriculares, que resuelven '
+          'las brechas. Sin mecanismos de coordinación entre estas áreas, la información no se convierte en capacidad de actuación.'),
+    ('p', 'La escala tampoco autoriza a delegar en el sistema decisiones de juicio académico. La similitud coseno mide proximidad '
+          'léxica, no equivalencia en profundidad, secuencia u orientación disciplinar: entre los 189 candidatos a homologación hay '
+          'falsos positivos léxicos. Conforme a P3, el sistema propone y los pares académicos deciden. La escalabilidad es, así, una '
+          'propiedad del procedimiento y no del software: otra institución puede reproducirlo con otras herramientas si dispone de un '
+          'instrumento curricular estandarizado, separa lo que el sistema calcula de lo que el experto decide y registra los parámetros '
+          'que hacen auditable el análisis.'),
+    ('p', 'Esta separación importa porque el currículo no es un documento neutro: define qué conocimientos se reconocen como válidos '
+          'y qué sujeto se busca formar, y la mediación algorítmica no vuelve objetivas esas definiciones, sino que desplaza el lugar '
+          'donde se ejercen (Devia-Acevedo, 2024). El análisis de tendencias lo ilustra: detecta solo lo previsto en su configuración. '
+          'La lista oficial de 15 tendencias cubre todas las asignaturas, pero la inteligencia artificial aparece en el 79,5 % de los '
+          'programas y solo en el 3,8 % de las asignaturas (R8). El sistema no mide la actualidad del currículo, sino su coincidencia '
+          'con una agenda definida por la institución; si ese resultado orienta la oferta, la selección de la lista participa en la '
+          'configuración del currículo y debe someterse a deliberación académica.'),
+    ('h2', '4.5 Riesgos latentes identificados en la auditoría'),
+    ('p', 'La auditoría del procedimiento identificó tres riesgos que no alteran los resultados reportados, pero requieren control. '
+          'El primero es el puntaje académico de los núcleos temáticos, que suma por términos de contenido (análisis, metodología, '
+          'sistema) y por extensión del texto, y resta por términos de formato o secuencia (taller, exposición, salida de campo, '
+          'introducción). No tiene canal hacia ninguna decisión: se calcula después de los filtros de validez, no alimenta V1–V5 y se '
+          'exporta solo como columna informativa; su umbral de 0,5 nunca se implementó y, aplicado, excluiría el 95,2 % de los 6.671 '
+          'núcleos (media 0,197). La auditoría retiró, además, el término práctica, que figuraba a la vez en ambas listas.'),
+    ('p', 'Sin embargo, el puntaje no es neutral respecto de la disciplina. Agrupados los 39 programas por campo amplio CINE-F 2013, '
+          'la mediana del puntaje por programa difiere entre campos (Kruskal-Wallis H = 19,71; gl = 7; p = 0,006; ε² = 0,41); la '
+          'mediana por campo va de 0,12 en Ciencias sociales, periodismo e información a 0,22 en Educación (Figura 7). El contraste es exploratorio —ocho '
+          'campos, varios con dos o tres programas, y una asignación CINE-F pendiente de validación—, pero basta para descartar su uso '
+          'como criterio de comparación entre programas. Debe eliminarse o, si se conserva, rediseñarse separando contenido y formato '
+          'pedagógico y validarse por campo antes de cualquier uso decisorio.'),
+    ('fig', 'Figura 7. Puntaje académico de los núcleos temáticos'),
+    ('p', 'El segundo riesgo es estructural en los archivos fuente: en el Paso 5, el nombre de la asignatura, los créditos, el semestre '
+          'y los núcleos se registran en celdas combinadas sobre las filas de Saber, SaberHacer y SaberSer, y la lectura con pandas '
+          'conserva el valor solo en la primera fila. Las rutinas originales no propagaban ese valor, por lo que los análisis por '
+          'asignatura descartaban dos de cada tres registros; la auditoría incorporó la propagación y los resultados reportados ya la '
+          'aplican. El tercero es prospectivo: si la redacción de RA converge hacia los patrones que sugieren los modelos generativos, '
+          'los currículos podrían conservar coherencia formal y perder capacidad de diferenciación. Este estudio no lo evalúa; queda '
+          'como hipótesis para seguimiento longitudinal.'),
+]
 
 # Resultados consolidados (Word): solo secciones cerradas por la autora
 SECCIONES_RESULTADOS = [
@@ -418,6 +512,7 @@ SECCIONES_RESULTADOS = [
     ('R6', RESULTADOS_R6, 'Cerrada: sin asociaciones estimables (D18)'),
     ('R7', RESULTADOS_R7, 'Cerrada: sin diferencias entre sedes (D19)'),
     ('R8', RESULTADOS_R8, 'Cerrada: tres bloques; lista oficial de 15 tendencias (D20, D21)'),
+    ('Discusion', DISCUSION, 'En revisión: cifras auditadas; puntaje académico recalculado (D22)'),
 ]
 RESULTADOS_PENDIENTES = [
 ]
@@ -441,6 +536,7 @@ SECCIONES = [
     ('Resultados – R7', RESULTADOS_R7),
     ('Resultados – R8', RESULTADOS_R8),
     ('Resultados – aportes para la Discusión', DISCUSION_APORTES),
+    ('Discusión', DISCUSION),
     ('Resultados ya verificados', RESULTADOS_VERIFICADOS),
 ]
 
@@ -456,7 +552,7 @@ def markdown(fecha):
                 out += [b[1], '']
             elif b[0] == 'n':
                 out += [f'*{b[1]}*', '']
-            elif b[0] == 'h':
+            elif b[0] in ('h', 'h2'):
                 out += [f'### {b[1]}', '']
             elif b[0] == 'fig':
                 out += [f'*[{b[1]}]*', '']

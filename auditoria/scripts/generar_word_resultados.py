@@ -194,6 +194,10 @@ def tabla(titulo_t, cab, filas, control=False):
 
 
 FIGURAS_EN_LINEA = {
+    'Figura 7. Puntaje académico de los núcleos temáticos': [('auditoria/figuras/D_score_academico.png', 'Figura 7. Puntaje académico de los núcleos temáticos por campo CINE-F y distribución',
+            'a. Núcleos por campo amplio CINE-F 2013 del programa (asignación propuesta, pendiente de validación). b. Distribución '
+            'de los 6.671 núcleos; línea discontinua: umbral 0,5, definido en la configuración y nunca implementado. '
+            'Fórmula vigente de src/nucleos_cleaner.calcular_score_academico.')],
     'Figura 6. Temas de agenda global: amplitud y profundidad': [('auditoria/figuras/R8_figura6_tendencias.png', 'Figura 6. Tendencias del sector empresarial y educativo: amplitud y profundidad',
             'Amplitud: programas con al menos una asignatura que menciona el tema (n = 39). Profundidad: asignaturas que lo mencionan '
             '(n = 1.616, sin electivas). Regla de asignación en la nota del texto.')],
@@ -214,19 +218,21 @@ FIGURAS = {
             'Izquierda: los 44 RA únicos sin estrategia, según sean el RA de la competencia genérica institucional o RA de programa. '
             'Derecha: matrices con RA de programa sin estrategia. Fuente: Pasos 3 y 4 de las 50 matrices.')],
 }
-ENCABEZADO = re.compile(r'^((?:3\. Resultados)|(?:R\d+\. [^.]*?\((?:V[^)]*|modelos analíticos)\)))\.\s+(.*)$', re.S)
+ENCABEZADO = re.compile(r'^((?:3\. Resultados)|(?:4\. Discusión)|(?:R\d+\. [^.]*?\((?:V[^)]*|modelos analíticos)\)))\.\s+(.*)$', re.S)
 
 for clave, bloques, estado in TXT.SECCIONES_RESULTADOS:
     for b in bloques:
         if b[0] == 'p':
             m = ENCABEZADO.match(b[1])
             if m:
-                titulo(m.group(1), 1 if m.group(1).startswith('3.') else 2)
+                titulo(m.group(1), 1 if m.group(1)[:2] in ('3.', '4.') else 2)
                 parrafo(m.group(2))
             else:
                 parrafo(b[1])
         elif b[0] == 'h':
             titulo(b[1], 3)
+        elif b[0] == 'h2':
+            titulo(b[1], 2)
         elif b[0] == 'fig':
             for fig in FIGURAS_EN_LINEA[b[1]]:
                 figura(*fig)

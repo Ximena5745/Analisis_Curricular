@@ -151,8 +151,8 @@ def build(g):
     filas_t = []
     for tit, bloques in TXT.SECCIONES:
         for b in bloques:
-            if b[0] in ('p', 'n', 'h', 'fig'):
-                filas_t.append([tit, {'p': 'Párrafo', 'n': 'Nota', 'h': 'Subtítulo', 'fig': 'Figura'}[b[0]], b[1]])
+            if b[0] in ('p', 'n', 'h', 'h2', 'fig'):
+                filas_t.append([tit, {'p': 'Párrafo', 'n': 'Nota', 'h': 'Subtítulo', 'h2': 'Subtítulo', 'fig': 'Figura'}[b[0]], b[1]])
             else:
                 filas_t.append([tit, 'Tabla', b[1] + '\n' + ' | '.join(b[2]) + '\n' + '\n'.join(' | '.join(f) for f in b[3])])
     _tabla(ws, ['Sección', 'Tipo', 'Texto'], filas_t, [26, 10, 150])

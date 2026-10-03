@@ -411,25 +411,28 @@ NUCLEOS_CONFIG = {
     # Se mantiene comentado, y no eliminado, para dejar constancia de la
     # intención de diseño y evitar que se reintroduzca por descuido.
     #
-    # Auditoría (2026-08-03) sobre los 5.780 núcleos válidos del corpus:
-    #   - score medio = 0.198
-    #   - el 96% de los núcleos obtiene score < 0.5
+    # Auditoría D22 (2026-10-03) sobre los 6.671 núcleos del corpus actual
+    # (segmentación D7; auditoria/scripts/verificar_score_academico.py):
+    #   - score medio = 0.197; mediana = 0.16
+    #   - el 95,2 % de los núcleos obtiene score < 0.5
     #   => aplicar el umbral 0.5 descartaría casi todo el corpus.
     #      El valor nunca fue calibrado contra datos reales.
     #
-    # Además, calcular_score_academico() tiene una inconsistencia conocida:
-    # el término 'practica' figura a la vez en _KEYWORDS_ACADEMICAS_POS y
-    # en _KEYWORDS_ACADEMICAS_NEG (nucleos_cleaner.py), de modo que suma y
-    # resta en la misma operación.
+    # El término 'practica', que figuraba a la vez en la lista positiva y en
+    # la negativa, ya se retiró de ambas (nucleos_cleaner.py).
+    #
+    # El score NO es neutral a la disciplina: la mediana por programa difiere
+    # entre campos amplios CINE-F 2013 (Kruskal-Wallis H = 19.71, gl = 7,
+    # p = 0.006, eps2 = 0.41; de 0.12 en Ciencias sociales a 0.22 en
+    # Educación). El contraste anterior aplicados/teóricos (p = 0.565) no es
+    # reproducible y queda sustituido.
     #
     # Antes de reactivar cualquier uso decisorio del score es necesario:
-    #   1. Depurar el solapamiento entre ambas listas de keywords.
-    #   2. Separar el criterio "vocabulario académico" del criterio
+    #   1. Separar el criterio "vocabulario académico" del criterio
     #      "formato pedagógico", hoy mezclados.
-    #   3. Recalibrar el umbral sobre la distribución real del corpus.
-    #   4. Verificar ausencia de sesgo disciplinar (el contraste actual
-    #      entre programas aplicados y teóricos da p = 0.565, sin
-    #      diferencia significativa; debe rehacerse tras la depuración).
+    #   2. Recalibrar el umbral sobre la distribución real del corpus.
+    #   3. Validarlo por campo disciplinar hasta eliminar la diferencia
+    #      entre campos, o descartarlo.
     #
     # Mientras tanto, el score se calcula y se exporta ÚNICAMENTE como
     # columna informativa para revisión humana (report_generator.py).

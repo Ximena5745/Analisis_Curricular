@@ -5,11 +5,8 @@ Generado por auditoria/scripts/generar_entregables.py (2026-10-02 13:21). Tambi�
 | ID | Tema | Etapa | Qué falta definir |
 |---|---|---|---|
 | Tabla 16 | Tópicos del análisis temático | Resultados | Re-estimar con el LDA de consenso (k = 13; consolidado/topicos_lda.xlsx al correr run_analysis.py). Nota: el tópico 1 (mercadeo, comunicación, planeación) es dominante en 330 de 1.192 asignaturas y el tópico 11 en ninguna; confianza media 0,42. |
-| A7 | Evaluabilidad 98,3 % | Resultados | No hay código de V3; la única salida da 99,2 %. Definir la regla (p68 vs p166), versionar el cálculo y recalcular. |
-| A8 | Trazabilidad 52,3 % | Resultados | El recálculo da ≈ 86 %. Decidir la definición de V4 (con o sin tramo perfil→competencia) y revisar los párrafos que interpretan 52,3 %. |
 | A11 | IA en 79,5 % de los programas y 3,3 % de los registros | Resultados | Búsqueda por palabra completa ya corregida. Definir la base: con texto de RA 31/39; con núcleos + indicadores 32/39 y 86 de 1.616 asignaturas. |
 | V1–V5 | Tabla 2 (variables) | Variables | V1 cerrada (D13); V2 cerrada (D14 = 90 %); V3 cerrada (D15 = 100 %, estructural); V4 cerrada (D16 = 87,1 %; 98,0 % sin RA genérico); V5 definida (D17 = 0,8 % de estrategias con evidencia directa; falta kappa). Pendientes: V5 constante por estrategia. Luego regenerar la Figura 1 sin V1. |
-| Tabla 17 | Temas de agenda global | Resultados | Recalcular con búsqueda por palabra completa (valores de referencia en Textos_corregidos, Etapa 6) y fijar la base (igual que A11). |
 | P16 | Reportes por programa (Etapa 7) | Procedimiento | DECISIÓN: nombrar reporte_<Programa>_<Sede> (hoy 50 matrices → 39 informes por sobrescritura). Recomendado; no cambia cifras. |
 | P17 | Versión de Python y bibliotecas (Tabla 6) | Procedimiento | DECISIÓN: indicar el entorno de la corrida final (Docker 3.10, entorno local 3.12.7; la auditoría usó 3.14) y generar requirements con versiones exactas (pip freeze). |
 | P21 | Isolation Forest en la Tabla 6 | Procedimiento | DECISIÓN: no se usa (detectar_anomalias_nucleos no se invoca). Quitar de la Tabla 6 (recomendado) o integrarlo y describirlo en una etapa. |
@@ -20,4 +17,6 @@ Generado por auditoria/scripts/generar_entregables.py (2026-10-02 13:21). Tambi�
 | Código | analisis_tematico_avanzado.py (núcleos) | Código | DECISIÓN: reconocer "Tipo de saber", no rellenar núcleos hacia abajo y quitar el filtro de tipo de saber (6.631 → 6.671). |
 | Inferencia | Pruebas por sede/nivel | Resultados | Repetir con una matriz por programa: los 8 multisede comparten RA y 89–100 % de núcleos. |
 | Dashboard | Cobertura del perfil por grupo | Código | Opcional: mostrar cobertura_por_grupo (D9) en dashboard_tematico.py. |
-| Git | Commit y publicación | Proyecto | Cambios de P5 y Etapas 3–6 sin commit en auditoria/p2-extractor-encabezados; push a origin rechazado (403, cuenta PlaneacionPoli). Definir cuenta o remoto. |
+| Discusión | Validación de la Discusión auditada | Discusión | Revisar 4.1–4.5 (Textos_corregidos, Resultados_consolidado.docx). Confirmar citas (Liu et al., 2024; Pusporini & Nurdiyanto, 2024; NIST, 2023; Devia-Acevedo, 2024) y la definición de P3, P4 y P9 en el Marco. |
+| CINE-F | Asignación CINE-F de los programas | Discusión / R8 | Validar la hoja CINE-F_programas (3 programas con alternativa). El contraste del puntaje académico (D22, Figura 7) y la propuesta GreenMetric dependen de ella; recalcular con verificar_score_academico.py si cambia. |
+| Git | Publicación | Proyecto | Commits locales en auditoria/p2-extractor-encabezados; push a origin rechazado (403, cuenta PlaneacionPoli). Definir cuenta o remoto. |
