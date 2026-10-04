@@ -8,7 +8,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt \
-    && python -m spacy download es_core_news_sm
+    && python -m spacy download es_core_news_sm \
+    && python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')"
+# El modelo queda en la caché de la imagen: la asociación del perfil (src/asociacion_perfil.py) corre sin conexión
 
 COPY . .
 

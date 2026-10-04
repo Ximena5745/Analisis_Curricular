@@ -189,6 +189,14 @@ PENDIENTES_AFIRM = [
      'Validar la hoja CINE-F_programas (3 programas con alternativa). El contraste del puntaje académico (D22, Figura 7) y la propuesta GreenMetric dependen de ella; recalcular con verificar_score_academico.py si cambia.'),
     ('Git', 'Publicación', 'Proyecto',
      'Commits locales en auditoria/p2-extractor-encabezados; push a origin rechazado (403, cuenta PlaneacionPoli). Definir cuenta o remoto.'),
+    ('V1', 'Validación de la lectura de referencia (V1)', 'Método / R1',
+     'El comité curricular valida una muestra de las 1.287 decisiones de auditoria/referencia_asociacion_perfil.csv (40 revisadas el 2026-10-03). Hasta entonces se mantiene la Observación de la Etapa 4; recalibrar con calibrar_asociacion_perfil.py si cambia.'),
+    ('Referencias', 'Lista de referencias del artículo', 'Referencias',
+     'Aplicar REFERENCIAS_CAMBIOS (textos_articulo.py): retirar Robertson y Zaragoza (2009); agregar Butterfuss y Doran (2025), Duarte et al. (2023), Zaki et al. (2023), Cohen (1960), Reimers y Gurevych (2020) y Spärck Jones (1972).'),
+    ('Exigencia', 'Índice de exigencia de IngIndustrial (3 matrices)', 'Etapa 3',
+     'comparar_exigencia.py deduplica los RA sin puntuación (índice 37,9); el aplicativo usa la regla D4, minúsculas, que da los 341 RA del artículo (índice 35,9). Unificar la regla en el script de auditoría.'),
+    ('V1', 'Alcance de V1', 'Método',
+     'Saber, SaberHacer, SaberSer y Valor agregado quedan fuera de V1. Decidir si se reincorporan como medida complementaria.'),
 ]
 
 ANOMALIAS = [
