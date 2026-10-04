@@ -117,6 +117,7 @@ def md(defs, fecha):
               '- **D8** — Puntaje de calidad = exigencia 40 % + equilibrio 30 % + variedad 30 %; exigencia por nivel declarado en escala común 1–6; completitud y cobertura de competencias como condiciones verificadas.',
               '- **D9** — Cobertura del perfil: elemento = celda de los 9 campos (988); corpus = contenidos de las asignaturas (sin SaberAsociado ni RA); resultados por grupo.',
               '- **D10** — Asignaturas compartidas: contenido = núcleos + indicadores; todas las asignaturas, solo entre programas distintos; umbral 0,60 no calibrado.',
+              '- **D22** — Puntaje académico recalculado sobre el corpus D7 y contrastado por campo CINE-F (no neutral a la disciplina).',
               '- **D21** — Lista oficial de 15 tendencias (sector empresarial y educativo) con regla única: término en el nombre o ≥ 2 puntos en el contenido.',
               '- **D19** — R7: Kruskal-Wallis de V2, V4 y V5 entre sedes con 49 matrices y 38 programas; sin diferencias. Tabla 11; sin Figura 8.',
               '- **D18** — R6: no se interpretan correlaciones (V1 y V3 constantes, V2 binaria, V5 casi nula); Figura 5 = distribución por matriz.',

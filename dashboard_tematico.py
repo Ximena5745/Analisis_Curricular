@@ -634,13 +634,21 @@ STOPWORDS_ES = set([
 # FUNCIONES DE CARGA DE DATOS
 # ============================================================================
 
+_COLUMNAS_CANONICAS = ['Tipo de Saber', 'Resultado de aprendizaje', 'Semestre', 'Nombre asignatura o modulo',
+                       'Indicadores de logro asignatura o modulo', 'Creditos', 'Nucleos tematicos', 'Tipologia',
+                       'Actividades de aprendizaje', 'Actividades de evaluacion', 'Acciones de retroalimentacion']
+
+
 def normalizar_columnas(df: pd.DataFrame) -> pd.DataFrame:
-    """Normaliza nombres de columnas eliminando tildes."""
+    """Normaliza nombres de columnas: sin tildes y, para las columnas que usa el análisis, con su nombre canónico
+    sin distinguir mayúsculas ni espacios («Tipo de saber» → «Tipo de Saber»). Sin esto, una matriz con otra
+    capitalización perdía todas sus filas en el filtro de Tipo de Saber sin aviso."""
+    canonicas = {_normalize_column_name(c): c for c in _COLUMNAS_CANONICAS}
     nuevos_nombres = {}
     for col in df.columns:
         nfkd = unicodedata.normalize('NFKD', str(col))
         sin_acentos = ''.join(c for c in nfkd if not unicodedata.combining(c))
-        nuevos_nombres[col] = sin_acentos
+        nuevos_nombres[col] = canonicas.get(_normalize_column_name(sin_acentos), sin_acentos)
     return df.rename(columns=nuevos_nombres)
 
 
@@ -1625,33 +1633,37 @@ def pagina_inicio(df: pd.DataFrame, totales_oficiales: Optional[Dict] = None):
         pregrado_count = 0
         posgrado_count = 0
 
-    col1, col2, col3, col4 = st.columns(4)
+    col0, col1, col2, col3, col4 = st.columns(5)
+    col0.metric(
+        "Programas", df['Programa'].nunique(),
+        help="Programas distintos por nombre. Un programa ofrecido en varias sedes cuenta una vez."
+    )
     col1.metric(
-        "Programas cargados", len(unique_programs),
-        help="Número de programas distintos considerando Programa + Modalidad + Sede."
+        "Matrices (programa-sede)", len(unique_programs),
+        help="Unidades de análisis: cada combinación Programa + Modalidad + Sede tiene su propia matriz."
     )
     col2.metric(
         "Presenciales", presencial_count,
-        help="Cantidad de programas cargados en modalidad presencial."
+        help="Matrices en modalidad presencial."
     )
     col3.metric(
         "Virtuales", virtual_count,
-        help="Cantidad de programas cargados en modalidad virtual."
+        help="Matrices en modalidad virtual."
     )
     col4.metric(
         "Híbridos", hibrido_count,
-        help="Cantidad de programas cargados en modalidad híbrida."
+        help="Matrices en modalidad híbrida."
     )
 
     if 'Nivel' in unique_programs.columns:
         col5, col6 = st.columns(2)
         col5.metric(
             "Pregrado", pregrado_count,
-            help="Cantidad de programas de nivel Pregrado."
+            help="Matrices de nivel Pregrado."
         )
         col6.metric(
             "Posgrado", posgrado_count,
-            help="Cantidad de programas de nivel Posgrado."
+            help="Matrices de nivel Posgrado."
         )
         st.markdown("---")
     if 'Nivel' in unique_programs.columns:
@@ -3012,6 +3024,37 @@ def pagina_nlp(df: pd.DataFrame, resultados: Dict):
         st.markdown(f"**{len(res_busq)} registros encontrados** para «{termino_buscar}»")
         st.dataframe(res_busq, use_container_width=True, hide_index=True)
 
+    _seccion_topicos_lda(df)
+
+
+def _seccion_topicos_lda(df: pd.DataFrame):
+    """R8.2: tópicos del LDA de consenso sobre los núcleos temáticos (bajo demanda por su costo de cálculo)."""
+    from src.topic_modeler import CONSENSO_LDA, modelar_topicos_consenso
+    st.markdown("---")
+    st.subheader("Tópicos del contenido (LDA de consenso)")
+    st.caption(f"Un documento por asignatura con sus núcleos depurados y lematizados, una matriz por programa. "
+               f"Consenso de {len(CONSENSO_LDA['semillas'])} réplicas con semillas distintas para estabilizar el modelo; "
+               f"los tópicos se interpretan con fines descriptivos.")
+    k = st.slider("Número de tópicos (k)", 5, 30, int(CONSENSO_LDA['k']), key='lda_k')
+    firma = ('lda', len(df), tuple(sorted(df['Programa'].unique())), k)
+    if st.session_state.get('lda_firma') != firma:
+        if not st.button("Calcular tópicos (puede tardar varios minutos)"):
+            return
+        with st.spinner("Entrenando el LDA de consenso…"):
+            st.session_state['lda'] = modelar_topicos_consenso(df, k=k)
+            st.session_state['lda_firma'] = firma
+    r = st.session_state['lda']
+    if not r['topics']:
+        st.info("El corpus cargado es insuficiente para el modelo de tópicos.")
+        return
+    asig = r['asignatura_topico']
+    conteo = asig['topico_dominante'].value_counts()
+    tabla = pd.DataFrame([{'Tópico': t['topic_id'] + 1, 'Términos característicos': ', '.join(t['top_words'][:8]),
+                           'Asignaturas': int(conteo.get(t['topic_id'], 0)),
+                           '%': round(100 * conteo.get(t['topic_id'], 0) / len(asig), 1)} for t in r['topics']])
+    st.dataframe(tabla.sort_values('Asignaturas', ascending=False), width='stretch', hide_index=True)
+    st.caption(f"{r['corpus_size']} asignaturas · confianza media del tópico dominante {asig['confianza'].mean():.2f}.")
+
 
 def pagina_tipo_saber(df: pd.DataFrame):
     """Pagina de analisis profundo del Tipo de Saber."""
@@ -3029,8 +3072,9 @@ def pagina_tipo_saber(df: pd.DataFrame):
         "Ej: «aplica técnicas de…», «elabora un plan de…», «resuelve problemas de…»\n"
         "- 🟣 **SaberSer** (actitud): valores, ética, ciudadanía y dimensión humana. "
         "Ej: «valora la importancia de…», «actúa con responsabilidad en…»\n\n"
-        "**Referencia:** Un currículo por competencias equilibrado debería tener énfasis en "
-        "SaberHacer (≥40%), complementado con Saber (30-40%) y SaberSer (≥15%)."
+        "**Comparación:** cada programa se compara con la **mediana de los programas cargados**. No se usan rangos "
+        "«ideales» externos: la plantilla de la matriz descompone cada competencia en un resultado de aprendizaje por "
+        "tipo de saber, de modo que la proporción depende del instrumento más que del diseño del programa."
     )
 
     COLORES_SABER = {
@@ -3038,11 +3082,19 @@ def pagina_tipo_saber(df: pd.DataFrame):
         'SaberHacer': '#748BFC',
         'SaberSer': '#A8B7FF'
     }
-    REFS_SABER = {
-        'Saber':     (25, 45),
-        'SaberHacer': (35, 60),
-        'SaberSer':  (10, 30)
-    }
+    # Distribución por programa: base de la comparación (mediana y rango intercuartílico del conjunto cargado)
+    pivot = (
+        df.groupby(['Programa', 'Tipo de Saber'])
+        .size()
+        .reset_index(name='Registros')
+    )
+    total_prog = pivot.groupby('Programa')['Registros'].transform('sum')
+    pivot['Porcentaje'] = (pivot['Registros'] / total_prog * 100).round(1)
+    pivot_wide = pivot.pivot_table(index='Programa', columns='Tipo de Saber',
+                                   values='Porcentaje', fill_value=0).reset_index()
+    tipos_presentes = [t for t in COLORES_SABER if t in pivot_wide.columns]
+    REFS_SABER = {t: (float(pivot_wide[t].quantile(0.25)), float(pivot_wide[t].median()), float(pivot_wide[t].quantile(0.75)))
+                  for t in tipos_presentes}
 
     # ── Distribución global + Diagnóstico ───────────────────────────────────
     st.markdown("---")
@@ -3050,6 +3102,13 @@ def pagina_tipo_saber(df: pd.DataFrame):
 
     totales = df['Tipo de Saber'].value_counts()
     total = totales.sum()
+    rango_entre_programas = {t: pivot_wide[t].max() - pivot_wide[t].min() for t in tipos_presentes}
+    if len(pivot_wide) >= 3 and rango_entre_programas and max(rango_entre_programas.values()) <= 10:
+        st.warning(
+            "La distribución por tipo de saber es casi igual en todos los programas cargados (diferencia máxima "
+            f"entre programas: {max(rango_entre_programas.values()):.1f} puntos). Esta paridad la fija la plantilla, "
+            "no una decisión de diseño: no debe leerse como equilibrio ni como déficit."
+        )
 
     col_donut, col_diag = st.columns([1, 1])
     with col_donut:
@@ -3070,17 +3129,12 @@ def pagina_tipo_saber(df: pd.DataFrame):
         st.plotly_chart(fig_donut, use_container_width=True)
 
     with col_diag:
-        st.markdown("**Diagnóstico de Equilibrio**")
-        st.caption("Referencia recomendada para currículos por competencias")
-        for tipo, (ref_min, ref_max) in REFS_SABER.items():
+        st.markdown("**Posición frente a los programas cargados**")
+        st.caption(f"Mediana y rango intercuartílico (P25–P75) de los {len(pivot_wide)} programas cargados")
+        for tipo, (ref_min, ref_med, ref_max) in REFS_SABER.items():
             n = int(totales.get(tipo, 0))
             pct = n / total * 100 if total > 0 else 0
-            if ref_min <= pct <= ref_max:
-                icono, color = "✅", "#27AE60"
-            elif pct > ref_max:
-                icono, color = "⬆️", "#FBAF17"
-            else:
-                icono, color = "⬇️", "#EC0677"
+            icono, color = "●", "#0F385A"
             bar_pct = int(pct * 2)
             st.markdown(
                 f"<div style='margin:10px 0;padding:10px 14px;border-radius:8px;"
@@ -3089,7 +3143,8 @@ def pagina_tipo_saber(df: pd.DataFrame):
                 f"<span style='float:right;color:{color};font-weight:700'>{icono} {pct:.1f}%</span><br>"
                 f"<div style='background:#E0F0F8;border-radius:4px;height:8px;margin:6px 0'>"
                 f"<div style='background:{COLORES_SABER[tipo]};width:{min(bar_pct,100)}%;height:8px;border-radius:4px'></div></div>"
-                f"<small style='color:#666'>Referencia: {ref_min}–{ref_max}% &nbsp;|&nbsp; {n} registros</small>"
+                f"<small style='color:#666'>Mediana de programas: {ref_med:.1f}% (P25–P75: {ref_min:.1f}–{ref_max:.1f}%) "
+                f"&nbsp;|&nbsp; {n} registros</small>"
                 f"</div>",
                 unsafe_allow_html=True
             )
@@ -3098,20 +3153,9 @@ def pagina_tipo_saber(df: pd.DataFrame):
     st.markdown("---")
     st.subheader("Perfil de Competencias por Programa")
     st.caption(
-        "**Radar:** compara simultáneamente los 3 tipos de saber entre programas — "
-        "el área ideal es amplia y equilibrada. "
-        "**Mapa de balance:** posición óptima = SaberHacer alto (eje X) y SaberSer alto (eje Y)."
+        "**Radar:** compara simultáneamente los 3 tipos de saber entre programas; la línea dorada es la mediana "
+        "de los programas cargados. **Comparativo:** las líneas punteadas marcan esa mediana por tipo de saber."
     )
-
-    pivot = (
-        df.groupby(['Programa', 'Tipo de Saber'])
-        .size()
-        .reset_index(name='Registros')
-    )
-    total_prog = pivot.groupby('Programa')['Registros'].transform('sum')
-    pivot['Porcentaje'] = (pivot['Registros'] / total_prog * 100).round(1)
-    pivot_wide = pivot.pivot_table(index='Programa', columns='Tipo de Saber',
-                                   values='Porcentaje', fill_value=0).reset_index()
 
     tab_radar, tab_barra = st.tabs([
         "🕸️ Radar de Competencias",
@@ -3136,15 +3180,15 @@ def pagina_tipo_saber(df: pd.DataFrame):
                 line=dict(color=palette_radar[i % len(palette_radar)], width=2),
                 name=str(row['Programa'])
             ))
-        # Zona de referencia
-        ref_vals = [35, 47.5, 20]
+        # Mediana de los programas cargados
+        ref_vals = [REFS_SABER[t][1] for t in tipos_disp]
         fig_radar.add_trace(go.Scatterpolar(
             r=ref_vals + [ref_vals[0]],
             theta=tipos_disp + [tipos_disp[0]],
             fill='toself',
             fillcolor='rgba(251,175,23,0.07)',
-            line=dict(color='#FBAF17', width=1, dash='dot'),
-            name='Zona referencia'
+            line=dict(color='#FBAF17', width=2, dash='dot'),
+            name='Mediana de los programas cargados'
         ))
         fig_radar.update_layout(
             polar=dict(radialaxis=dict(visible=True, range=[0, 100],
@@ -3152,10 +3196,10 @@ def pagina_tipo_saber(df: pd.DataFrame):
             height=450,
             showlegend=True,
             legend=dict(orientation='h', y=-0.15),
-            title="Radar de tipos de saber por programa (zona dorada = rango ideal)"
+            title="Radar de tipos de saber por programa (línea dorada = mediana del conjunto cargado)"
         )
         st.plotly_chart(fig_radar, use_container_width=True)
-        st.caption("La zona dorada punteada representa el rango de referencia ideal.")
+        st.caption("La línea dorada punteada es la mediana de los programas cargados, no un valor ideal.")
 
     with tab_barra:
         fig_bar = px.bar(
@@ -3168,14 +3212,14 @@ def pagina_tipo_saber(df: pd.DataFrame):
             labels={'Porcentaje': '%', 'Tipo de Saber': 'Tipo'}
         )
         fig_bar.update_traces(texttemplate='%{text:.0f}%', textposition='outside')
-        for tipo, (ref_min, ref_max) in REFS_SABER.items():
-            fig_bar.add_vline(x=ref_min, line_dash='dot',
-                              line_color=COLORES_SABER.get(tipo, 'gray'), opacity=0.4)
+        for tipo, (_, ref_med, _) in REFS_SABER.items():
+            fig_bar.add_vline(x=ref_med, line_dash='dot',
+                              line_color=COLORES_SABER.get(tipo, 'gray'), opacity=0.5)
         fig_bar.update_layout(height=max(300, len(pivot_wide) * 80),
                               xaxis=dict(range=[0, 100], title='% de registros'),
                               yaxis_title='')
         st.plotly_chart(fig_bar, use_container_width=True)
-        st.caption("Las líneas punteadas verticales marcan el límite mínimo de referencia para cada tipo.")
+        st.caption("Las líneas punteadas verticales marcan la mediana de los programas cargados para cada tipo.")
 
     # ── Por semestre ────────────────────────────────────────────────────────
     st.markdown("---")
@@ -3328,35 +3372,25 @@ def pagina_resumen_ejecutivo(df: pd.DataFrame, tendencias: Dict) -> None:
 
     alertas = []
 
-    # 1a. Tipo de Saber — desequilibrios
-    totales_saber = df['Tipo de Saber'].value_counts()
-    total_ts = totales_saber.sum()
-    for tipo, (ref_min, ref_max) in {
-        'SaberHacer': (35, 65),
-        'SaberSer': (10, 30),
-        'Saber': (20, 50)
-    }.items():
-        pct = totales_saber.get(tipo, 0) / total_ts * 100 if total_ts > 0 else 0
-        if pct < ref_min:
-            alertas.append({
-                'Prioridad': 'Alta' if tipo in ('SaberHacer', 'SaberSer') else 'Media',
-                'Categoría': 'Tipo de Saber',
-                'Hallazgo': f'**{tipo}** es bajo ({pct:.1f}%) — referencia: {ref_min}–{ref_max}%',
-                'Recomendación': (
-                    'Revisar asignaturas con 0% de SaberHacer e incorporar actividades prácticas.'
-                    if tipo == 'SaberHacer' else
-                    'Incorporar resultados de aprendizaje orientados a valores, ética y ciudadanía.'
-                    if tipo == 'SaberSer' else
-                    'Verificar si el currículo tiene suficiente fundamentación teórica.'
-                )
-            })
-        elif pct > ref_max:
-            alertas.append({
-                'Prioridad': 'Media',
-                'Categoría': 'Tipo de Saber',
-                'Hallazgo': f'**{tipo}** es alto ({pct:.1f}%) — referencia: {ref_min}–{ref_max}%',
-                'Recomendación': f'Considerar rebalancear hacia los otros tipos de saber.'
-            })
+    # 1a. Tipo de Saber — programas atípicos frente al conjunto cargado (sin rangos «ideales» externos:
+    #     la plantilla fija la paridad; se señalan solo los programas que se apartan del resto)
+    piv = (df[df['Tipo de Saber'].isin(['Saber', 'SaberHacer', 'SaberSer'])]
+           .groupby(['Programa', 'Tipo de Saber']).size().unstack(fill_value=0))
+    if len(piv) >= 4:
+        piv = piv.div(piv.sum(axis=1), axis=0) * 100
+        for tipo in piv.columns:
+            q1, q3 = piv[tipo].quantile(0.25), piv[tipo].quantile(0.75)
+            lim_bajo, lim_alto = q1 - 1.5 * (q3 - q1), q3 + 1.5 * (q3 - q1)
+            for prog, pct in piv[tipo].items():
+                if pct < lim_bajo or pct > lim_alto:
+                    alertas.append({
+                        'Prioridad': 'Media',
+                        'Categoría': 'Tipo de Saber',
+                        'Hallazgo': (f'**{prog}**: {tipo} {pct:.1f}% se aparta del conjunto cargado '
+                                     f'(mediana {piv[tipo].median():.1f}%; P25–P75 {q1:.1f}–{q3:.1f}%)'),
+                        'Recomendación': ('Revisar si la diferencia responde a una decisión de diseño o a un error de '
+                                          'diligenciamiento de la matriz.')
+                    })
 
     # 1b. Semestres sin datos
     df_sem_num = df.copy()
@@ -3392,15 +3426,17 @@ def pagina_resumen_ejecutivo(df: pd.DataFrame, tendencias: Dict) -> None:
             })
 
     # 1e. Asignaturas sin núcleos temáticos
-    sin_nucleos = df[df['Nucleos tematicos'].isna() | (df['Nucleos tematicos'].astype(str).str.strip() == '') |
-                     (df['Nucleos tematicos'].astype(str).str.strip() == 'nan')]
+    # Las electivas no declaran núcleos propios (su contenido depende de la electiva elegida): no son brecha
+    es_electiva = df[asig_col].astype(str).str.strip().str.lower().str.startswith('electiv')
+    sin_nucleos = df[~es_electiva & (df['Nucleos tematicos'].isna() | (df['Nucleos tematicos'].astype(str).str.strip() == '') |
+                     (df['Nucleos tematicos'].astype(str).str.strip() == 'nan'))]
     asigs_sin_nucleos = sin_nucleos[asig_col].nunique() if not sin_nucleos.empty else 0
     if asigs_sin_nucleos > 0:
         pct_sin = asigs_sin_nucleos / total_asigs * 100
         alertas.append({
             'Prioridad': 'Media',
             'Categoría': 'Completitud de datos',
-            'Hallazgo': f'{asigs_sin_nucleos} asignaturas ({pct_sin:.0f}%) sin núcleos temáticos declarados',
+            'Hallazgo': f'{asigs_sin_nucleos} asignaturas no electivas ({pct_sin:.0f}%) sin núcleos temáticos declarados',
             'Recomendación': 'Completar la columna «Núcleos temáticos» en el formato Excel para un análisis más preciso.'
         })
 
@@ -3425,9 +3461,6 @@ def pagina_resumen_ejecutivo(df: pd.DataFrame, tendencias: Dict) -> None:
     tend_detectadas = len(tendencias) - len(resultados_tend['ausentes'])
     if tend_detectadas >= len(tendencias) * 0.8:
         fortalezas.append(f"Alta alineación con tendencias globales: **{tend_detectadas}/{len(tendencias)}** tendencias presentes")
-    saberhacer_pct = totales_saber.get('SaberHacer', 0) / total_ts * 100 if total_ts > 0 else 0
-    if saberhacer_pct >= 35:
-        fortalezas.append(f"Buen énfasis en **SaberHacer** ({saberhacer_pct:.1f}%) — favorece la formación por competencias")
 
     # Diversidad temática
     nucleos_list = []
@@ -3453,6 +3486,13 @@ def pagina_resumen_ejecutivo(df: pd.DataFrame, tendencias: Dict) -> None:
     st.subheader("📊 Perfil por Programa")
     st.caption("Resumen de los indicadores clave por programa para soporte a decisiones curriculares.")
 
+    # Mediana del conjunto cargado: referencia de comparación (sin umbrales externos)
+    _ts = (df[df['Tipo de Saber'].isin(['Saber', 'SaberHacer', 'SaberSer'])]
+           .groupby(['Programa', 'Tipo de Saber']).size().unstack(fill_value=0))
+    _ts = _ts.div(_ts.sum(axis=1), axis=0) * 100 if len(_ts) else _ts
+    med_sh = float(_ts['SaberHacer'].median()) if 'SaberHacer' in _ts else 0.0
+    med_ss = float(_ts['SaberSer'].median()) if 'SaberSer' in _ts else 0.0
+
     for prog in sorted(programas):
         df_prog = df[df['Programa'] == prog]
         n_asigs = df_prog[asig_col].nunique()
@@ -3461,17 +3501,15 @@ def pagina_resumen_ejecutivo(df: pd.DataFrame, tendencias: Dict) -> None:
         ts_total = ts.sum()
         sh_pct = ts.get('SaberHacer', 0) / ts_total * 100 if ts_total > 0 else 0
         ss_pct = ts.get('SaberSer', 0) / ts_total * 100 if ts_total > 0 else 0
-        tend_prog = sum(1 for tid in tendencias if resultados_tend['asig_counts'].get(tid, 0) > 0)
+        tend_prog = len(tendencias) - len(analizar_tendencias(df_prog, tendencias)['ausentes'])
 
         with st.expander(f"📚 {prog} — {n_asigs} asignaturas, {n_reg} registros"):
             c1, c2, c3, c4 = st.columns(4)
             c1.metric("Asignaturas", n_asigs)
-            c2.metric("SaberHacer", f"{sh_pct:.1f}%",
-                      delta="✅ OK" if sh_pct >= 35 else "⚠️ Bajo",
-                      delta_color="off")
-            c3.metric("SaberSer", f"{ss_pct:.1f}%",
-                      delta="✅ OK" if ss_pct >= 10 else "⚠️ Bajo",
-                      delta_color="off")
+            c2.metric("SaberHacer", f"{sh_pct:.1f}%", delta=f"{sh_pct - med_sh:+.1f} pp vs. mediana",
+                      delta_color="off", help="Diferencia con la mediana de los programas cargados.")
+            c3.metric("SaberSer", f"{ss_pct:.1f}%", delta=f"{ss_pct - med_ss:+.1f} pp vs. mediana",
+                      delta_color="off", help="Diferencia con la mediana de los programas cargados.")
             c4.metric("Tendencias cubiertas", f"{tend_prog}/{len(tendencias)}")
 
     # ── Sección 4: Descarga ─────────────────────────────────────────────────
@@ -3504,6 +3542,42 @@ def pagina_resumen_ejecutivo(df: pd.DataFrame, tendencias: Dict) -> None:
             )
 
 
+def _seccion_exigencia_ra():
+    """Etapa 3: taxonomía declarada (Bloom o BAK) e índice de exigencia de los RA únicos por matriz."""
+    from src.indicadores_articulo import calcular_exigencia
+    uploaded_files = st.session_state.get('archivos_subidos', [])
+    if not uploaded_files:
+        return
+    firma = tuple(sorted(_sha256_archivo(f) for f in uploaded_files))
+    if st.session_state.get('exigencia_firma') != firma:
+        st.session_state['exigencia'] = pd.DataFrame(calcular_exigencia([(f.name, f) for f in uploaded_files]))
+        st.session_state['exigencia_firma'] = firma
+        for f in uploaded_files:
+            f.seek(0)
+    ex = st.session_state['exigencia']
+    if ex.empty or ex['RA únicos'].sum() == 0:
+        return
+    st.subheader("Taxonomía declarada e índice de exigencia de los RA")
+    st.caption("Cada nivel declarado se traduce a una escala común de 1 a 6 según su posición en la progresión de su "
+               "propio dominio (Bloom: 6 niveles; BAK procedimental: 4; BAK actitudinal: 5). Índice de exigencia = "
+               "(nivel medio de los RA únicos − 1) / 5 × 100. La equivalencia entre escalas es un supuesto del método.")
+    total = ex['RA únicos'].sum()
+    bak = (ex['RA únicos'] * ex['% BAK'].fillna(0) / 100).sum()
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("RA únicos", int(total))
+    c2.metric("Bloom", f"{100 * (total - bak) / total:.1f}%")
+    c3.metric("BAK", f"{100 * bak / total:.1f}%")
+    c4.metric("Matrices que combinan ambas", int(((ex['% BAK'] > 0) & (ex['% BAK'] < 100)).sum()))
+    fig = px.bar(ex.sort_values('Índice de exigencia'), x='Índice de exigencia', y='Matriz', orientation='h',
+                 color='% BAK', color_continuous_scale=['#0F385A', '#1FB2DE', '#42F2F2'], range_x=[0, 100],
+                 title='Índice de exigencia por matriz (color: % de RA con BAK)')
+    fig.update_layout(height=max(300, 24 * len(ex) + 120), yaxis_title=None)
+    st.plotly_chart(fig, width='stretch')
+    if ex['RA sin nivel reconocido'].sum():
+        st.caption(f"{int(ex['RA sin nivel reconocido'].sum())} RA con nivel no reconocido quedan fuera del índice.")
+    st.markdown("---")
+
+
 def pagina_bloom_integracion(df: pd.DataFrame, taxonomias_externas: Dict | None = None):
     """Taxonomía por dominios/subcategorías de la BD y Mapa de Integración."""
     import math as _math
@@ -3515,6 +3589,8 @@ def pagina_bloom_integracion(df: pd.DataFrame, taxonomias_externas: Dict | None 
         "y **subcategorías** definidas en la base de datos taxonómica (646 verbos). "
         "Explore la distribución, la progresión por semestre y la articulación temática entre asignaturas."
     )
+
+    _seccion_exigencia_ra()
 
     tab_dom, tab_sub, tab_prog, tab_ra, tab_mapa = st.tabs([
         "🎯 Por Dominio",
@@ -4339,6 +4415,461 @@ def pagina_cobertura_perfil(df_micro: pd.DataFrame):
         st.plotly_chart(fig2, use_container_width=True)
 
 
+COLORES_ESTADO_PERFIL = {
+    'Asociado en las tres capas': '#1fb2de',
+    'Asociación parcial': '#FBAF17',
+    'Sin asociación': '#ec0677',
+}
+
+
+def _config_asociacion_sesion() -> Dict:
+    """Configuración del método activa en la sesión (por defecto, config_asociacion_perfil.json)."""
+    from src import asociacion_perfil as ap
+    if 'config_asociacion' not in st.session_state:
+        try:
+            st.session_state['config_asociacion'] = ap.cargar_config()
+        except (OSError, ValueError):
+            st.session_state['config_asociacion'] = ap.config_actual()
+    ap.aplicar_config(st.session_state['config_asociacion'])
+    return ap.config_actual()
+
+
+def _sha256_archivo(f) -> str:
+    import hashlib
+    f.seek(0)
+    h = hashlib.sha256(f.read()).hexdigest()
+    f.seek(0)
+    return h
+
+
+def _nombre_matriz(nombre_archivo: str) -> str:
+    return re.sub(r'^FormatoRA[_-]|\.xlsx?$', '', nombre_archivo)
+
+
+def _asociacion_perfil_por_programa(uploaded_files) -> Dict:
+    """Asociación perfil → competencias, RA y asignaturas (src/asociacion_perfil.py), cada matriz con su propio
+    contenido. Caché por contenido de cada archivo (SHA-256) y huella de la configuración del método."""
+    from src import asociacion_perfil as ap
+    cfg = _config_asociacion_sesion()
+    cache = st.session_state.setdefault('asociacion_perfil_cache', {})
+    resultados, pendientes = {}, []
+    for f in uploaded_files:
+        clave = (_sha256_archivo(f), cfg['HUELLA'])
+        if clave in cache:
+            resultados[_nombre_matriz(f.name)] = cache[clave]
+        else:
+            pendientes.append((f, clave))
+    if pendientes:
+        barra = st.progress(0.0, text="Asociando perfiles…")
+        for n, (f, clave) in enumerate(pendientes, 1):
+            programa = _nombre_matriz(f.name)
+            barra.progress(n / len(pendientes), text=f"Asociando perfil: {programa}")
+            avisos = []
+            try:
+                filas = ap.asociar(f, avisos=avisos)
+                det = pd.DataFrame(filas)
+                # capa evaluable = la matriz tiene contenido en esa capa (alguna entidad o una más cercana)
+                capas_ok = [c for c in ap.CAPAS if ((det['capa'] == c) & ((det['entidad'] != 'NINGUNA') |
+                                                                         (det['mas_cercana'] != ''))).any()]
+                res = {'items': pd.DataFrame(ap.resumen_items(filas)), 'detalle': det, 'avisos': avisos,
+                       'sha256': clave[0], 'capas_faltantes': [c for c in ap.CAPAS if c not in capas_ok]}
+            except Exception as e:  # noqa: BLE001
+                res = {'error': str(e)[:200], 'avisos': avisos, 'sha256': clave[0]}
+            finally:
+                f.seek(0)
+            cache[clave] = res
+            resultados[programa] = res
+        barra.empty()
+    return resultados
+
+
+def _indicadores_perfil(items: pd.DataFrame) -> Dict:
+    ev = items[items['evaluable']] if len(items) else items
+    n = len(ev)
+    if not n:
+        return {'Atributos': 0}
+    return {'Atributos': n,
+            '% Competencias': round(100 * ev['Competencia'].mean(), 1),
+            '% RA': round(100 * ev['RA'].mean(), 1),
+            '% Asignaturas': round(100 * ev['Asignatura'].mean(), 1),
+            '% Tres capas': round(100 * (ev['capas_con_respaldo'] == 3).mean(), 1),
+            '% Sin asociación': round(100 * (ev['capas_con_respaldo'] == 0).mean(), 1)}
+
+
+def _tabla_metodo(cfg: Dict, uploaded_files, resultados: Dict) -> pd.DataFrame:
+    """Trazabilidad del cálculo: configuración aplicada y huella de cada archivo."""
+    from datetime import datetime
+    filas = [('Fecha de cálculo', datetime.now().strftime('%Y-%m-%d %H:%M')),
+             ('Versión de la configuración', cfg['VERSION']), ('Huella SHA-256 de la configuración', cfg['HUELLA']),
+             ('Modelo semántico', cfg['MODELO_SEMANTICO']),
+             ('Umbral explícito', cfg['PARAMS']['explicita']), ('Umbral parcial', cfg['PARAMS']['parcial']),
+             ('Similitud semántica mínima', cfg['PARAMS']['semantica']), ('Núcleo ponderado', cfg['PARAMS']['nucleo']),
+             ('Factor de rol', cfg['FACTOR_ROL']), ('Raíz (letras)', cfg['RAIZ']),
+             ('Umbral de vocabulario de contexto', cfg['UMBRAL_CONTEXTO']), ('Peso del contexto', cfg['PESO_CONTEXTO']),
+             ('Entradas de sinónimos', len(cfg['SINONIMOS']))]
+    filas += [(f'Archivo: {f.name}', resultados.get(_nombre_matriz(f.name), {}).get('sha256', '')) for f in uploaded_files]
+    return pd.DataFrame([(a, str(b)) for a, b in filas], columns=['Elemento', 'Valor'])
+
+
+def _seccion_validacion_referencia(uploaded_files):
+    """Acuerdo del método con una lectura de referencia de la institución (y parámetros propuestos)."""
+    from src import calibracion_asociacion as ca
+    st.markdown(
+        "Sube una **lectura de referencia** (CSV separado por «;») con las columnas "
+        "**Matriz; Enfoque; Inicio_item; Competencia; RA; Asignatura** (1 = respaldo explícito o parcial). "
+        "*Matriz* es el nombre del archivo sin «FormatoRA_» ni extensión; solo se usan las matrices cargadas.")
+    ref_file = st.file_uploader("Lectura de referencia (CSV)", type=['csv'], key='ref_asociacion')
+    recalibrar = st.checkbox("Proponer parámetros calibrados con esta referencia", value=False)
+    if ref_file is None or not st.button("Validar el método"):
+        return
+    try:
+        ref = ca.leer_referencia(ref_file)
+    except ValueError as e:
+        st.error(str(e))
+        return
+    fuentes = {_nombre_matriz(f.name): f for f in uploaded_files}
+    with st.spinner("Comparando el método con la referencia…"):
+        r = ca.validar(ref, fuentes, recalibrar=recalibrar)
+    for f in uploaded_files:
+        f.seek(0)
+    if not r['casos']:
+        st.warning("Ninguna matriz de la referencia está cargada, o sus atributos no coinciden.")
+        return
+    g = r['metricas_activas']['Global']
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Decisiones comparadas", g['n'])
+    c2.metric("Acuerdo", f"{100 * g['acuerdo']:.1f}%")
+    c3.metric("Kappa de Cohen", f"{g['kappa']:.2f}")
+    st.dataframe(pd.DataFrame([{'Capa': k, **v} for k, v in r['metricas_activas'].items()]),
+                 width='stretch', hide_index=True)
+    if r['sin_emparejar']:
+        st.caption(f"{len(r['sin_emparejar'])} ítem(s) de la referencia sin emparejar (matriz no cargada o atributo no encontrado).")
+    if recalibrar:
+        gp = r['metricas_propuestas']['Global']
+        st.markdown(f"**Parámetros propuestos:** {r['parametros_propuestos']} — acuerdo {100 * gp['acuerdo']:.1f}%, "
+                    f"κ {gp['kappa']:.2f}. Para adoptarlos, edítalos en la configuración del método y vuelve a calcular.")
+
+
+def _seccion_configuracion_asociacion():
+    """Ver, importar, exportar y restaurar la configuración del método (parámetros y sinónimos)."""
+    import json
+    from src import asociacion_perfil as ap
+    cfg = _config_asociacion_sesion()
+    st.markdown(f"**Versión:** {cfg['VERSION']} · **Huella:** {cfg['HUELLA'][:16]}…")
+    c1, c2 = st.columns(2)
+    with c1:
+        st.markdown("**Parámetros**")
+        st.json({'PARAMS': cfg['PARAMS'], 'FACTOR_ROL': cfg['FACTOR_ROL'], 'RAIZ': cfg['RAIZ'],
+                 'UMBRAL_CONTEXTO': cfg['UMBRAL_CONTEXTO'], 'PESO_CONTEXTO': cfg['PESO_CONTEXTO']})
+    with c2:
+        st.markdown(f"**Sinónimos de dominio ({len(cfg['SINONIMOS'])})**")
+        st.dataframe(pd.DataFrame([{'Término': k, 'Equivale a': ', '.join(v)} for k, v in cfg['SINONIMOS'].items()]),
+                     width='stretch', hide_index=True, height=260)
+    exportable = {k: v for k, v in cfg.items() if k != 'HUELLA'}
+    st.download_button("Exportar configuración (JSON)", json.dumps(exportable, ensure_ascii=False, indent=1),
+                       "config_asociacion_perfil.json", mime='application/json')
+    subida = st.file_uploader("Importar configuración (JSON)", type=['json'], key='cfg_asociacion')
+    c3, c4 = st.columns(2)
+    if subida is not None and c3.button("Aplicar configuración importada"):
+        try:
+            nueva = json.load(subida)
+            if 'PARAMS' not in nueva or 'SINONIMOS' not in nueva:
+                raise ValueError("el archivo debe tener PARAMS y SINONIMOS")
+            st.session_state['config_asociacion'] = nueva
+            st.success(f"Configuración «{nueva.get('VERSION', 'sin versión')}» aplicada. Los resultados se recalculan.")
+            st.rerun()
+        except (ValueError, json.JSONDecodeError) as e:
+            st.error(f"Configuración no válida: {e}")
+    if c4.button("Restaurar configuración institucional"):
+        st.session_state['config_asociacion'] = ap.cargar_config()
+        st.rerun()
+
+
+def pagina_asociacion_perfil():
+    """Asociación del perfil de egreso (profesional y ocupacional) con competencias, RA y asignaturas (V1)."""
+    st.title("Perfil de Egreso: asociación con el currículo (V1)")
+    st.markdown("---")
+    uploaded_files = st.session_state.get('archivos_subidos', [])
+    cfg = _config_asociacion_sesion()
+    st.info(
+        "**¿Qué mide esta sección?** Divide el perfil profesional y el ocupacional en atributos (funciones del texto, "
+        "áreas, tareas y poblaciones) y busca, **solo en la matriz del propio programa**, si cada atributo está "
+        "respaldado por alguna **competencia**, algún **resultado de aprendizaje** y alguna **asignatura** "
+        "(indicadores y núcleos temáticos). **V1** es la proporción de atributos respaldados en las tres capas. "
+        "El método es determinista: la misma matriz con la misma configuración "
+        f"(versión **{cfg['VERSION']}**, huella {cfg['HUELLA'][:12]}) produce el mismo resultado. "
+        "Los resultados son una **propuesta para validar** por el comité curricular."
+    )
+    if not uploaded_files:
+        st.warning("No hay archivos cargados. Sube archivos desde la página de Inicio.")
+        return
+    tab_res, tab_val, tab_cfg = st.tabs(["Resultados", "Validar con referencia", "Configuración del método"])
+    with tab_val:
+        _seccion_validacion_referencia(uploaded_files)
+    with tab_cfg:
+        _seccion_configuracion_asociacion()
+    with tab_res:
+        _resultados_asociacion_perfil(uploaded_files, cfg)
+
+
+def _resultados_asociacion_perfil(uploaded_files, cfg: Dict):
+    with st.spinner("Analizando la asociación del perfil (la primera vez carga el modelo semántico)…"):
+        resultados = _asociacion_perfil_por_programa(uploaded_files)
+
+    for p, r in resultados.items():
+        if 'error' in r:
+            st.error(f"❌ **{p}**: no se pudo leer la matriz ({r['error']}).")
+    avisos = {p: r['avisos'] for p, r in resultados.items() if r.get('avisos')}
+    if avisos:
+        with st.expander(f"⚠️ {len(avisos)} matriz(ces) con hojas o capas que no se pudieron evaluar"):
+            for p, lista in avisos.items():
+                st.markdown(f"**{p}**")
+                for a in lista:
+                    st.markdown(f"- {a}")
+    incompletas = {p: r['capas_faltantes'] for p, r in resultados.items() if 'error' not in r and r.get('capas_faltantes')}
+    if incompletas:
+        st.warning("Matrices excluidas de los indicadores por no tener contenido en alguna capa: " +
+                   "; ".join(f"**{p}** (sin {', '.join(c)})" for p, c in incompletas.items()))
+    validos = {p: r for p, r in resultados.items()
+               if 'error' not in r and len(r['items']) and p not in incompletas}
+    if not validos:
+        st.warning("No hay matrices con las tres capas para calcular V1. Verifica las hojas Paso 1, 2, 3 y 5.")
+        return
+
+    todos = pd.concat([r['items'].assign(Matriz=p) for p, r in validos.items()], ignore_index=True)
+    ev = todos[todos['evaluable']]
+    tot = _indicadores_perfil(todos)
+    if not tot['Atributos']:
+        st.warning("Las matrices cargadas no tienen atributos evaluables del perfil.")
+        return
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Matrices", len(validos))
+    c2.metric("Atributos evaluados", tot['Atributos'])
+    c3.metric("V1 · tres capas", f"{tot['% Tres capas']}%")
+    c4.metric("Sin asociación en ninguna capa", f"{tot['% Sin asociación']}%")
+    no_eval = int((~todos['evaluable']).sum())
+    if no_eval:
+        st.caption(f"{no_eval} ítem(s) no evaluables (cifras de encuestas o etiquetas de nivel) excluidos de los indicadores.")
+
+    st.markdown("---")
+    col_a, col_b = st.columns(2)
+    with col_a:
+        st.subheader("Respaldo por capa")
+        df_capa = pd.DataFrame({'Capa': ['Competencias', 'Resultados de aprendizaje', 'Asignaturas'],
+                                '%': [tot['% Competencias'], tot['% RA'], tot['% Asignaturas']]})
+        fig = px.bar(df_capa, x='%', y='Capa', orientation='h', text='%', range_x=[0, 100],
+                     color='Capa', color_discrete_sequence=['#0F385A', '#1fb2de', '#42F2F2'])
+        fig.update_traces(texttemplate='%{text:.1f}%', textposition='outside')
+        fig.update_layout(showlegend=False, height=300, yaxis_title=None, xaxis_title='% de atributos con respaldo')
+        st.plotly_chart(fig, width='stretch')
+    with col_b:
+        st.subheader("Estado por componente del perfil")
+        df_est = ev.groupby(['origen', 'estado']).size().reset_index(name='n')
+        df_est['%'] = 100 * df_est['n'] / df_est.groupby('origen')['n'].transform('sum')
+        fig = px.bar(df_est, x='%', y='origen', color='estado', orientation='h',
+                     color_discrete_map=COLORES_ESTADO_PERFIL, category_orders={'estado': list(COLORES_ESTADO_PERFIL)})
+        fig.update_layout(height=300, yaxis_title=None, xaxis_title='% de atributos', legend_title=None,
+                          legend=dict(orientation='h', y=-0.3))
+        st.plotly_chart(fig, width='stretch')
+
+    st.subheader("Indicadores por matriz")
+    df_prog = pd.DataFrame([{'Matriz': p, **_indicadores_perfil(r['items'])} for p, r in validos.items()])
+    df_prog = df_prog[df_prog['Atributos'] > 0].sort_values('% Sin asociación', ascending=False)
+    st.caption("En magenta: matrices con más del 15 % de atributos sin asociación (revisión prioritaria).")
+    st.dataframe(
+        df_prog.style.apply(lambda f: ['background-color: #fde3ef' if f['% Sin asociación'] > 15 else ''] * len(f), axis=1)
+        .format({c: '{:.1f}' for c in df_prog.columns if c.startswith('%')}),
+        width='stretch', hide_index=True)
+    if len(df_prog) >= 2:
+        fig = px.bar(df_prog.sort_values('% Tres capas'), x='% Tres capas', y='Matriz', orientation='h',
+                     color='% Sin asociación', color_continuous_scale=['#1fb2de', '#FBAF17', '#ec0677'],
+                     title='V1 por matriz: atributos asociados en las tres capas (color: % sin asociación)')
+        fig.update_layout(height=max(320, 26 * len(df_prog) + 120), yaxis_title=None)
+        st.plotly_chart(fig, width='stretch')
+
+    st.markdown("---")
+    st.subheader("Detalle por matriz")
+    prog = st.selectbox("Matriz", list(df_prog['Matriz']))
+    r = validos[prog]
+    items = r['items']
+    perfil_sel = st.radio("Perfil", ['Todos'] + sorted(items['perfil'].unique()), horizontal=True)
+    vista = items if perfil_sel == 'Todos' else items[items['perfil'] == perfil_sel]
+    st.dataframe(
+        vista[['perfil', 'origen', 'item', 'Competencia', 'RA', 'Asignatura', 'estado']]
+        .rename(columns={'perfil': 'Perfil', 'origen': 'Componente', 'item': 'Atributo', 'estado': 'Estado'})
+        .style.apply(lambda f: [f"color: {COLORES_ESTADO_PERFIL.get(f['Estado'], '#6b7280')}; font-weight: 600"
+                                if c == 'Estado' else '' for c in f.index], axis=1),
+        width='stretch', hide_index=True)
+    sin = vista[vista['estado'] == 'Sin asociación']
+    det = r['detalle']
+    if len(sin):
+        with st.expander(f"Atributos sin asociación ({len(sin)}): contenido más cercano en la matriz"):
+            cerca = det[(det['entidad'] == 'NINGUNA') & det['item'].isin(sin['item'])]
+            st.dataframe(cerca[['item', 'capa', 'mas_cercana', 'cobertura', 'similitud']]
+                         .rename(columns={'item': 'Atributo', 'capa': 'Capa', 'mas_cercana': 'Más cercano'}),
+                         width='stretch', hide_index=True)
+    with st.expander("Evidencia de las asociaciones"):
+        st.dataframe(det[det['entidad'] != 'NINGUNA'][['item', 'capa', 'entidad', 'nivel', 'evidencia']]
+                     .rename(columns={'item': 'Atributo', 'capa': 'Capa', 'entidad': 'Respaldo', 'nivel': 'Nivel',
+                                      'evidencia': 'Evidencia'}),
+                     width='stretch', hide_index=True)
+
+    buf = io.BytesIO()
+    with pd.ExcelWriter(buf, engine='openpyxl') as w:
+        df_prog.to_excel(w, sheet_name='Indicadores', index=False)
+        todos.to_excel(w, sheet_name='Atributos', index=False)
+        pd.concat([v['detalle'].assign(Matriz=p) for p, v in validos.items()]).to_excel(w, sheet_name='Evidencia', index=False)
+        _tabla_metodo(cfg, uploaded_files, resultados).to_excel(w, sheet_name='Metodo', index=False)
+    st.download_button("Descargar resultados (Excel, con hoja «Método» para reproducir el cálculo)", buf.getvalue(),
+                       "asociacion_perfil.xlsx",
+                       mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+
+def _indicadores_v1_v5(uploaded_files) -> Dict:
+    """V1–V5 del conjunto cargado (src/indicadores_articulo.py), con V1 desde la asociación del perfil.
+    Caché por contenido de los archivos y huella de la configuración del método del perfil."""
+    from src import indicadores_articulo as ia
+    perfil = _asociacion_perfil_por_programa(uploaded_files)
+    cfg = _config_asociacion_sesion()
+    firma = (tuple(sorted(_sha256_archivo(f) for f in uploaded_files)), cfg['HUELLA'])
+    cache = st.session_state.setdefault('indicadores_cache', {})
+    if firma not in cache:
+        v1 = {}
+        for p, r in perfil.items():
+            if 'error' in r or r.get('capas_faltantes') or not len(r['items']):
+                continue
+            ev = r['items'][r['items']['evaluable']]
+            v1[p] = (int((ev['capas_con_respaldo'] == 3).sum()), len(ev))
+        with st.spinner("Calculando V2–V5 (trazabilidad e indicadores del Paso 4)…"):
+            res = ia.calcular_indicadores([(f.name, f) for f in uploaded_files], v1=v1)
+        for f in uploaded_files:
+            f.seek(0)
+        res['contrastes'] = ia.contrastes(res['por_matriz'])
+        cache[firma] = res
+    return cache[firma]
+
+
+def pagina_indicadores_articulo():
+    """Indicadores V1–V5, cadena de evidencia y contrastes (R1–R7), calculados con los archivos cargados."""
+    st.title("Indicadores de Coherencia y Trazabilidad (V1–V5)")
+    st.markdown("---")
+    st.info(
+        "**V1** Correspondencia del perfil: atributos respaldados en competencias, RA y asignaturas. "
+        "**V2** Coherencia horizontal: matriz sin verbo repetido entre competencias específicas (no cuenta la "
+        "competencia genérica institucional). **V3** Evaluabilidad: RA con verbo observable y finalidad de desempeño. "
+        "**V4** Trazabilidad: RA únicos con estrategia mesocurricular que declara instrumento (Paso 4). "
+        "**V5** Evidencia directa del logro: estrategias con al menos un indicador de aprendizaje demostrado (N3) o "
+        "de transferencia (N4). Todo se calcula con los archivos cargados."
+    )
+    uploaded_files = st.session_state.get('archivos_subidos', [])
+    if not uploaded_files:
+        st.warning("No hay archivos cargados. Sube archivos desde la página de Inicio.")
+        return
+    res = _indicadores_v1_v5(uploaded_files)
+    for e in res['errores']:
+        st.warning(f"❌ **{e['archivo']}**: {e['causa']}")
+    g = res['globales']
+    if not g['matrices']:
+        st.warning("Ninguna matriz tiene los Pasos 2, 3 y 4 legibles.")
+        return
+    fmt = lambda v: '—' if v is None else f"{v:.1f}%"  # noqa: E731
+    c = st.columns(6)
+    c[0].metric("Matrices / programas", f"{g['matrices']} / {g['programas']}")
+    c[1].metric("V1 Perfil", fmt(g['V1']), help=f"{g['atributos_perfil']} atributos evaluables del perfil.")
+    c[2].metric("V2 Coherencia", fmt(g['V2']), help=f"{g['matrices_con_repeticion']} matriz(ces) con verbo repetido.")
+    c[3].metric("V3 Evaluabilidad", fmt(g['V3']), help=f"{g['ra_unicos']} RA únicos.")
+    c[4].metric("V4 Trazabilidad", fmt(g['V4']), help=f"Sin el RA genérico: {fmt(g['V4_programa'])}.")
+    c[5].metric("V5 Evidencia directa", fmt(g['V5']), help=f"{g['estrategias_directa']} de {g['estrategias']} estrategias.")
+
+    st.subheader("Cadena de evidencia del logro")
+    st.caption("Cada eslabón se calcula sobre su propia base. Gris: condición que impone la plantilla; azul: "
+               "articulación; magenta: evidencia directa del logro.")
+    est_ind = sum(1 for e in res['estrategias'] if e['indicadores'])
+    cadena = [
+        ('V1 Atributo del perfil respaldado en las tres capas', g['V1'], f"{g['atributos_perfil']} atributos", '#1FB2DE'),
+        ('RA vinculado a una competencia', g['RA_competencia'], f"{g['ra_unicos']} RA únicos", '#8A94A0'),
+        ('V3 RA evaluable', g['V3'], f"{g['ra_unicos']} RA únicos", '#8A94A0'),
+        ('V2 Matriz sin verbo repetido', g['V2'], f"{g['matrices']} matrices", '#1FB2DE'),
+        ('V4 RA con estrategia mesocurricular', g['V4'], f"{g['ra_unicos']} RA únicos", '#1FB2DE'),
+        ('Estrategia con indicador de logro', round(100 * est_ind / g['estrategias'], 1) if g['estrategias'] else None,
+         f"{g['estrategias']} estrategias", '#8A94A0'),
+        ('V5 Estrategia con evidencia directa del logro', g['V5'], f"{g['estrategias']} estrategias", '#EC0677'),
+    ]
+    cadena = [x for x in cadena if x[1] is not None]
+    fig = go.Figure(go.Bar(x=[x[1] for x in cadena][::-1], y=[x[0] for x in cadena][::-1], orientation='h',
+                           marker_color=[x[3] for x in cadena][::-1],
+                           text=[f"{x[1]:.1f} %  ({x[2]})" for x in cadena][::-1], textposition='outside'))
+    fig.update_layout(height=60 * len(cadena) + 80, xaxis=dict(range=[0, 125], ticksuffix=' %'),
+                      margin=dict(l=10, r=10, t=10, b=10), plot_bgcolor='white')
+    st.plotly_chart(fig, width='stretch')
+
+    st.subheader("Indicadores por matriz")
+    df_m = pd.DataFrame(res['por_matriz'])
+    st.dataframe(df_m, width='stretch', hide_index=True)
+    largo = df_m.melt(id_vars=['Matriz', 'Sede'], value_vars=[v for v in ('V1 %', 'V3 %', 'V4 %', 'V5 %') if v in df_m],
+                      var_name='Variable', value_name='Valor').dropna()
+    if len(largo):
+        fig = px.strip(largo, x='Valor', y='Variable', color='Sede', hover_name='Matriz',
+                       color_discrete_sequence=['#0F385A', '#1FB2DE', '#FBAF17', '#EC0677', '#42F2F2', '#8A94A0'])
+        fig.update_layout(height=320, xaxis=dict(range=[-3, 103], ticksuffix=' %', title='Valor por matriz'))
+        st.plotly_chart(fig, width='stretch')
+
+    col_a, col_b = st.columns(2)
+    with col_a:
+        st.subheader("Trazabilidad por clase de RA (V4)")
+        ras = pd.DataFrame(res['ra'])
+        if len(ras):
+            t = (ras.assign(Clase=ras['generica'].map({True: 'RA genérico institucional', False: 'RA de programa'}))
+                 .groupby('Clase')['V4'].agg(['sum', 'count']).reset_index())
+            t['V4 %'] = (100 * t['sum'] / t['count']).round(1)
+            st.dataframe(t.rename(columns={'sum': 'Con estrategia', 'count': 'RA únicos'}), width='stretch', hide_index=True)
+            sin = ras[~ras['V4'] & ~ras['generica']][['matriz', 'ra']]
+            if len(sin):
+                with st.expander(f"RA de programa sin estrategia mesocurricular ({len(sin)})"):
+                    st.dataframe(sin.rename(columns={'matriz': 'Matriz', 'ra': 'RA'}), width='stretch', hide_index=True)
+    with col_b:
+        st.subheader("Indicadores del Paso 4 por nivel de evidencia (V5)")
+        niv = pd.Series(g['niveles']).sort_index()
+        if len(niv):
+            df_n = niv.reset_index()
+            df_n.columns = ['Nivel', 'Indicadores']
+            df_n['%'] = (100 * df_n['Indicadores'] / df_n['Indicadores'].sum()).round(1)
+            st.dataframe(df_n, width='stretch', hide_index=True)
+            st.caption("N1 implementación · N2 percepción · N3 aprendizaje demostrado · N4 transferencia · N5 efecto externo.")
+
+    st.markdown("---")
+    st.subheader("Asociación entre variables (R6) y diferencias entre sedes (R7)")
+    ct = res['contrastes']
+    for m in ct['motivos']:
+        st.caption(f"ℹ️ {m}")
+    col_c, col_d = st.columns(2)
+    with col_c:
+        st.markdown("**Correlación de Spearman (por matriz)**")
+        if ct['spearman']:
+            st.dataframe(pd.DataFrame(ct['spearman']), width='stretch', hide_index=True)
+        else:
+            st.caption("No hay pares estimables con el conjunto cargado.")
+    with col_d:
+        st.markdown("**Kruskal-Wallis entre sedes**")
+        if ct['kruskal']:
+            st.dataframe(pd.DataFrame(ct['kruskal']), width='stretch', hide_index=True)
+        else:
+            st.caption("No hay contrastes estimables con el conjunto cargado.")
+    st.caption("Contrastes exploratorios: las matrices de un mismo programa en varias sedes no son independientes; "
+               "la no significación indica ausencia de evidencia de diferencia, no equivalencia.")
+
+    buf = io.BytesIO()
+    with pd.ExcelWriter(buf, engine='openpyxl') as w:
+        df_m.to_excel(w, sheet_name='Por_matriz', index=False)
+        pd.DataFrame(res['ra']).to_excel(w, sheet_name='RA', index=False)
+        pd.DataFrame(res['estrategias']).drop(columns=['niveles'], errors='ignore').to_excel(w, sheet_name='Estrategias', index=False)
+        pd.DataFrame(res['indicadores']).to_excel(w, sheet_name='Indicadores_P4', index=False)
+        pd.DataFrame(ct['spearman']).to_excel(w, sheet_name='Spearman', index=False)
+        pd.DataFrame(ct['kruskal']).to_excel(w, sheet_name='Kruskal', index=False)
+    st.download_button("Descargar indicadores V1–V5 (Excel)", buf.getvalue(), "indicadores_v1_v5.xlsx",
+                       mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+
 def pagina_familias_curriculares(df: pd.DataFrame, resultados_nlp: Dict):
     """Muestra asignaturas compartidas entre programas (familias curriculares)."""
     st.title("Familias Curriculares")
@@ -4426,6 +4957,50 @@ def pagina_familias_curriculares(df: pd.DataFrame, resultados_nlp: Dict):
     )
     fig_bar.update_traces(textposition='outside')
     st.plotly_chart(fig_bar, use_container_width=True)
+
+    _seccion_consistencia_asignaturas(df)
+
+
+def _seccion_consistencia_asignaturas(df: pd.DataFrame):
+    """R8.1: consistencia de contenido de las homónimas y pares de nombre distinto con contenido similar,
+    entre programas distintos (núcleos + indicadores; coseno TF-IDF; sin electivas)."""
+    from src.shared_subjects_analyzer import UMBRAL_SIMILAR, comparar_inter_programa, divergencia_homonimas
+    st.markdown("---")
+    st.subheader("Consistencia de contenido entre programas")
+    st.caption(f"Similitud coseno de núcleos temáticos e indicadores de logro entre versiones de programas distintos "
+               f"(sin electivas). Divergente: similitud media < {UMBRAL_SIMILAR:.2f}, umbral operativo no calibrado con "
+               f"revisión experta; los resultados son candidatos para revisión disciplinar.")
+    if df['Programa'].nunique() < 2:
+        st.info("Se necesitan al menos dos programas cargados para comparar asignaturas entre programas.")
+        return
+    firma = ('consistencia', len(df), tuple(sorted(df['Programa'].unique())))
+    if st.session_state.get('consistencia_firma') != firma:
+        with st.spinner("Comparando el contenido de las asignaturas entre programas…"):
+            st.session_state['consistencia'] = (divergencia_homonimas(df), comparar_inter_programa(df))
+            st.session_state['consistencia_firma'] = firma
+    homo, pares = st.session_state['consistencia']
+    tab_h, tab_p = st.tabs(["Asignaturas homónimas", "Nombre distinto, contenido similar"])
+    with tab_h:
+        if homo is None or homo.empty:
+            st.info("No hay asignaturas homónimas entre los programas cargados.")
+        else:
+            c1, c2, c3 = st.columns(3)
+            c1.metric("Homónimas", len(homo))
+            c2.metric("Divergentes", int(homo['divergente'].sum()),
+                      help=f"{100 * homo['divergente'].mean():.1f} % de las homónimas")
+            c3.metric("Similitud media", f"{homo['similitud_media'].mean():.3f}")
+            st.dataframe(homo.rename(columns={'asignatura': 'Asignatura', 'programas': 'Programas',
+                                              'versiones': 'Versiones', 'similitud_media': 'Similitud media',
+                                              'divergente': 'Divergente'}), width='stretch', hide_index=True)
+    with tab_p:
+        distintos = pares[~pares['mismo_nombre']] if pares is not None and not pares.empty else pd.DataFrame()
+        if distintos.empty:
+            st.info("No hay pares de asignaturas con nombre distinto y contenido similar.")
+        else:
+            st.metric("Pares candidatos a homologación", len(distintos))
+            st.caption("Incluye variantes de una misma denominación y falsos positivos léxicos: requieren validación disciplinar.")
+            cols = [c for c in ('programa_a', 'asignatura_a', 'programa_b', 'asignatura_b', 'similitud') if c in distintos]
+            st.dataframe(distintos[cols].sort_values('similitud', ascending=False), width='stretch', hide_index=True)
 
 
 def pagina_config_tendencias():
@@ -4609,8 +5184,10 @@ def main():
     # Navegacion con option_menu (SIEMPRE se renderiza)
     PAGINAS = {
         "Inicio":               ("house",          "Resumen general y métricas clave del currículo"),
+        "Resumen Ejecutivo":    ("clipboard-data", "Alertas y fortalezas derivadas de los archivos cargados"),
         "Tipo de Saber":        ("bar-chart",       "Saber, SaberHacer y SaberSer por semestre y asignatura"),
-        "Cobertura de Perfil":  ("person-check",    "Cobertura del perfil de egreso vs. currículo"),
+        "Indicadores V1–V5":    ("speedometer2",   "Coherencia, trazabilidad y evidencia del logro (R1–R7)"),
+        "Perfil de Egreso (V1)":("person-check",    "Asociación del perfil con competencias, RA y asignaturas"),
         "Cobertura Temática":   ("map",             "Núcleos temáticos: diversidad y densidad por programa"),
         "Tendencias Globales":  ("graph-up-arrow",  "Alineación con IA, Sostenibilidad, Innovación, etc."),
         "Minería de Texto":     ("search",          "Términos clave, similitud y frases frecuentes"),
@@ -5152,11 +5729,18 @@ def main():
     if pagina == "Inicio":
         pagina_inicio(df_filtered, totales_oficiales)
 
+    elif pagina == "Resumen Ejecutivo":
+        pagina_resumen_ejecutivo(df_filtered, obtener_tendencias())
+
     elif pagina == "Tipo de Saber":
         pagina_tipo_saber(df_filtered)
 
-    elif pagina == "Cobertura de Perfil":
-        pagina_cobertura_perfil(df_filtered)
+    elif pagina == "Indicadores V1–V5":
+        pagina_indicadores_articulo()
+
+    elif pagina == "Perfil de Egreso (V1)":
+        # V1 del artículo (R1). La medida anterior (pagina_cobertura_perfil, TF-IDF + BM25) se conserva sin menú.
+        pagina_asociacion_perfil()
 
     elif pagina == "Cobertura Temática":
         with st.spinner("Analizando cobertura temática..."):

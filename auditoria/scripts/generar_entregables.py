@@ -161,16 +161,10 @@ PENDIENTES_AFIRM = [
     # (ID, tema, etapa, qué falta definir / opciones / recomendación)
     ('Tabla 16', 'Tópicos del análisis temático', 'Resultados',
      'Re-estimar con el LDA de consenso (k = 13; consolidado/topicos_lda.xlsx al correr run_analysis.py). Nota: el tópico 1 (mercadeo, comunicación, planeación) es dominante en 330 de 1.192 asignaturas y el tópico 11 en ninguna; confianza media 0,42.'),
-    ('A7', 'Evaluabilidad 98,3 %', 'Resultados',
-     'No hay código de V3; la única salida da 99,2 %. Definir la regla (p68 vs p166), versionar el cálculo y recalcular.'),
-    ('A8', 'Trazabilidad 52,3 %', 'Resultados',
-     'El recálculo da ≈ 86 %. Decidir la definición de V4 (con o sin tramo perfil→competencia) y revisar los párrafos que interpretan 52,3 %.'),
     ('A11', 'IA en 79,5 % de los programas y 3,3 % de los registros', 'Resultados',
      'Búsqueda por palabra completa ya corregida. Definir la base: con texto de RA 31/39; con núcleos + indicadores 32/39 y 86 de 1.616 asignaturas.'),
     ('V1–V5', 'Tabla 2 (variables)', 'Variables',
      'V1 cerrada (D13); V2 cerrada (D14 = 90 %); V3 cerrada (D15 = 100 %, estructural); V4 cerrada (D16 = 87,1 %; 98,0 % sin RA genérico); V5 definida (D17 = 0,8 % de estrategias con evidencia directa; falta kappa). Pendientes: V5 constante por estrategia. Luego regenerar la Figura 1 sin V1.'),
-    ('Tabla 17', 'Temas de agenda global', 'Resultados',
-     'Recalcular con búsqueda por palabra completa (valores de referencia en Textos_corregidos, Etapa 6) y fijar la base (igual que A11).'),
     ('P16', 'Reportes por programa (Etapa 7)', 'Procedimiento',
      'DECISIÓN: nombrar reporte_<Programa>_<Sede> (hoy 50 matrices → 39 informes por sobrescritura). Recomendado; no cambia cifras.'),
     ('P17', 'Versión de Python y bibliotecas (Tabla 6)', 'Procedimiento',
@@ -189,8 +183,20 @@ PENDIENTES_AFIRM = [
     ('Inferencia', 'Pruebas por sede/nivel', 'Resultados',
      'Repetir con una matriz por programa: los 8 multisede comparten RA y 89–100 % de núcleos.'),
     ('Dashboard', 'Cobertura del perfil por grupo', 'Código', 'Opcional: mostrar cobertura_por_grupo (D9) en dashboard_tematico.py.'),
-    ('Git', 'Commit y publicación', 'Proyecto',
-     'Cambios de P5 y Etapas 3–6 sin commit en auditoria/p2-extractor-encabezados; push a origin rechazado (403, cuenta PlaneacionPoli). Definir cuenta o remoto.'),
+    ('Discusión', 'Validación de la Discusión auditada', 'Discusión',
+     'Revisar 4.1–4.5 (Textos_corregidos, Resultados_consolidado.docx). Confirmar citas (Liu et al., 2024; Pusporini & Nurdiyanto, 2024; NIST, 2023; Devia-Acevedo, 2024) y la definición de P3, P4 y P9 en el Marco.'),
+    ('CINE-F', 'Asignación CINE-F de los programas', 'Discusión / R8',
+     'Validar la hoja CINE-F_programas (3 programas con alternativa). El contraste del puntaje académico (D22, Figura 7) y la propuesta GreenMetric dependen de ella; recalcular con verificar_score_academico.py si cambia.'),
+    ('Git', 'Publicación', 'Proyecto',
+     'Commits locales en auditoria/p2-extractor-encabezados; push a origin rechazado (403, cuenta PlaneacionPoli). Definir cuenta o remoto.'),
+    ('V1', 'Validación de la lectura de referencia (V1)', 'Método / R1',
+     'El comité curricular valida una muestra de las 1.287 decisiones de auditoria/referencia_asociacion_perfil.csv (40 revisadas el 2026-10-03). Hasta entonces se mantiene la Observación de la Etapa 4; recalibrar con calibrar_asociacion_perfil.py si cambia.'),
+    ('Referencias', 'Lista de referencias del artículo', 'Referencias',
+     'Aplicar REFERENCIAS_CAMBIOS (textos_articulo.py): retirar Robertson y Zaragoza (2009); agregar Butterfuss y Doran (2025), Duarte et al. (2023), Zaki et al. (2023), Cohen (1960), Reimers y Gurevych (2020) y Spärck Jones (1972).'),
+    ('Exigencia', 'Índice de exigencia de IngIndustrial (3 matrices)', 'Etapa 3',
+     'comparar_exigencia.py deduplica los RA sin puntuación (índice 37,9); el aplicativo usa la regla D4, minúsculas, que da los 341 RA del artículo (índice 35,9). Unificar la regla en el script de auditoría.'),
+    ('V1', 'Alcance de V1', 'Método',
+     'Saber, SaberHacer, SaberSer y Valor agregado quedan fuera de V1. Decidir si se reincorporan como medida complementaria.'),
 ]
 
 ANOMALIAS = [
@@ -232,6 +238,7 @@ DECISIONES = [
     ('D10', '2026-10-02', 'Asignaturas compartidas (Etapa 5)', 'Contenido de una asignatura = núcleos temáticos + indicadores de logro de todo su bloque (sin texto de RA); se comparan las 1.616 asignaturas sin muestreo y solo entre programas distintos; umbral 0,60 sin calibración documentada.', 'P12, P12b, A10'),
     ('D9', '2026-10-02', 'Cobertura del perfil (Etapa 4)', 'Elemento = una celda de los 9 campos del Paso 1 (988), sin dividir; corpus = contenidos de las asignaturas (sin SaberAsociado ni textos de RA, derivados del perfil). Resultados agregados en 4 grupos (Perfil, Saberes, Campo de actuación, Valor agregado; config.GRUPOS_PERFIL), cada celda con el umbral de su campo.', 'P9, P9b, P9c, A9, dashboard_tematico.py'),
     ('D8', '2026-10-02', 'Puntaje de calidad (Etapa 3)', 'Exigencia por nivel declarado en escala común 1–6 según la progresión de su dominio; completitud y cobertura de competencias como condiciones verificadas; puntaje = exigencia 40 % + equilibrio 30 % + variedad 30 %.', 'P7, P8, dashboard/app.py, reportes'),
+    ('D22', '2026-10-03', 'Puntaje académico en la Discusión', 'Recalculado sobre el corpus D7 (6.671 núcleos; fórmula vigente sin «práctica»; −0,10 por formato): media 0,197; 95,2 % bajo 0,5. El contraste aplicado/teórico (U = 4.151.991; p = 0,565; 5.780 núcleos) no es reproducible: la clasificación no está en el repositorio. Se sustituye por Kruskal-Wallis por campo amplio CINE-F (decisión de la autora): mediana por programa H = 19,71, gl = 7, p = 0,006, ε² = 0,41. Conclusión invertida: el puntaje no es neutral a la disciplina. Script: auditoria/scripts/verificar_score_academico.py.', 'Discusión 4.5, Figura 7'),
     ('D21', '2026-10-03', 'Lista oficial de tendencias', 'config_tendencias.json = 15 tendencias del sector empresarial (12) y educativo (3), consolidadas de la propuesta integrada de 32 (auditoria/propuesta_tendencias_integradas.json) que une config.TEMATICAS y la lista anterior (respaldo en auditoria/config_tendencias_anterior.json); IA como tendencia propia. Regla única en src/tendencias.py: término en el nombre o ≥ 2 puntos en el contenido (compuesto = 2; simple = 1). Aplicada en dashboard_tematico.py y analisis_tematico_avanzado.py. Cobertura 100 % de 1.616 asignaturas.', 'R8.2, Figura 6, dashboard, CA.3, CA.6'),
     ('D20', '2026-10-03', 'R8 (modelos analíticos)', 'R8 en tres bloques (asignaturas compartidas, tópicos y temas, cobertura del perfil) con valores D7, D9–D12 y P14; Tablas 12–15 y Figura 6 recalculadas (auditoria/scripts/verificar_r8.py, figura_tendencias.py, verificar_cobertura_perfil.py). La matriz de valor (Tabla 15 original), el resumen V1–V5 (Tabla 16 original) y la síntesis pasan a la Discusión. Lista oficial de temas pendiente de confirmar.', 'R8, Tablas 12–15, Figura 6'),
     ('D19', '2026-10-03', 'Diferencias entre sedes (Resultados R7)', 'Kruskal-Wallis sobre V2, V4 y V5 (V1 y V3 constantes; HBOG descriptiva), con 49 matrices y con una matriz por programa (n = 38); ninguna significativa. Tabla 11 con ambas versiones; se elimina la Figura 8 (cajas por sede con valores anteriores) y la Implicación pasa a la Discusión.', 'R7, Tabla 11'),
@@ -1097,7 +1104,7 @@ for _tit, _bloques in TXT.SECCIONES:
             doc.add_paragraph(_b[1])
         elif _b[0] == 'n':
             doc.add_paragraph(_b[1]).runs[0].italic = True
-        elif _b[0] == 'h':
+        elif _b[0] in ('h', 'h2'):
             doc.add_heading(_b[1], 4)
         elif _b[0] == 'fig':
             doc.add_paragraph(f'[{_b[1]}]').runs[0].italic = True
