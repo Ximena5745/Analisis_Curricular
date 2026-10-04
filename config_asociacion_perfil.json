@@ -601,5 +601,16 @@
    "acompanar",
    "acompanamiento"
   ]
+ },
+ "VALIDACION": {
+  "referencia": "Lectura de 11 matrices de ocho enfoques disciplinares, elaborada con asistencia de IAg (pendiente de validación por el comité curricular)",
+  "decisiones": 1287,
+  "acuerdo": 0.801,
+  "kappa": 0.441,
+  "acuerdo_por_enfoque_excluido": [
+   0.689,
+   0.842
+  ],
+  "fecha": "2026-10-04"
  }
 }
