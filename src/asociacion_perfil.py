@@ -141,6 +141,7 @@ RAIZ = 6   # familias de palabras: «empresa» ~ «empresarial», «organizació
 # archivo no existe; la institución amplía sinónimos o ajusta parámetros sin tocar el código.
 CONFIG_DEFECTO = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'config_asociacion_perfil.json')
 VERSION_CONFIG = 'interna'
+VALIDACION_CONFIG = {}   # metadato: con qué referencia y qué acuerdo se calibró (no entra en la huella)
 _CLAVES_CONFIG = ('PARAMS', 'FACTOR_ROL', 'PESO_NUCLEO', 'UMBRAL_CONTEXTO', 'PESO_CONTEXTO', 'RAIZ', 'SINONIMOS',
                   'AGENTE_IRREGULAR')
 
@@ -154,6 +155,7 @@ def cargar_config(ruta: str = None) -> Dict:
 def aplicar_config(cfg: Dict) -> None:
     """Activa una configuración del método (dict con las claves de config_asociacion_perfil.json)."""
     global PARAMS, FACTOR_ROL, PESO_NUCLEO, UMBRAL_CONTEXTO, PESO_CONTEXTO, RAIZ, SINONIMOS, AGENTE_IRREGULAR, VERSION_CONFIG
+    global VALIDACION_CONFIG
     PARAMS = dict(cfg.get('PARAMS', PARAMS))
     FACTOR_ROL = float(cfg.get('FACTOR_ROL', FACTOR_ROL))
     PESO_NUCLEO = float(cfg.get('PESO_NUCLEO', PESO_NUCLEO))
@@ -165,6 +167,7 @@ def aplicar_config(cfg: Dict) -> None:
     if 'AGENTE_IRREGULAR' in cfg:
         AGENTE_IRREGULAR = {k: list(v) for k, v in cfg['AGENTE_IRREGULAR'].items()}
     VERSION_CONFIG = str(cfg.get('VERSION', 'sin versión'))
+    VALIDACION_CONFIG = dict(cfg.get('VALIDACION') or {})
 
 
 def config_actual() -> Dict:
@@ -176,7 +179,7 @@ def config_actual() -> Dict:
            'SINONIMOS': {k: sorted(v) for k, v in sorted(SINONIMOS.items())},
            'AGENTE_IRREGULAR': {k: list(v) for k, v in sorted(AGENTE_IRREGULAR.items())}}
     huella = hashlib.sha256(json.dumps(cfg, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
-    return {'VERSION': VERSION_CONFIG, 'HUELLA': huella, **cfg}
+    return {'VERSION': VERSION_CONFIG, 'HUELLA': huella, 'VALIDACION': VALIDACION_CONFIG, **cfg}
 
 
 try:

@@ -4585,6 +4585,63 @@ def _seccion_configuracion_asociacion():
         st.rerun()
 
 
+def _texto_validacion(cfg: Dict) -> str:
+    """Frase con la validación registrada en la configuración (la actualiza quien recalibre el método)."""
+    v = cfg.get('VALIDACION') or {}
+    if not v.get('acuerdo'):
+        return "Esta configuración no registra validación contra una lectura de referencia."
+    rango = v.get('acuerdo_por_enfoque_excluido')
+    extra = (f"; entre {100 * rango[0]:.1f} % y {100 * rango[1]:.1f} % al excluir cada enfoque" if rango else "")
+    return (f"Calibración registrada: acuerdo **{100 * v['acuerdo']:.1f} %** (κ = {v.get('kappa', float('nan')):.2f}) "
+            f"en {v.get('decisiones', '?')} decisiones{extra}. Referencia: {v.get('referencia', 'no descrita')}.")
+
+
+SABERES_Y_VALOR = ('Saber', 'SaberHacer', 'SaberSer', 'Valor agregado')
+
+
+def _seccion_saberes_valor_agregado(uploaded_files):
+    """Medida complementaria (no forma parte de V1): cobertura de Saber, SaberHacer, SaberSer y Valor agregado en
+    los contenidos de las asignaturas (TF-IDF + BM25 por celda, con umbral por campo)."""
+    st.warning(
+        "**Medida exploratoria, no forma parte de V1.** V1 no evalúa estos campos: los saberes alimentan la redacción "
+        "de los RA por lista desplegable (contrastarlos con los RA sería circular) y el valor agregado describe el "
+        "programa. Aquí cada celda se compara solo con los contenidos de las asignaturas (nombre, indicadores, núcleos "
+        "y actividades) por similitud léxica (TF-IDF + BM25) con un umbral por campo; una alerta prioriza la revisión, "
+        "no prueba la ausencia de respaldo."
+    )
+    with st.spinner("Analizando saberes y valor agregado…"):
+        resultados = _cargar_cobertura_perfil_por_programa(uploaded_files)
+    filas = []
+    for r in resultados.values():
+        for e in r.get('elementos', []):
+            if e.get('campo') in SABERES_Y_VALOR:
+                filas.append({'Matriz': r['programa'], 'Campo': e['campo'], 'Elemento': e['elemento'],
+                              'Puntaje': round(float(e.get('score', 0)), 3), 'Umbral': e.get('umbral'),
+                              'Estado': 'Cubierto' if e.get('clasificacion') == 'CUBIERTO' else 'Alerta',
+                              'Asignatura más afín': e.get('asignatura_trazable') or '—'})
+    if not filas:
+        st.info("Las matrices cargadas no tienen celdas de Saber, SaberHacer, SaberSer ni Valor agregado.")
+        return
+    d = pd.DataFrame(filas)
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Elementos", len(d))
+    c2.metric("Con alerta", int((d['Estado'] == 'Alerta').sum()))
+    c3.metric("% con alerta", f"{100 * (d['Estado'] == 'Alerta').mean():.1f}%")
+    res = (d.assign(alerta=d['Estado'] == 'Alerta').groupby('Campo')['alerta'].agg(['count', 'sum'])
+           .reindex([c for c in SABERES_Y_VALOR if c in set(d['Campo'])]).reset_index())
+    res['% con alerta'] = (100 * res['sum'] / res['count']).round(1)
+    fig = px.bar(res, x='% con alerta', y='Campo', orientation='h', text='% con alerta', color_discrete_sequence=['#EC0677'])
+    fig.update_traces(texttemplate='%{text:.1f}%', textposition='outside')
+    fig.update_layout(height=260, yaxis_title=None, xaxis=dict(range=[0, 100], ticksuffix=' %'))
+    st.plotly_chart(fig, width='stretch')
+    st.dataframe(d.sort_values(['Estado', 'Puntaje']), width='stretch', hide_index=True)
+    recs = [(r['programa'], x) for r in resultados.values() for x in r.get('recomendaciones', [])]
+    if recs:
+        with st.expander(f"Recomendaciones por matriz ({len(recs)})"):
+            for prog, rec in recs:
+                st.markdown(f"- **{prog}**: {rec}")
+
+
 def pagina_asociacion_perfil():
     """Asociación del perfil de egreso (profesional y ocupacional) con competencias, RA y asignaturas (V1)."""
     st.title("Perfil de Egreso: asociación con el currículo (V1)")
@@ -4598,12 +4655,16 @@ def pagina_asociacion_perfil():
         "(indicadores y núcleos temáticos). **V1** es la proporción de atributos respaldados en las tres capas. "
         "El método es determinista: la misma matriz con la misma configuración "
         f"(versión **{cfg['VERSION']}**, huella {cfg['HUELLA'][:12]}) produce el mismo resultado. "
-        "Los resultados son una **propuesta para validar** por el comité curricular."
+        + _texto_validacion(cfg) +
+        " Los resultados son una **propuesta para validar** por el comité curricular."
     )
     if not uploaded_files:
         st.warning("No hay archivos cargados. Sube archivos desde la página de Inicio.")
         return
-    tab_res, tab_val, tab_cfg = st.tabs(["Resultados", "Validar con referencia", "Configuración del método"])
+    tab_res, tab_comp, tab_val, tab_cfg = st.tabs(["Resultados", "Saberes y valor agregado (complementario)",
+                                                   "Validar con referencia", "Configuración del método"])
+    with tab_comp:
+        _seccion_saberes_valor_agregado(uploaded_files)
     with tab_val:
         _seccion_validacion_referencia(uploaded_files)
     with tab_cfg:
