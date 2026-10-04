@@ -1,9 +1,11 @@
 # Pendientes por definir (inicio de la etapa de Resultados)
 
-Generado por auditoria/scripts/generar_entregables.py (2026-10-02 13:21). También en el Excel (hoja Pendientes) y en el Word.
+Generado por auditoria/scripts/generar_entregables.py (2026-10-04 15:44). También en el Excel (hoja Pendientes) y en el Word.
 
 | ID | Tema | Etapa | Qué falta definir |
 |---|---|---|---|
+| C12 | Validación de V1 fuera de la muestra | Método | El 80,1 % es acuerdo dentro de la muestra con una referencia asistida por IAg (40 de 429 ítems revisados). Validar con el comité sobre matrices no usadas en la calibración. |
+| C25 | Concordancia entre jueces de V5 | Método | Segunda codificación de las 170 redacciones y κ. Tres indicadores N2 con componente de logro podrían ser N3 (V5 ≈ 1,5 %). |
 | Tabla 16 | Tópicos del análisis temático | Resultados | Re-estimar con el LDA de consenso (k = 13; consolidado/topicos_lda.xlsx al correr run_analysis.py). Nota: el tópico 1 (mercadeo, comunicación, planeación) es dominante en 330 de 1.192 asignaturas y el tópico 11 en ninguna; confianza media 0,42. |
 | A11 | IA en 79,5 % de los programas y 3,3 % de los registros | Resultados | Búsqueda por palabra completa ya corregida. Definir la base: con texto de RA 31/39; con núcleos + indicadores 32/39 y 86 de 1.616 asignaturas. |
 | V1–V5 | Tabla 2 (variables) | Variables | V1 cerrada (D13); V2 cerrada (D14 = 90 %); V3 cerrada (D15 = 100 %, estructural); V4 cerrada (D16 = 87,1 %; 98,0 % sin RA genérico); V5 definida (D17 = 0,8 % de estrategias con evidencia directa; falta kappa). Pendientes: V5 constante por estrategia. Luego regenerar la Figura 1 sin V1. |
@@ -22,5 +24,4 @@ Generado por auditoria/scripts/generar_entregables.py (2026-10-02 13:21). Tambi�
 | Git | Publicación | Proyecto | Commits locales en auditoria/p2-extractor-encabezados; push a origin rechazado (403, cuenta PlaneacionPoli). Definir cuenta o remoto. |
 | V1 | Validación de la lectura de referencia (V1) | Método / R1 | El comité curricular valida una muestra de las 1.287 decisiones de auditoria/referencia_asociacion_perfil.csv (40 revisadas el 2026-10-03). Hasta entonces se mantiene la Observación de la Etapa 4; recalibrar con calibrar_asociacion_perfil.py si cambia. |
 | Referencias | Lista de referencias del artículo | Referencias | Aplicar REFERENCIAS_CAMBIOS (textos_articulo.py): retirar Robertson y Zaragoza (2009); agregar Butterfuss y Doran (2025), Duarte et al. (2023), Zaki et al. (2023), Cohen (1960), Reimers y Gurevych (2020) y Spärck Jones (1972). |
-| Exigencia | Índice de exigencia de IngIndustrial (3 matrices) | Etapa 3 | comparar_exigencia.py deduplica los RA sin puntuación (índice 37,9); el aplicativo usa la regla D4, minúsculas, que da los 341 RA del artículo (índice 35,9). Unificar la regla en el script de auditoría. |
 | V1 | Alcance de V1 | Método | Saber, SaberHacer, SaberSer y Valor agregado quedan fuera de V1. Decidir si se reincorporan como medida complementaria. |

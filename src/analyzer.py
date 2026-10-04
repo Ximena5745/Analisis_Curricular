@@ -87,12 +87,13 @@ class CurricularAnalyzer:
         logger.info(f"Analizador inicializado para: {self.programa_nombre}")
 
     def _ra_unicos(self) -> pd.DataFrame:
-        """RA únicos de la matriz (decisión D4): una fila por redacción
-        distinta de 'Resultados Aprendizaje', conservando la primera."""
+        """RA únicos de la matriz (decisión D4, ajustada en D23): una fila por redacción
+        distinta de 'Resultados Aprendizaje' sin mayúsculas, tildes ni puntuación, conservando la primera."""
         if self.ra.empty or 'Resultados Aprendizaje' not in self.ra.columns:
             return self.ra
         ra = self.ra[self.ra['Resultados Aprendizaje'].notna()].copy()
-        ra['_clave_ra'] = ra['Resultados Aprendizaje'].map(_clave_texto)
+        ra['_clave_ra'] = ra['Resultados Aprendizaje'].map(
+            lambda t: re.sub(r'\s+', ' ', re.sub(r'[^a-z0-9 ]', ' ', _clave_texto(t))).strip())
         return ra.drop_duplicates('_clave_ra').drop(columns='_clave_ra')
 
     def calcular_balance_tipo_saber(self) -> Dict[str, float]:

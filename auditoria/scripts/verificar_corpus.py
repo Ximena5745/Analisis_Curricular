@@ -84,7 +84,8 @@ def main():
                 if len(r) > 5 and ne(r[5]) and not str(r[5]).strip().startswith('[')
                 and not norm(r[5]).replace(' ', '').startswith('redaccion')]  # encabezado repetido en la fila 3
         # Paso 3
-        ra_f = [norm(r[8]) for r in hoja(wb, 'Paso 3 Redacción RA').iter_rows(min_row=3, values_only=True)
+        # D4 (D23): clave del RA sin puntuación
+        ra_f = [re.sub(r'\s+', ' ', re.sub(r'[^a-z0-9 ]', ' ', norm(r[8]))).strip() for r in hoja(wb, 'Paso 3 Redacción RA').iter_rows(min_row=3, values_only=True)
                 if len(r) > 8 and ne(r[8])]
         # Paso 4
         p4 = list(hoja(wb, 'Paso 4').iter_rows(min_row=3, values_only=True))

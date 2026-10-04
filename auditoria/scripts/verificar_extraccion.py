@@ -82,8 +82,10 @@ def main():
         textos = [str(row[8]).strip() for row in ws.iter_rows(min_row=3, values_only=True)
                   if len(row) > 8 and ne(row[8])]
         r['p3_ra_registros'] = len(textos)
-        r['p3_ra_unicos'] = len({t.lower() for t in textos})
-        ra_textos.update((nombre, t.lower()) for t in textos)
+        clave_ra = lambda t: re.sub(r'\s+', ' ', re.sub(r'[^a-z0-9 ]', ' ', unicodedata.normalize('NFKD', t)
+                                    .encode('ascii', 'ignore').decode().lower())).strip()  # D4 (D23)
+        r['p3_ra_unicos'] = len({clave_ra(t) for t in textos})
+        ra_textos.update((nombre, clave_ra(t)) for t in textos)
 
         # --- Paso 4: meso. Fila 1 = instrucciones, fila 2 = encabezado real, datos desde fila 3.
         ws = hoja(wb, 'Paso 4')

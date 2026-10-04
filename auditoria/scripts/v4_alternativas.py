@@ -54,7 +54,7 @@ for f in sorted(glob.glob('data/raw/FORMATOS RA CICLO UNO RC/*.xlsx')):
     ra = {}
     for r in p3.iter_rows(min_row=3, values_only=True):
         if len(r) > 8 and ne(r[8]):
-            ra.setdefault(str(r[8]).strip().lower(), norm(r[8]))   # clave D4 -> texto normalizado
+            ra.setdefault(norm(r[8]), norm(r[8]))   # clave D4: sin mayúsculas, tildes ni puntuación (C03)
     p4 = next(wb[s] for s in wb.sheetnames if s.strip().startswith('Paso 4'))
     meso, est = [], None
     for r in p4.iter_rows(min_row=3, values_only=True):
