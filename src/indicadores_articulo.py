@@ -2,7 +2,7 @@
 Indicadores V1–V5 del artículo, calculados con las definiciones auditadas (D4, D13–D17).
 
 Fuente: hojas Paso 2, Paso 3 y Paso 4 de cada matriz. Unidad de RA: RA único por matriz (D4,
-clave = texto del RA en minúsculas, columna I del Paso 3). Cada estrategia del Paso 4 es un bloque
+clave = texto del RA de la columna I del Paso 3 sin mayúsculas, tildes ni puntuación; ajuste C03). Cada estrategia del Paso 4 es un bloque
 de celdas combinadas (B, C y E); sus indicadores (D) e instrumentos (F) ocupan filas propias.
 
   V1 Correspondencia del perfil: % de atributos del perfil respaldados a la vez en competencias, RA y
@@ -126,7 +126,7 @@ def _leer_matriz(nombre: str, fuente) -> Dict:
         ra = {}
         for r in _hoja(wb, 'Paso 3').iter_rows(min_row=3, values_only=True):
             if len(r) > 8 and _ne(r[8]) and _norm(r[8]) != 'resultados aprendizaje':
-                clave = str(r[8]).strip().lower()  # D4
+                clave = _norm(r[8])  # D4: sin mayúsculas, tildes ni puntuación (C03)
                 d = ra.setdefault(clave, {'texto': str(r[8]).strip(), 'norm': _norm(r[8]), 'verbo': r[7] or '',
                                           'competencias': set(), 'tipos': set(), 'actitudinal': False})
                 if _ne(r[0]):
@@ -342,7 +342,7 @@ def calcular_exigencia(archivos: Iterable[Tuple[str, object]]) -> List[Dict]:
             vistos = {}
             for r in (ws.iter_rows(min_row=3, values_only=True) if ws is not None else []):
                 if len(r) > 8 and _ne(r[8]) and _norm(r[8]) != 'resultados aprendizaje':
-                    vistos.setdefault(str(r[8]).strip().lower(), (r[4], r[5], r[6]))
+                    vistos.setdefault(_norm(r[8]), (r[4], r[5], r[6]))  # D4 (C03)
         finally:
             wb.close()
         niveles = [nivel_exigencia(t, d, n) for t, d, n in vistos.values()]

@@ -14,10 +14,10 @@ import plotly.graph_objects as go
 NAVY, AZUL, DORADO, MAGENTA, GRIS = '#0F385A', '#1FB2DE', '#FBAF17', '#EC0677', '#8A94A0'
 ESLABONES = [  # (etiqueta, numerador, base, nombre de la base, variable, color)
     ('Atributo del perfil respaldado en las tres capas', 1690, 2574, 'atributos', 'V1', AZUL),
-    ('RA vinculado a una competencia', 341, 341, 'RA únicos', '—', GRIS),
-    ('RA evaluable', 341, 341, 'RA únicos', 'V3', GRIS),
+    ('RA vinculado a una competencia', 338, 338, 'RA únicos', '—', GRIS),
+    ('RA evaluable', 338, 338, 'RA únicos', 'V3', GRIS),
     ('Matriz sin verbo repetido en competencias específicas', 45, 50, 'matrices', 'V2', AZUL),
-    ('RA con estrategia mesocurricular', 297, 341, 'RA únicos', 'V4', AZUL),
+    ('RA con estrategia mesocurricular', 294, 338, 'RA únicos', 'V4', AZUL),
     ('Estrategia con indicador de logro', 391, 391, 'estrategias', '—', GRIS),
     ('Estrategia con evidencia directa del logro', 3, 391, 'estrategias', 'V5', MAGENTA),
 ]

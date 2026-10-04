@@ -387,8 +387,8 @@ def leer_matriz(fuente) -> Dict:
         for r in _filas(wb, 'Paso 3', avisos, 'la capa de RA'):
             r = list(r) + [None] * 10
             if _ne(r[8]) and _norm(r[8]) != 'resultados aprendizaje' and GENERICA not in _norm(r[0] or '') \
-                    and str(r[8]).strip().lower() not in vistos:
-                vistos.add(str(r[8]).strip().lower())
+                    and _norm(r[8]) not in vistos:  # D4 (D23): sin mayúsculas, tildes ni puntuación
+                vistos.add(_norm(r[8]))
                 ras.append({'id': f'RA{len(ras) + 1}', 'nombre': str(r[8]).strip(), 'unidades': _clausulas(r[8])})
         asignaturas, actual = {}, None
         h5 = _hoja(wb, 'Paso 5')

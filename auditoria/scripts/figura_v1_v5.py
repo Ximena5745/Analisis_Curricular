@@ -16,7 +16,7 @@ NAVY, AZUL, DORADO, GRIS = '#0F385A', '#1FB2DE', '#FBAF17', '#8A94A0'
 VARS = [('V1', 'Correspondencia<br>competencia–RA', 100.0, True),
         ('V2', 'Coherencia<br>horizontal', 90.0, False),
         ('V3', 'Evaluabilidad', 100.0, True),
-        ('V4', 'Trazabilidad', 87.1, False),
+        ('V4', 'Trazabilidad', 87.0, False),
         ('V5', 'Evidencia directa<br>del logro', 0.8, False)]
 eje = [f"<b>{v}</b><br>{n}" + ('<br><i>(estructural)</i>' if e else '') for v, n, _, e in VARS]
 val = [x for _, _, x, _ in VARS]

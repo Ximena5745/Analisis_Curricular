@@ -8,7 +8,7 @@ lista de bloques: ('p', texto) párrafo, ('t', titulo, cabecera, filas) tabla,
 """
 
 RESUMEN = [
-    ('p', 'Estudio aplicado de métodos mixtos sobre 50 matrices curriculares de 39 programas académicos: 341 resultados de '
+    ('p', 'Estudio aplicado de métodos mixtos sobre 50 matrices curriculares de 39 programas académicos: 338 resultados de '
           'aprendizaje únicos (deduplicados en cada matriz), 391 estrategias mesocurriculares declaradas, 1.757 registros de '
           'asignatura y 50 perfiles profesionales y 50 perfiles ocupacionales, analizados mediante cinco variables de coherencia '
           'y trazabilidad, minería de texto, modelado temático y contraste estadístico exploratorio. Resultados. La evaluabilidad '
@@ -33,16 +33,17 @@ CORPUS = [
           'mesocurriculares; Paso 5, microcurrículo.'),
     ('t', 'Tabla 1. Composición del corpus por nivel de formación',
      ['Nivel de formación', 'Programas', 'Matrices (programa-sede)', 'Competencias', 'RA únicos', 'Estrategias meso declaradas'],
-     [['Profesional universitario¹', '23', '34', '169', '257', '276'],
+     [['Profesional universitario¹', '23', '34', '169', '254', '276'],
       ['Tecnología', '5', '5', '20', '34', '41'],
       ['Técnica profesional', '1', '1', '5', '6', '7'],
-      ['Pregrado', '29', '40', '194', '297', '324'],
+      ['Pregrado', '29', '40', '194', '294', '324'],
       ['Especialización', '5', '5', '13', '19', '34'],
       ['Maestría', '5', '5', '15', '25', '33'],
       ['Posgrado', '10', '10', '28', '44', '67'],
-      ['Total', '39', '50', '222', '341', '391']]),
-    ('n', '¹ Incluye tres licenciaturas. Los resultados de aprendizaje únicos se deduplican dentro de cada matriz, porque un mismo '
-          'RA se registra una vez por cada competencia a la que aporta (586 registros en total). Las 391 estrategias declaradas se '
+      ['Total', '39', '50', '222', '338', '391']]),
+    ('n', '¹ Incluye tres licenciaturas. Los resultados de aprendizaje únicos se deduplican dentro de cada matriz, sin distinguir '
+          'mayúsculas, tildes ni puntuación, porque un mismo RA se registra una vez por cada competencia a la que aporta (586 registros '
+          'en total). Las 391 estrategias declaradas se '
           'vinculan a los RA mediante 1.612 registros RA–estrategia.'),
     ('p', 'En el componente microcurricular se procesaron 1.757 registros de asignatura², correspondientes a 709 denominaciones '
           'únicas (normalizadas sin distinguir mayúsculas, tildes ni puntuación). Las asignaturas declaran 6.671 núcleos temáticos, '
@@ -74,7 +75,7 @@ ETAPA_3 = [
           '(100 % en las 50 matrices); como el formato de la matriz garantiza su cumplimiento, se reportan como condiciones verificadas '
           'y no intervienen en el puntaje.'),
     ('p', 'Para ubicar cada resultado de aprendizaje en una escala de exigencia, las matrices emplean dos taxonomías: Bloom en su '
-          'versión clásica (48,1 % de los resultados de aprendizaje únicos) y una adaptación con aportes de Krathwohl (BAK, 51,9 %); '
+          'versión clásica (48,5 % de los resultados de aprendizaje únicos) y una adaptación con aportes de Krathwohl (BAK, 51,5 %); '
           '26 de las 50 matrices combinan ambas. Las dos distinguen los dominios cognitivo, procedimental y actitudinal, pero solo BAK '
           'asigna escalas propias a los dos últimos, al reconocer que dominar un procedimiento o consolidar una actitud siguen '
           'progresiones distintas de las del conocimiento conceptual (Tabla 4).'),
@@ -86,10 +87,10 @@ ETAPA_3 = [
           'corresponde al nivel medio de sus resultados de aprendizaje únicos, expresado de 0 a 100.'),
     ('t', 'Tabla 4. Sistemas de clasificación empleados en las matrices',
      ['Taxonomía', 'Resultados de aprendizaje únicos', 'Dominio cognitivo', 'Dominio procedimental', 'Dominio actitudinal'],
-     [['Bloom', '164 (48,1 %)', 'Conocimiento, Comprensión, Aplicación, Análisis, Síntesis, Evaluación', '(mismos seis niveles)', '(mismos seis niveles)'],
-      ['BAK', '177 (51,9 %)', 'Conocimiento, Comprensión, Aplicación, Análisis, Síntesis, Evaluación',
+     [['Bloom', '164 (48,5 %)', 'Conocimiento, Comprensión, Aplicación, Análisis, Síntesis, Evaluación', '(mismos seis niveles)', '(mismos seis niveles)'],
+      ['BAK', '174 (51,5 %)', 'Conocimiento, Comprensión, Aplicación, Análisis, Síntesis, Evaluación',
        'Imitación, Manipulación, Precisión, Control', 'Percepción, Responder, Valorar, Organizar, Caracterizar'],
-      ['Total', '341 (100 %)', '', '', '']]),
+      ['Total', '338 (100 %)', '', '', '']]),
     ('n', 'Nota: 26 de las 50 matrices combinan ambas taxonomías; 21 emplean solo Bloom y 3 solo BAK. Cada nivel se traduce a una '
           'escala común de 1 a 6 según su posición en la progresión de su dominio.'),
 ]
@@ -118,9 +119,10 @@ ETAPA_4 = [
           'Jones, 1972) y la similitud semántica usa un modelo de oraciones multilingüe (Reimers & Gurevych, 2020). V1 es la proporción de atributos '
           'respaldados en las tres capas; se informa además la proporción sin respaldo en ninguna.'),
     ('p', 'Los parámetros se calibraron contra una lectura de referencia de 11 matrices de ocho enfoques disciplinares (429 '
-          'atributos; 1.287 decisiones atributo × capa), elaborada con asistencia de IAg sobre la matriz original y revisada atributo '
-          'por atributo. El acuerdo fue del 80,1 % (κ de Cohen = 0,44; Cohen, 1960) y, al calibrar '
-          'excluyendo cada enfoque, osciló entre 68,9 % y 84,2 % en el enfoque excluido. El método es determinista: la misma matriz '
+          'atributos; 1.287 decisiones atributo × capa), elaborada con asistencia de IAg sobre la matriz original, con revisión puntual de 40 de los '
+          '429 atributos. El acuerdo fue del 80,1 % (κ de Cohen = 0,44; Cohen, 1960), medido dentro de la muestra usada para '
+          'calibrar; al calibrar excluyendo cada enfoque, osciló entre 68,9 % y 84,2 % en el enfoque excluido, lo que aproxima el '
+          'desempeño fuera de ella. El método es determinista: la misma matriz '
           'produce el mismo resultado, y sus asociaciones se entregan como propuesta para validar por el comité curricular.'),
     ('t', 'Tabla 5. Atributos del perfil evaluados por componente',
      ['Perfil', 'Componente', 'Atributos'],
@@ -134,6 +136,80 @@ ETAPA_4 = [
           'validada por el comité curricular. El acuerdo de 80,1 % mide, por tanto, la concordancia del método con esa lectura y '
           'no con un juicio experto independiente; la validación por el comité de una muestra de las decisiones queda como '
           'condición previa al uso de V1 en decisiones institucionales.'),
+]
+
+# Procedimiento (versión de la autora, 2026-10-04), con tres ajustes de coherencia con Resultados:
+# Etapa 4 = método de asociación vigente (V1) + la cobertura TF-IDF/BM25 como medida complementaria;
+# Tabla 4 con D23 (338 RA); Tabla 6 con sentence-transformers y ❓ en lo que no se puede verificar.
+PROCEDIMIENTO = [
+    ('h2', 'Procedimiento'),
+    ('p', 'El análisis se implementó en siete etapas.'),
+    ('p', 'Etapa 1. Extracción. El nombre de cada archivo identifica el programa y su sede o modalidad (PBOG, Bogotá presencial; '
+          'VNAL, virtual nacional; HMED, Medellín híbrido; PMED, Medellín presencial; HBOG, Bogotá híbrido). Como los encabezados '
+          'varían tipográficamente entre archivos, el sistema los localiza por aproximación, sin corrección manual (Tabla 3).'),
+    ('t', 'Tabla 3. Estructura de hojas extraídas por programa', ['Hoja', 'Contenido', 'Columnas clave'],
+     [['Paso 1', 'Perfil de egreso', 'Perfil profesional, Perfil ocupacional, Saber, SaberHacer, SaberSer, Valor agregado'],
+      ['Paso 2', 'Competencias', 'Verbo, Objeto conceptual, Finalidad, Condición'],
+      ['Paso 3', 'Resultados de aprendizaje', 'Competencia ref., TipoSaber, SaberAsociado, Taxonomía'],
+      ['Paso 4', 'Estrategias mesocurriculares', 'RA ref., Estrategia, Indicador de impacto'],
+      ['Paso 5', 'Estrategias microcurriculares', 'Asignatura, Núcleos temáticos, Créditos, Actividades']]),
+    ('p', 'Etapa 2. Depuración de los temas declarados. Cada asignatura declara sus núcleos temáticos como una lista numerada en '
+          'texto libre. Los núcleos se separaron por su numeración, de modo que un núcleo que ocupa varias líneas o contiene comas se '
+          'conserva como unidad; en las cuatro celdas sin numeración se tomó cada línea como un núcleo. Se obtuvieron 6.671 núcleos '
+          '(2.815 únicos) en 1.616 asignaturas; un control de calidad (celdas vacías, solo números o texto de instrucciones de la '
+          'plantilla) no identificó entradas inválidas.'),
+    ('p', 'A los temas retenidos se les asigna un puntaje orientativo, no decisorio, que contrasta vocabulario académico con '
+          'vocabulario de formato, y un detector de valores atípicos señala temas anómalos frente al corpus (Liu et al., 2008).'),
+    ('p', 'Etapa 3. Calidad del diseño. Cada programa recibe un puntaje de 0 a 100 que pondera la exigencia de sus resultados de '
+          'aprendizaje (40 %), el equilibrio entre tipos de saber (30 %) y la variedad de estrategias didácticas (30 %).'),
+    ('p', 'La exigencia de los resultados de aprendizaje se estableció mediante dos taxonomías: Bloom clásica (48,5 % de los '
+          'resultados únicos) y una adaptación con aportes de Krathwohl (BAK, 51,5 %); 26 de las 50 matrices emplean ambas. Las dos '
+          'contemplan los dominios cognitivo, procedimental y actitudinal, aunque BAK incorpora escalas diferenciadas para los dos '
+          'últimos (Tabla 4). Para comparar los resultados entre taxonomías, los niveles se llevaron a una escala común de 1 a 6, '
+          'conservando su posición dentro de cada progresión: el nivel inicial corresponde a 1 y el más avanzado a 6, con los niveles '
+          'intermedios distribuidos proporcionalmente. De este modo, la comparación se basa en el grado relativo de exigencia y no en '
+          'una equivalencia directa entre los niveles de ambas taxonomías.'),
+    ('t', 'Tabla 4. Sistemas de clasificación empleados en las matrices',
+     ['Taxonomía', 'Uso en el corpus', 'Dominio cognitivo', 'Dominio procedimental', 'Dominio actitudinal'],
+     [['Bloom', '48,5 %', 'Conocimiento, Comprensión, Aplicación, Análisis, Síntesis, Evaluación', '(mismos seis niveles)',
+       '(mismos seis niveles)'],
+      ['BAK', '51,5 %', 'Conocimiento, Comprensión, Aplicación, Análisis, Síntesis, Evaluación',
+       'Imitación, Manipulación, Precisión, Control', 'Percepción, Responder, Valorar, Organizar, Caracterizar']]),
+    ('n', 'Nota. Porcentaje sobre los 338 resultados de aprendizaje únicos (Bloom 164; BAK 174).'),
+] + ETAPA_4 + [
+    ('p', 'Como medida complementaria y exploratoria, que no interviene en V1, los campos excluidos (Saber, SaberHacer, SaberSer y '
+          'valor agregado) se comparan con los contenidos de las asignaturas de su programa: nombre, indicadores de logro, núcleos '
+          'temáticos y actividades de evaluación, sin los saberes asociados ni la redacción de los RA. La similitud combina el coseno '
+          'TF-IDF ponderado de los tres documentos más afines (pesos 0,5, 0,3 y 0,2), con un peso de 0,6, y la puntuación BM25 '
+          'máxima normalizada (Robertson & Zaragoza, 2009), con un peso de 0,4. Un elemento se marca como alerta si su puntaje no '
+          'alcanza el umbral de su campo (Saber y SaberHacer 0,35; SaberSer 0,32; valor agregado 0,30), fijado según la extensión y '
+          'el vocabulario de cada campo. Las alertas priorizan casos para revisión; no prueban la ausencia de respaldo curricular.'),
+    ('p', 'Etapa 5. Asignaturas compartidas. El sistema compara las asignaturas de todos los programas por coincidencia de nombre y '
+          'por similitud de contenidos (núcleos temáticos e indicadores de logro), solo entre programas distintos, lo que detecta dos '
+          'situaciones opuestas: asignaturas homónimas que enseñan cosas distintas y asignaturas con nombres diferentes que cubren lo '
+          'mismo. Se excluyen los espacios electivos, que no declaran contenido propio. Una asignatura homónima se considera '
+          'divergente cuando la similitud media entre sus versiones es inferior a 0,60.'),
+    ('p', 'Etapa 6. Análisis temático. Un modelo LDA identifica, sin una lista predefinida, los temas presentes en los contenidos '
+          'declarados (Blei et al., 2003). Cada documento corresponde a una asignatura con sus núcleos temáticos depurados y '
+          'lematizados (1.192 asignaturas, con una matriz por programa para evitar duplicar la oferta multisede). El modelo se '
+          'configuró con 13 tópicos (k = 13), valor que presentó el mejor equilibrio entre coherencia (NPMI) y estabilidad en el '
+          'rango evaluado (k = 5–30). Dado que LDA puede ser inestable con textos breves, los resultados se obtuvieron mediante el '
+          'consenso de diez réplicas con semillas distintas. La estabilidad mejoró frente a un LDA simple: dos consensos '
+          'independientes compartieron el 59 % de sus palabras principales, frente al 22 %.'),
+    ('p', 'Etapa 7. Reportes y consulta. Por cada programa se generan un archivo consolidado y un informe navegable; el aplicativo '
+          'CurriculoPoli permite filtrar los resultados por sede, nivel y programa (Tabla 6).'),
+    ('t', 'Tabla 6. Stack tecnológico', ['Componente', 'Tecnología', 'Momento de uso'],
+     [['Lenguaje y datos', 'Python 3.10 ❓, pandas, numpy', 'Ejecución'],
+      ['Procesamiento de texto', 'scikit-learn (TF-IDF, LDA, Isolation Forest), rank-bm25, spaCy, sentence-transformers',
+       'Ejecución'],
+      ['Estadística', 'scipy.stats', 'Ejecución'],
+      ['Visualización', 'plotly, streamlit', 'Ejecución'],
+      ['IA generativa', 'Claude Sonnet ❓', 'Solo diseño y construcción']]),
+    ('n', 'Nota. ❓ Pendiente de confirmar por la autora: la versión de Python de la corrida final (el entorno de auditoría usa '
+          '3.14) y el modelo de IA generativa empleado.'),
+    ('p', 'El código, las versiones de bibliotecas, semillas, parámetros, diccionarios, umbrales y reglas de preprocesamiento están '
+          'documentados y la estructuración generativa de las matrices es trazable mediante el registro de entradas, salidas y '
+          'decisiones humanas.'),
 ]
 
 ETAPA_5 = [
@@ -194,19 +270,20 @@ RESULTADOS_VERIFICADOS = [
 
 
 RESULTADOS_INTRO = [
-    ('p', '3. Resultados. El corpus comprende 50 matrices con 222 competencias, 341 RA únicos, 391 estrategias mesocurriculares y '
-          '1.757 asignaturas (Tabla 7). Los 341 RA generan 586 registros, porque un mismo RA puede aportar a varias competencias. '
+    ('p', '3. Resultados. El corpus comprende 50 matrices con 222 competencias, 338 RA únicos, 391 estrategias mesocurriculares y '
+          '1.757 asignaturas (Tabla 7). Los 338 RA generan 586 registros, porque un mismo RA puede aportar a varias competencias. '
           'Las propiedades textuales se calculan sobre RA únicos; la distribución por tipo de saber, sobre registros, y las '
           'proporciones por programa-sede, sobre las 50 matrices.'),
     ('t', 'Tabla 7. Corpus analizado por sede y modalidad',
      ['Sede', 'Modalidad', 'Matrices', 'Competencias', 'RA únicos', 'Estrategias meso'],
-     [['VNAL', 'Virtual nacional', '22', '93', '139', '170'],
-      ['PBOG', 'Bogotá presencial', '17', '75', '119', '132'],
-      ['PMED', 'Medellín presencial', '7', '34', '52', '59'],
+     [['VNAL', 'Virtual nacional', '22', '93', '138', '170'],
+      ['PBOG', 'Bogotá presencial', '17', '75', '118', '132'],
+      ['PMED', 'Medellín presencial', '7', '34', '51', '59'],
       ['HMED', 'Medellín híbrido', '3', '17', '25', '24'],
       ['HBOG', 'Bogotá híbrido', '1', '3', '6', '6'],
-      ['Total', '', '50', '222', '341', '391']]),
-    ('n', 'Nota. Los RA únicos se cuentan dentro de cada matriz; las estrategias son las declaradas en el Paso 4.'),
+      ['Total', '', '50', '222', '338', '391']]),
+    ('n', 'Nota. Los RA únicos se cuentan dentro de cada matriz, sin distinguir mayúsculas, tildes ni puntuación (D4); las estrategias '
+          'son las declaradas en el Paso 4.'),
     ('p', 'VNAL y PBOG reúnen el 78 % de las matrices, y HBOG cuenta con una sola. Diecinueve matrices pertenecen a ocho programas '
           'ofrecidos en varias sedes con RA idénticos, de modo que las sedes no constituyen observaciones independientes. La '
           'Figura 1 resume la cadena de evidencia del logro que se detalla en R1–R5, cada eslabón sobre su propia base.'),
@@ -220,14 +297,15 @@ RESULTADOS_R1 = [
           '25,0 %–86,5 %). Los valores más bajos corresponden a la Especialización en Gerencia Tributaria (25,0 %), la Maestría en '
           'Gerencia Estratégica de Mercadeo (27,3 %) '
           'y Matemáticas (34,5 %), donde los RA respaldan menos de la mitad de los atributos (29,2 %, 31,8 % y 41,4 %). La competencia '
-          'de referencia de cada RA, en cambio, está declarada en las 341 RA únicos de las 50 matrices, porque la plantilla la exige.'),
+          'de referencia de cada RA, en cambio, está declarada en los 338 RA únicos de las 50 matrices, porque la plantilla la exige.'),
     ('t', 'Tabla 8. Respaldo de los atributos del perfil por capa curricular',
      ['Perfil', 'Atributos', 'Competencias', 'RA', 'Asignaturas', 'Tres capas (V1)', 'Ninguna capa'],
      [['Profesional', '424', '82,8 %', '78,3 %', '96,5 %', '73,8 %', '2,6 %'],
       ['Ocupacional', '2.150', '74,2 %', '71,2 %', '95,0 %', '64,0 %', '4,0 %'],
       ['Total', '2.574', '75,6 %', '72,4 %', '95,2 %', '65,7 %', '3,8 %']]),
-    ('n', 'Nota. Respaldo explícito o parcial en la matriz del propio programa (Etapa 4). Acuerdo del método con la lectura de '
-          'referencia: 80,1 % (κ = 0,44; 11 matrices, 1.287 decisiones).'),
+    ('n', 'Nota. Respaldo explícito o parcial en la matriz del propio programa (Etapa 4). Acuerdo del método con una lectura de '
+          'referencia elaborada con asistencia de IAg y revisada puntualmente (40 de 429 atributos): 80,1 % (κ = 0,44; 11 matrices, '
+          '1.287 decisiones), medido sobre las mismas matrices usadas para calibrar; pendiente de validación por el comité curricular.'),
 ]
 
 RESULTADOS_R2 = [
@@ -242,14 +320,14 @@ RESULTADOS_R2 = [
       ['Ausencia de un tipo de saber', '0', '0 %', '0']]),
     ('p', 'Los 586 registros se distribuyen en Saber 37,9 %, SaberHacer 31,1 % y SaberSer 31,1 % (Figura 3); por matriz, SaberHacer '
           'oscila entre 28,6 % y 33,3 % y Saber entre 33,3 % y 42,9 %. La paridad responde a la plantilla: cada competencia específica '
-          'se descompone en un RA de cada tipo de saber y cada competencia genérica, en un RA de Saber. Sobre los 341 RA únicos, la '
-          'distribución es 48,1 %, 36,1 % y 15,8 %, porque cada RA de SaberSer se reutiliza en 3,4 competencias en promedio, frente a '
+          'se descompone en un RA de cada tipo de saber y cada competencia genérica, en un RA de Saber. Sobre los 338 RA únicos, la '
+          'distribución es 47,6 %, 36,4 % y 16,0 %, porque cada RA de SaberSer se reutiliza en 3,4 competencias en promedio, frente a '
           '1,4 en Saber y 1,5 en SaberHacer.'),
 ]
 
 RESULTADOS_R3 = [
     ('p', 'R3. Evaluabilidad (V3). Se consideró evaluable el RA con verbo observable —en SaberSer se admite el verbo afectivo de la '
-          'taxonomía declarada— y con finalidad de desempeño o producto explícito. Los 341 RA únicos cumplen ambos criterios en las '
+          'taxonomía declarada— y con finalidad de desempeño o producto explícito. Los 338 RA únicos cumplen ambos criterios en las '
           '50 matrices (V3 = 100 %). La plantilla impone la estructura verbo + objeto + finalidad + condición; por ello V3 es constante '
           'y figura en la Figura 1 como condición del instrumento y se excluye de R6.'),
 ]
@@ -258,22 +336,23 @@ RESULTADOS_R4 = [
     ('p', 'R4. Trazabilidad (V4). V4 mide la proporción de RA únicos vinculados a una estrategia mesocurricular con indicador e '
           'instrumento (Paso 4); los indicadores e instrumentos de cada estrategia se asignan a todos los RA de su bloque. Se '
           'distinguen los RA de programa y el RA de la competencia genérica institucional, presente en 40 matrices. V4 alcanza el '
-          '87,1 % (297 de 341; media por matriz 87,9 %, rango 62,5 %–100 %), con un comportamiento opuesto entre clases: 98,0 % en '
+          '87,0 % (294 de 338; media por matriz 87,8 %, rango 62,5 %–100 %), con un comportamiento opuesto entre clases: 98,0 % en '
           'los RA de programa y 5,0 % en el RA genérico (Tabla 10).'),
     ('t', 'Tabla 10. Trazabilidad (V4) por sede y clase de RA', ['Sede', 'RA de programa', 'RA genérico', 'Todos los RA'],
-     [['VNAL', '100,0 % (124/124)', '0,0 % (0/15)', '89,2 % (124/139)'],
-      ['PBOG', '97,1 % (102/105)', '7,1 % (1/14)', '86,6 % (103/119)'],
-      ['PMED', '93,3 % (42/45)', '14,3 % (1/7)', '82,7 % (43/52)'],
+     [['VNAL', '100,0 % (123/123)', '0,0 % (0/15)', '89,1 % (123/138)'],
+      ['PBOG', '97,1 % (101/104)', '7,1 % (1/14)', '86,4 % (102/118)'],
+      ['PMED', '93,2 % (41/44)', '14,3 % (1/7)', '82,4 % (42/51)'],
       ['HMED', '100,0 % (22/22)', '0,0 % (0/3)', '88,0 % (22/25)'],
       ['HBOG¹', '100,0 % (5/5)', '0,0 % (0/1)', '83,3 % (5/6)'],
-      ['Total', '98,0 % (295/301)', '5,0 % (2/40)', '87,1 % (297/341)']]),
+      ['Total', '98,0 % (292/298)', '5,0 % (2/40)', '87,0 % (294/338)']]),
     ('n', 'Nota. Entre paréntesis, RA con estrategia meso / RA únicos. ¹ Matriz única; valor descriptivo, excluido de las '
           'comparaciones inferenciales.'),
     ('p', 'De los 44 RA sin estrategia, 38 corresponden a la competencia genérica (Figura 4). Los seis restantes se ubican en Mercadeo y '
-          'Publicidad (PMED, 2; PBOG, 1), Diseño Gráfico (PBOG y PMED) y Diseño Industrial (PBOG). Entre sedes, V4 varía de 82,7 % '
-          '(PMED) a 89,2 % (VNAL). En el nivel micro, todos los RA están asignados a asignaturas con actividades de evaluación '
-          '(mediana: 17 asignaturas por RA). En dos matrices VNAL, el Paso 4 conserva la redacción previa de un RA reformulado en el '
-          'Paso 3.'),
+          'Publicidad (PMED, 2; PBOG, 1), Diseño Gráfico (PBOG y PMED) y Diseño Industrial (PBOG). Entre sedes, V4 varía de 82,4 % '
+          '(PMED) a 89,1 % (VNAL). En el nivel micro, todos los RA están asignados a asignaturas con actividades de evaluación '
+          '(mediana: 17 asignaturas por RA). El RA del Paso 4 se emparejó con el del Paso 3 por similitud textual ≥ 0,80 o por '
+          'mejor coincidencia mutua (≥ 0,50), para recuperar RA reformulados: en dos matrices VNAL, el Paso 4 conserva la redacción '
+          'previa de un RA reformulado en el Paso 3. Con coincidencia exacta, V4 sería 81,7 %.'),
 ]
 
 RESULTADOS_R5 = [
@@ -295,13 +374,14 @@ RESULTADOS_R5 = [
           'matrices de VNAL: Técnica Profesional Judicial (promedio superior a 450/500 en práctica simulada; sustentación ante jurados) y '
           'Administración Pública (variación de puntajes antes y después de talleres de refuerzo). Ninguna estrategia evalúa la '
           'transferencia, y solo una registra un efecto externo (vinculación laboral de estudiantes). La clasificación aplicó un libro '
-          'de códigos de cinco niveles con cuatro reglas de decisión a las 170 redacciones distintas de indicador (anexo).'),
+          'de códigos de cinco niveles con cuatro reglas de decisión a las 170 redacciones distintas de indicador (anexo); la '
+          'aplicó un solo codificador, por lo que la concordancia entre jueces queda pendiente.'),
 ]
 
 RESULTADOS_R6 = [
     ('p', 'R6. Asociación entre variables curriculares (V1–V5). Seis pares admiten estimación, porque V3 es constante. La '
-          'correlación de Spearman sobre las 50 matrices fue V1–V2 ρ = 0,09 (p = 0,513), V1–V4 ρ = 0,12 (p = 0,411), V1–V5 '
-          'ρ = −0,13 (p = 0,381), V2–V4 ρ = −0,03 (p = 0,846), V2–V5 ρ = 0,07 (p = 0,639) y V4–V5 ρ = −0,13 (p = 0,354); ninguna es '
+          'correlación de Spearman sobre las 50 matrices fue V1–V2 ρ = 0,09 (p = 0,513), V1–V4 ρ = 0,12 (p = 0,417), V1–V5 '
+          'ρ = −0,13 (p = 0,381), V2–V4 ρ = −0,04 (p = 0,771), V2–V5 ρ = 0,07 (p = 0,639) y V4–V5 ρ = −0,13 (p = 0,353); ninguna es '
           'significativa, tampoco con una matriz por programa (n = 39). V2 adopta dos valores y V5 es distinta de cero en dos '
           'matrices (Figura 5), por lo que los pares que las incluyen carecen de potencia y no se interpretan.'),
 ]
@@ -319,7 +399,7 @@ RESULTADOS_R7 = [
      [['', '49 matrices', '', '', '38 programas¹', '', ''],
       ['V1 Correspondencia del perfil', '2,20', '0,531', '0,000', '3,74', '0,290', '0,022'],
       ['V2 Coherencia horizontal', '2,64', '0,451', '0,000', '4,86', '0,182', '0,055'],
-      ['V4 Trazabilidad', '3,53', '0,317', '0,012', '2,04', '0,565', '0,000'],
+      ['V4 Trazabilidad', '3,86', '0,277', '0,019', '2,21', '0,529', '0,000'],
       ['V5 Evidencia directa del logro', '2,51', '0,474', '0,000', '2,28', '0,516', '0,000']]),
     ('n', 'Nota. Se excluye HBOG (n = 1); V3 es constante. ε² = (H − k + 1)/(n − k); los valores negativos se reportan como 0. '
           '¹ Una matriz por programa (la primera por nombre de archivo): VNAL 18, PBOG 15, HMED 3, PMED 2.'),
@@ -389,13 +469,15 @@ RESULTADOS_R8 = [
     ('fig', 'Figura 6. Temas de agenda global: amplitud y profundidad'),
     ('n', 'Nota. Lista oficial de 15 tendencias (config_tendencias.json), que integra las dos listas anteriores del aplicativo y '
           'depura sus términos genéricos. Una tendencia se asigna si algún término aparece en el nombre de la asignatura o si su '
-          'contenido suma al menos dos puntos (término compuesto = 2; simple = 1).'),
+          'contenido suma al menos dos puntos (término compuesto = 2; simple = 1). La tendencia de IA incluye el término «algoritmos»; '
+          'sin él, la tendencia comprendería 58 asignaturas (3,6 %).'),
     ('h', 'R8.3 Atributos del perfil sin respaldo curricular'),
     ('p', 'Los 98 atributos sin respaldo en ninguna capa (R1) se concentran en las poblaciones de actuación: 46 de 423 (10,9 %), '
           'componente que además tiene la menor proporción respaldada en las tres capas (45,2 %) (Tabla 16). Doce matrices no tienen '
           'atributos sin respaldo y ninguna supera el 15 %; superan el 10 % la Especialización en Logística y Gestión de la Cadena de '
           'Abastecimiento (12,8 %), la Especialización en Gerencia Tributaria (12,5 %) y Administración Hotelera y Gastronómica '
-          '(10,6 %). La revisión atributo por atributo de las matrices con mayor proporción identificó tres tipos de vacío: docencia '
+          '(10,6 %). Además de los 98 atributos sin respaldo, la revisión cualitativa de las matrices con mayor proporción '
+          'identificó tres tipos de vacío, que incluyen atributos con respaldo solo parcial: docencia '
           'declarada sin formación didáctica (Matemáticas, Maestría en Contratación Estatal, Especialización en Gerencia Tributaria), '
           'funciones de dirección o coordinación sin contenido directivo (Maestría en Contratación Estatal, Licenciatura en Educación '
           'Básica Primaria) y poblaciones vulnerables —víctimas del conflicto armado, migrantes, comunidades étnicas— sin tratamiento '
@@ -421,7 +503,7 @@ DISCUSION_APORTES = [
           'varía entre matrices (25,0 %–86,5 %).'),
     ('p', 'Los rangos de referencia de un currículo por competencias (Saber 25–45 %, SaberHacer 35–60 %, SaberSer 10–30 %) [fuente '
           'pendiente] no son aplicables a registros con esta estructura; aplicarlos llevaría a concluir un déficit práctico en todas '
-          'las matrices. La distribución por RA únicos (SaberSer 15,8 %) indica que el componente actitudinal se formula con pocos RA '
+          'las matrices. La distribución por RA únicos (SaberSer 16,0 %) indica que el componente actitudinal se formula con pocos RA '
           'reutilizados.'),
     ('p', 'La brecha de trazabilidad no es estructural: ningún RA carece de evaluación en las asignaturas y la falta de estrategia '
           'meso se concentra en la competencia genérica institucional, que los programas no planean en el Paso 4. Acciones: definir '
@@ -474,7 +556,7 @@ DISCUSION = [
           'entre competencias específicas (V2 = 90 %). La alta frecuencia de Analizar no es una inconsistencia, pues 40 de sus 50 '
           'ocurrencias corresponden a la competencia genérica institucional. Por la misma razón, los rangos de referencia por tipo de '
           'saber (SaberHacer 35–60 %) no son aplicables a registros con esta estructura: aplicarlos atribuiría un déficit práctico a '
-          'todas las matrices. Sobre los 341 RA únicos, SaberSer representa el 15,8 %, lo que indica que el componente actitudinal se '
+          'todas las matrices. Sobre los 338 RA únicos, SaberSer representa el 16,0 %, lo que indica que el componente actitudinal se '
           'formula con pocos RA reutilizados en varias competencias.'),
     ('h2', '4.2 Indicadores y toma de decisiones curriculares'),
     ('p', 'La educación orientada a resultados supone que los indicadores permiten decidir sobre el logro. Los datos no respaldan esta '
@@ -482,7 +564,7 @@ DISCUSION = [
           'estrategia se implementó (N1, 808) o cómo fue valorada (N2, 371), pero no si el RA se alcanzó. Solo cinco demuestran '
           'aprendizaje (N3), ninguno transferencia (N4) y uno un efecto externo (N5); en consecuencia, solo 3 de las 391 estrategias (0,8 %) '
           'declaran evidencia directa del logro (V5, R5).'),
-    ('p', 'Tampoco puede sostenerse una relación entre variables. Ninguna correlación fue significativa (V2–V4 ρ = −0,03; V2–V5 '
+    ('p', 'Tampoco puede sostenerse una relación entre variables. Ninguna correlación fue significativa (V2–V4 ρ = −0,04; V2–V5 '
           'ρ = 0,07; V4–V5 ρ = −0,13; V1–V4 ρ = 0,12; n = 50) y ninguna variable difiere entre sedes (R6, R7). Esta ausencia no '
           'prueba independencia: V3 es constante, V2 casi binaria y V5 distinta de cero en dos matrices, de modo que solo V1 y V4 '
           'varían entre programas, y no covarían. Con '
@@ -493,7 +575,7 @@ DISCUSION = [
     ('h2', '4.3 Trazabilidad, gobernanza y control humano'),
     ('p', 'La trazabilidad legitima las decisiones curriculares porque permite reconstruir, ante estudiantes, docentes y pares, la '
           'cadena entre perfil y evidencia de evaluación; el marco de riesgos de IA la sitúa en las funciones Map y Measure (NIST, '
-          '2023). El 87,1 % de los 341 RA únicos tiene al menos una estrategia mesocurricular, y todos se evalúan en alguna asignatura '
+          '2023). El 87,0 % de los 338 RA únicos tiene al menos una estrategia mesocurricular, y todos se evalúan en alguna asignatura '
           '(R4). La brecha no es estructural y tiene dos fuentes: una regla común —el RA de la competencia genérica institucional carece '
           'de estrategia meso en 38 de 40 matrices, porque los programas no la planean en el Paso 4— y decisiones de programa, que '
           'explican seis RA en cinco matrices (98,0 % de trazabilidad sin el RA genérico).'),
@@ -555,9 +637,9 @@ DISCUSION = [
 
 # Cambios en la lista de referencias por el método de V1 (Etapa 4), para aplicar en el artículo
 REFERENCIAS_CAMBIOS = [
-    ('p', 'Se retira: Robertson, S., & Zaragoza, H. (2009). The probabilistic relevance framework: BM25 and beyond. Foundations '
-          'and Trends in Information Retrieval, 3(4), 333–389. https://doi.org/10.1561/1500000019 — solo la citaba la Etapa 4 '
-          'anterior; BM25 ya no interviene en ningún resultado del artículo.'),
+    ('p', 'Se conserva: Robertson, S., & Zaragoza, H. (2009). The probabilistic relevance framework: BM25 and beyond. Foundations '
+          'and Trends in Information Retrieval, 3(4), 333–389. https://doi.org/10.1561/1500000019 — la cita la medida '
+          'complementaria de saberes y valor agregado (Etapa 4 del Procedimiento); no interviene en V1.'),
     ('p', 'Se agrega: Cohen, J. (1960). A coefficient of agreement for nominal scales. Educational and Psychological Measurement, '
           '20(1), 37–46. https://doi.org/10.1177/001316446002000104'),
     ('p', 'Se agrega: Reimers, N., & Gurevych, I. (2020). Making monolingual sentence embeddings multilingual using knowledge '
@@ -583,7 +665,7 @@ SECCIONES_RESULTADOS = [
     ('R1', RESULTADOS_R1, 'Actualizada: V1 = respaldo del perfil en competencias, RA y asignaturas (revierte D13)'),
     ('R2', RESULTADOS_R2, 'Cerrada: V2 = 90 % (D14); fuente de rangos de referencia pendiente'),
     ('R3', RESULTADOS_R3, 'Cerrada: V3 = 100 %, condición estructural (D15)'),
-    ('R4', RESULTADOS_R4, 'Cerrada: V4 = 87,1 % de los 341 RA; 98,0 % sin el RA genérico (D16)'),
+    ('R4', RESULTADOS_R4, 'Cerrada: V4 = 87,0 % de los 338 RA; 98,0 % sin el RA genérico (D16, D4 ajustada por C03)'),
     ('R5', RESULTADOS_R5, 'Cerrada: V5 = 0,8 % de estrategias con evidencia directa (D17)'),
     ('R6', RESULTADOS_R6, 'Cerrada: sin asociaciones estimables (D18)'),
     ('R7', RESULTADOS_R7, 'Cerrada: sin diferencias entre sedes (D19)'),

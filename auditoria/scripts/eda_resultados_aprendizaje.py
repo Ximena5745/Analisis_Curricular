@@ -36,7 +36,7 @@ def ne(v):
 
 def norm(t):
     t = unicodedata.normalize('NFKD', str(t)).encode('ascii', 'ignore').decode().lower()
-    return re.sub(r'[\s\.;,:]+$', '', re.sub(r'\s+', ' ', t).strip())
+    return re.sub(r'\s+', ' ', re.sub(r'[^a-z0-9 ]', ' ', t)).strip()  # D4 ajustada por D23: sin puntuación
 
 
 def hoja(wb, p, backup=False):

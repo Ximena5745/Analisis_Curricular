@@ -66,7 +66,7 @@ for f in sorted(glob.glob('data/raw/FORMATOS RA CICLO UNO RC/*.xlsx')):
             tp = tipo_saber(r[2])
             if tp:
                 reg_tipo[tp] += 1
-                vistos.setdefault(str(r[8]).strip().lower(), tp)  # clave D4
+                vistos.setdefault(norm(r[8]), tp)  # clave D4 (D23: sin puntuación)
     unico_tipo.update(vistos.values())
     wb.close()
 
@@ -220,7 +220,7 @@ FIGURAS = {
 }
 ENCABEZADO = re.compile(r'^((?:3\. Resultados)|(?:4\. Discusión)|(?:R\d+\. [^.]*?\((?:V[^)]*|modelos analíticos)\)))\.\s+(.*)$', re.S)
 
-for clave, bloques, estado in TXT.SECCIONES_RESULTADOS:
+for clave, bloques, estado in [('Procedimiento', TXT.PROCEDIMIENTO, '')] + TXT.SECCIONES_RESULTADOS:
     for b in bloques:
         if b[0] == 'p':
             m = ENCABEZADO.match(b[1])
@@ -238,8 +238,10 @@ for clave, bloques, estado in TXT.SECCIONES_RESULTADOS:
                 figura(*fig)
         elif b[0] == 't':
             tabla(b[1], b[2], b[3])
-        elif b[0] == 'n' and (b[1].startswith('Nota.') or b[1].startswith('¹')):
-            nota(b[1])
+        elif b[0] == 'n' and (b[1].startswith('Nota') or b[1].startswith('¹')):
+            nota('Nota. ' + b[1][5:].strip()[:1].upper() + b[1][5:].strip()[1:] if b[1].startswith('Nota:') else b[1])
+        elif b[0] == 'n' and b[1].startswith('Observación.'):
+            parrafo(b[1], sangria=False)
     for fig in FIGURAS.get(clave, []):
         figura(*fig)
 
