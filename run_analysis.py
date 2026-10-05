@@ -109,9 +109,12 @@ def process_single_program(
         cobertura_perfil = analizar_cobertura_perfil_completa(df_perfil, df_micro, df_ra)
 
         programa_nombre = data['metadata']['programa']
-        html_path = run_dir / 'reportes' / f'reporte_{programa_nombre}.html'
+        # Un informe por matriz programa-sede (P16): sin la sede, las matrices multisede se sobrescribían.
+        codigo_sede = data['metadata'].get('codigo_sede') or ''
+        base = f"reporte_{programa_nombre}_{codigo_sede}" if codigo_sede else f"reporte_{programa_nombre}"
+        html_path = run_dir / 'reportes' / f'{base}.html'
         generator.generate_html_report(data, indicadores, str(html_path))
-        json_path = run_dir / 'reportes' / f'reporte_{programa_nombre}.json'
+        json_path = run_dir / 'reportes' / f'{base}.json'
         generator.generate_json_report(data, indicadores, tematicas, str(json_path))
 
         print(f"    [OK] Completado - Score: {indicadores['score_calidad']}/100")

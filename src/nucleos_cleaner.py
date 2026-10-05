@@ -117,7 +117,9 @@ def limpiar_nucleo(texto: str) -> str:
 
 
 # Número de ítem al inicio de línea: "1. ", "2.", "3) ", "1.1 " (seguido de texto)
-_NUMERACION = re.compile(r'(?m)^\s*(\d+(?:\.\d+)*)[\.\)]?\s*(?=[^\d\s])')
+# Numeración al inicio de línea o tras dos o más espacios (celdas que separan los núcleos con espacios en lugar de
+# saltos de línea; ajuste D7b, 2026-10-04).
+_NUMERACION = re.compile(r'(?m)(?:^\s*|(?<=\S)\s{2,})(\d+(?:\.\d+)*)(?:[\.\)]\s*|\s*(?=[^\d\s]))(?=[^\d\s])')
 
 
 def tokenizar_nucleo_celda(texto_celda: str) -> List[str]:
@@ -125,10 +127,10 @@ def tokenizar_nucleo_celda(texto_celda: str) -> List[str]:
     Separa el contenido de una celda en núcleos temáticos individuales.
 
     Las matrices enumeran cada núcleo ("1. …", "2. …"). Se separa solo por esa
-    numeración al inicio de línea, de modo que un núcleo que ocupa varias
-    líneas o contiene comas se conserva como una unidad (decisión D7 de la
-    auditoría, 2026-10-02). Si la celda no está numerada, cada línea es un
-    núcleo.
+    numeración al inicio de línea o tras dos o más espacios (D7b), de modo que
+    un núcleo que ocupa varias líneas o contiene comas se conserva como una
+    unidad (decisión D7 de la auditoría, 2026-10-02). Si la celda no está
+    numerada, cada línea es un núcleo.
 
     Args:
         texto_celda: Texto crudo de la celda de núcleos temáticos
@@ -353,6 +355,45 @@ def detectar_anomalias_nucleos(
     resultado = pd.Series([False] * len(series), index=series.index)
     resultado.loc[limpios.index] = anomalo
     return resultado
+
+
+REGLAS_CONTROL_NUCLEOS = {
+    'varios_temas': 'Varios temas en un núcleo (≥ 2 «;» o numeración a mitad de línea)',
+    'igual_al_nombre': 'Repite el nombre de la asignatura',
+    'duplicado': 'Duplicado dentro de la misma asignatura',
+    'extension_atipica': 'Extensión atípica (palabras > Q3 + 1,5 × RIC del corpus)',
+}
+
+
+def _clave_nucleo(texto) -> str:
+    t = unicodedata.normalize('NFKD', str(texto)).encode('ascii', 'ignore').decode('ascii').lower()
+    return re.sub(r'\s+', ' ', re.sub(r'[^a-z0-9 ]', ' ', t)).strip()
+
+
+def control_nucleos_reglas(df: pd.DataFrame, col_asignatura: str = 'asignatura', col_nucleo: str = 'nucleo',
+                           col_grupo: Optional[str] = 'matriz') -> pd.DataFrame:
+    """
+    Control de calidad de núcleos temáticos con reglas explícitas y deterministas (sustituye a Isolation
+    Forest, que marcaba una cuota fija de núcleos legítimos). Señala para revisión; no excluye ni cambia conteos.
+
+    Args:
+        df: una fila por núcleo, con la asignatura y, opcionalmente, la matriz.
+
+    Returns:
+        df con una columna booleana por regla (REGLAS_CONTROL_NUCLEOS), 'palabras' y 'revisar'.
+    """
+    out = df.copy()
+    texto = out[col_nucleo].fillna('').astype(str)
+    clave = texto.map(_clave_nucleo)
+    out['palabras'] = texto.str.split().str.len()
+    q1, q3 = out['palabras'].quantile([0.25, 0.75])
+    out['varios_temas'] = (texto.str.count(';') >= 2) | (texto.str.count(r'(?:^|\s)(?:\d+[\.\)]|[a-z]\))\s') >= 2)
+    out['igual_al_nombre'] = clave == out[col_asignatura].map(_clave_nucleo)
+    grupo = [c for c in (col_grupo, col_asignatura) if c and c in out.columns]
+    out['duplicado'] = out.assign(_k=clave).duplicated(grupo + ['_k'], keep=False)
+    out['extension_atipica'] = out['palabras'] > q3 + 1.5 * (q3 - q1)
+    out['revisar'] = out[list(REGLAS_CONTROL_NUCLEOS)].any(axis=1)
+    return out
 
 
 if __name__ == '__main__':
