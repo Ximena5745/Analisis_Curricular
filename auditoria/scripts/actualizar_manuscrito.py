@@ -107,6 +107,66 @@ for e in s_hijos[s_ini:s_fin]:
     elif re.match(r'^R8\.\d ', t):
         ESTILO[id(e)] = 'Heading 3'
 id_estilo = {n: M.styles[n].style_id for n in ('Heading 1', 'Heading 2', 'Heading 3')}
+def formato_tabla_manuscrito(tbl):
+    """Formato directo de las tablas del manuscrito: bordes simples; encabezado #002060 en blanco y negrita, centrado;
+    cuerpo blanco; fila «Total» #A6C9EC en negrita; Times New Roman 10 pt (el estilo TableGrid no existe allí)."""
+    tblPr = tbl.find(qn('w:tblPr'))
+    for x in list(tblPr):
+        if x.tag in (qn('w:tblStyle'), qn('w:tblW'), qn('w:tblBorders')):
+            tblPr.remove(x)
+    tblPr.insert(0, tblPr.makeelement(qn('w:tblW'), {qn('w:w'): '5000', qn('w:type'): 'pct'}))
+    for i, tr in enumerate(tbl.findall(qn('w:tr'))):
+        tcs = tr.findall(qn('w:tc'))
+        primera = ''.join(t.text or '' for t in tcs[0].iter(qn('w:t'))).strip() if tcs else ''
+        tipo = 'cab' if i == 0 else ('total' if primera == 'Total' else 'cuerpo')
+        fondo, color, negrita = {'cab': ('002060', 'FFFFFF', True), 'total': ('A6C9EC', '000000', True),
+                                 'cuerpo': ('FFFFFF', '000000', False)}[tipo]
+        for tc in tcs:
+            tcPr = tc.find(qn('w:tcPr'))
+            if tcPr is None:
+                tcPr = tc.makeelement(qn('w:tcPr'), {})
+                tc.insert(0, tcPr)
+            for x in list(tcPr):
+                if x.tag in (qn('w:tcBorders'), qn('w:shd'), qn('w:vAlign')):
+                    tcPr.remove(x)
+            bordes = tcPr.makeelement(qn('w:tcBorders'), {})
+            for lado in ('top', 'left', 'bottom', 'right'):
+                bordes.append(bordes.makeelement(qn(f'w:{lado}'), {qn('w:val'): 'single', qn('w:sz'): '4',
+                                                                   qn('w:space'): '0', qn('w:color'): 'auto'}))
+            tcPr.append(bordes)
+            tcPr.append(tcPr.makeelement(qn('w:shd'), {qn('w:val'): 'clear', qn('w:color'): '000000', qn('w:fill'): fondo}))
+            tcPr.append(tcPr.makeelement(qn('w:vAlign'), {qn('w:val'): 'center'}))
+            for p in tc.findall(qn('w:p')):
+                if tipo == 'cab':
+                    pPr = p.find(qn('w:pPr'))
+                    if pPr is None:
+                        pPr = p.makeelement(qn('w:pPr'), {})
+                        p.insert(0, pPr)
+                    for x in pPr.findall(qn('w:jc')):
+                        pPr.remove(x)
+                    jc = pPr.makeelement(qn('w:jc'), {qn('w:val'): 'center'})
+                    rpr_p = pPr.find(qn('w:rPr'))
+                    (rpr_p.addprevious if rpr_p is not None else pPr.append)(jc)  # jc va antes de rPr
+                for r in p.findall(qn('w:r')):
+                    viejo = r.find(qn('w:rPr'))
+                    cursiva = viejo is not None and viejo.find(qn('w:i')) is not None
+                    if viejo is not None:
+                        r.remove(viejo)
+                    rPr = r.makeelement(qn('w:rPr'), {})  # orden del esquema: rFonts, b, bCs, i, iCs, color, sz, szCs
+                    rPr.append(rPr.makeelement(qn('w:rFonts'), {qn('w:ascii'): 'Times New Roman', qn('w:hAnsi'): 'Times New Roman',
+                                                                qn('w:eastAsia'): 'Times New Roman', qn('w:cs'): 'Times New Roman'}))
+                    if negrita:
+                        rPr.append(rPr.makeelement(qn('w:b'), {}))
+                        rPr.append(rPr.makeelement(qn('w:bCs'), {}))
+                    if cursiva:
+                        rPr.append(rPr.makeelement(qn('w:i'), {}))
+                        rPr.append(rPr.makeelement(qn('w:iCs'), {}))
+                    rPr.append(rPr.makeelement(qn('w:color'), {qn('w:val'): color}))
+                    rPr.append(rPr.makeelement(qn('w:sz'), {qn('w:val'): '20'}))
+                    rPr.append(rPr.makeelement(qn('w:szCs'), {qn('w:val'): '20'}))
+                    r.insert(0, rPr)
+
+
 doc_pr = 5000
 n_img = 0
 for e in s_hijos[s_ini:s_fin]:
@@ -125,6 +185,8 @@ for e in s_hijos[s_ini:s_fin]:
             for x in list(r):
                 if x.tag in (qn('w:rFonts'), qn('w:sz'), qn('w:b')):
                     r.remove(x)
+    if nuevo.tag == qn('w:tbl'):
+        formato_tabla_manuscrito(nuevo)
     for blip in nuevo.iter(qn('a:blip')):
         rid = blip.get(qn('r:embed'))
         parte = S.part.related_parts[rid]
