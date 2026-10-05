@@ -24,6 +24,18 @@ from config import OUTPUT_FOLDER, TEMPLATES_DIR
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Logo institucional: se incrusta si existe el archivo (no se distribuye con el código).
+LOGO_PATH = Path(__file__).parent.parent / 'assets' / 'logo_poli.png'
+
+
+def _logo_html() -> str:
+    if not LOGO_PATH.exists():
+        return ''
+    import base64
+    datos = base64.b64encode(LOGO_PATH.read_bytes()).decode('ascii')
+    tipo = 'svg+xml' if LOGO_PATH.suffix.lower() == '.svg' else LOGO_PATH.suffix.lower().lstrip('.')
+    return f'<img class="logo" src="data:image/{tipo};base64,{datos}" alt="Politécnico Grancolombiano">'
+
 
 def convert_to_native_types(obj: Any) -> Any:
     """
@@ -78,7 +90,9 @@ class ReportGenerator:
     def generate_html_report(self, programa_data: Dict,
                             indicadores: Dict,
                             output_path: str,
-                            cobertura_perfil: Optional[Dict] = None) -> str:
+                            cobertura_perfil: Optional[Dict] = None,
+                            valoracion: Optional[List[Dict]] = None,
+                            n_referencia: Optional[int] = None) -> str:
         """
         Genera reporte HTML individual por programa.
 
@@ -86,12 +100,41 @@ class ReportGenerator:
             programa_data (Dict): Datos del programa
             indicadores (Dict): Indicadores calculados
             output_path (str): Ruta de salida del HTML
+            valoracion: filas de src.indicadores_articulo.valorar_matriz (valoración por criterios, D26)
+            n_referencia: número de matrices del conjunto con que se calcularon las medianas
 
         Returns:
             str: Ruta del archivo generado
         """
         programa = programa_data['metadata']['programa']
+        meta = programa_data['metadata']
+        sede_txt = ' · '.join(x for x in (meta.get('codigo_sede'), meta.get('sede'), meta.get('modalidad')) if x)
         logger.info(f"Generando reporte HTML para {programa}")
+        logo_html = _logo_html()
+        color = {'Cumple': '#1FB2DE', 'Parcial': '#FBAF17', 'No cumple': '#EC0677'}
+        filas_val = ''.join(
+            f"<tr><td><strong>{v['Variable']}</strong></td><td>{v['Eslabón']}</td><td>{v['Criterio']}</td>"
+            f"<td>{v['Resultado']}</td><td><span class=\"estado\" style=\"background:{color.get(v['Estado'], '#8A94A0')}\">"
+            f"{v['Estado']}</span></td><td>{v['Referencia (mediana)']}</td></tr>"
+            for v in (valoracion or []))
+        conteo = {e: sum(v['Estado'] == e for v in (valoracion or [])) for e in color}
+        bloque_valoracion = f"""
+        <h2>✅ Valoración por criterios</h2>
+        <p>Cada eslabón de la cadena de evidencia se compara con la regla que exige la plantilla institucional.
+        <strong>Cumple</strong>: la regla se cumple en todos los casos; <strong>Parcial</strong>: en algunos;
+        <strong>No cumple</strong>: en ninguno. No hay puntaje compuesto ni pesos.</p>
+        <div class="metric"><div class="metric-value" style="color:#1FB2DE">{conteo['Cumple']}</div><div class="metric-label">Cumple</div></div>
+        <div class="metric"><div class="metric-value" style="color:#FBAF17">{conteo['Parcial']}</div><div class="metric-label">Parcial</div></div>
+        <div class="metric"><div class="metric-value" style="color:#EC0677">{conteo['No cumple']}</div><div class="metric-label">No cumple</div></div>
+        <table>
+            <thead><tr><th>Var.</th><th>Eslabón</th><th>Criterio</th><th>Resultado del programa</th><th>Estado</th>
+            <th>Mediana del conjunto{f' (n = {n_referencia})' if n_referencia else ''}</th></tr></thead>
+            <tbody>{filas_val}</tbody>
+        </table>
+        <p style="color:#5B6B7A;font-size:0.9em">La mediana del conjunto procesado solo sitúa al programa; no define el
+        estado. V1 se calcula con el método de asociación del perfil (propuesta pendiente de validación por el comité
+        curricular).</p>
+""" if valoracion else ''
 
         # Construir HTML
         html_content = f"""
@@ -101,32 +144,46 @@ class ReportGenerator:
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Reporte Curricular - {programa}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
+        /* Paleta institucional Politécnico Grancolombiano */
+        :root {{ --navy: #0F385A; --azul: #1FB2DE; --cian: #42F2F2; --dorado: #FBAF17; --magenta: #EC0677;
+                 --gris: #5B6B7A; --fondo: #F2F6F9; --linea: #D9E3EA; }}
         body {{
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 40px;
-            background-color: #f5f5f5;
+            font-family: 'Montserrat', 'Segoe UI', Arial, sans-serif;
+            margin: 0;
+            background-color: var(--fondo);
+            color: var(--navy);
         }}
+        .banda {{
+            background: linear-gradient(90deg, var(--navy) 0%, #14507F 100%);
+            color: white;
+            padding: 22px 40px;
+            border-bottom: 5px solid var(--dorado);
+        }}
+        .banda {{ display: flex; align-items: center; gap: 24px; }}
+        .banda .logo {{ height: 56px; background: white; padding: 6px 10px; border-radius: 6px; }}
+        .estado {{ color: white; font-weight: 700; padding: 3px 10px; border-radius: 12px; font-size: 0.85em; white-space: nowrap; }}
+        .banda .inst {{ font-size: 0.85em; letter-spacing: 0.08em; text-transform: uppercase; color: var(--cian); }}
+        .banda h1 {{ margin: 6px 0 0; font-size: 1.6em; }}
         .container {{
             max-width: 1200px;
-            margin: 0 auto;
+            margin: 30px auto;
             background-color: white;
-            padding: 30px;
+            padding: 30px 40px;
             border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }}
-        h1 {{
-            color: #2c3e50;
-            border-bottom: 3px solid #3498db;
-            padding-bottom: 10px;
+            box-shadow: 0 2px 10px rgba(15,56,90,0.12);
         }}
         h2 {{
-            color: #34495e;
-            margin-top: 30px;
+            color: var(--navy);
+            margin-top: 34px;
+            padding-left: 12px;
+            border-left: 5px solid var(--azul);
         }}
         .metric {{
             display: inline-block;
-            background-color: #ecf0f1;
+            background-color: var(--fondo);
+            border-top: 4px solid var(--azul);
             padding: 15px 25px;
             margin: 10px;
             border-radius: 5px;
@@ -134,12 +191,12 @@ class ReportGenerator:
         }}
         .metric-value {{
             font-size: 2em;
-            font-weight: bold;
-            color: #3498db;
+            font-weight: 700;
+            color: var(--navy);
         }}
         .metric-label {{
             font-size: 0.9em;
-            color: #7f8c8d;
+            color: var(--gris);
         }}
         table {{
             width: 100%;
@@ -149,51 +206,53 @@ class ReportGenerator:
         th, td {{
             padding: 12px;
             text-align: left;
-            border-bottom: 1px solid #ddd;
+            border-bottom: 1px solid var(--linea);
         }}
         th {{
-            background-color: #3498db;
+            background-color: var(--navy);
             color: white;
         }}
+        tr:nth-child(even) td {{ background-color: #F8FBFD; }}
         .progress-bar {{
-            background-color: #ecf0f1;
+            background-color: var(--linea);
             border-radius: 5px;
             height: 25px;
             position: relative;
             margin: 10px 0;
         }}
         .progress-fill {{
-            background-color: #3498db;
+            background-color: var(--azul);
             height: 100%;
             border-radius: 5px;
             display: flex;
             align-items: center;
             padding-left: 10px;
             color: white;
-            font-weight: bold;
+            font-weight: 700;
         }}
         .footer {{
             margin-top: 40px;
             padding-top: 20px;
-            border-top: 1px solid #ddd;
+            border-top: 3px solid var(--dorado);
             text-align: center;
-            color: #7f8c8d;
+            color: var(--gris);
             font-size: 0.9em;
         }}
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>📊 Reporte de Análisis Curricular</h1>
-        <h2>{programa}</h2>
-        <p><strong>Fecha de generación:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
-
-        <h2>🎯 Score General de Calidad</h2>
-        <div class="metric">
-            <div class="metric-value">{indicadores['score_calidad']}/100</div>
-            <div class="metric-label">Score de Calidad</div>
+    <div class="banda">
+        {logo_html}
+        <div>
+            <div class="inst">Politécnico Grancolombiano · Análisis Microcurricular</div>
+            <h1>Reporte de Análisis Curricular</h1>
         </div>
+    </div>
+    <div class="container">
+        <h2>{programa}{' — ' + sede_txt if sede_txt else ''}</h2>
+        <p><strong>Archivo:</strong> {meta.get('archivo', '')} · <strong>Fecha de generación:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
 
+{bloque_valoracion}
         <h2>📈 Resumen del Programa</h2>
         <div class="metric">
             <div class="metric-value">{indicadores['resumen']['total_competencias']}</div>
@@ -230,7 +289,7 @@ class ReportGenerator:
             </div>
         </div>
 
-        <h2>🧠 Complejidad Cognitiva (Taxonomía de Bloom)</h2>
+        <h2>🧠 Exigencia de los resultados de aprendizaje (Bloom y BAK, escala común 1–6)</h2>
         <p><strong>Básico:</strong> {indicadores['complejidad_cognitiva']['Básico']}%</p>
         <p><strong>Intermedio:</strong> {indicadores['complejidad_cognitiva']['Intermedio']}%</p>
         <p><strong>Avanzado:</strong> {indicadores['complejidad_cognitiva']['Avanzado']}%</p>
@@ -260,9 +319,9 @@ class ReportGenerator:
         html_content += """
             </tbody>
         </table>
-
-        <h2>📋 Cobertura del Perfil de Egreso</h2>
-""" if cobertura_perfil else ''
+"""
+        if cobertura_perfil:
+            html_content += "\n        <h2>📋 Cobertura del Perfil de Egreso</h2>\n"
 
         if cobertura_perfil:
             html_content += f"""

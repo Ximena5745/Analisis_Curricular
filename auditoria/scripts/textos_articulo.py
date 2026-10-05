@@ -73,11 +73,19 @@ ETAPA_2 = [
 ]
 
 ETAPA_3 = [
-    ('p', 'Etapa 3. Calidad del diseño. Cada programa recibe un puntaje de 0 a 100 que pondera la exigencia de sus resultados de '
-          'aprendizaje (40 %), el equilibrio entre tipos de saber (30 %) y la variedad de estrategias didácticas (30 %). La completitud '
-          'de la matriz y la proporción de competencias con resultados de aprendizaje asociados se verificaron en todos los programas '
-          '(100 % en las 50 matrices); como el formato de la matriz garantiza su cumplimiento, se reportan como condiciones verificadas '
-          'y no intervienen en el puntaje.'),
+    ('p', 'Etapa 3. Valoración por criterios. Cada matriz se valora eslabón por eslabón de la cadena de evidencia contra la '
+          'regla que exige la propia plantilla institucional: todo atributo del perfil respaldado en competencias, RA y '
+          'asignaturas (V1); ningún verbo repetido entre competencias específicas (V2); todo RA con verbo observable y finalidad '
+          '(V3); todo RA vinculado a una estrategia mesocurricular con instrumento (V4), y cada estrategia con al menos un '
+          'indicador y un instrumento (V5; Paso 4). El estado es Cumple si la regla se cumple en todos los casos, Parcial si se '
+          'cumple en algunos y No cumple si no se cumple en ninguno, de modo que la valoración se refiere a un criterio y no a la '
+          'posición del programa en el grupo (Glaser, 1963). No se construye un puntaje compuesto: sin una línea base '
+          'institucional, los pesos y las normalizaciones de un índice serían arbitrarios. La mediana del conjunto se informa '
+          'solo como referencia descriptiva. La completitud de la matriz y la proporción de competencias con resultados de '
+          'aprendizaje asociados se verificaron en todos los programas (100 % en las 50 matrices) y se reportan como '
+          'condiciones verificadas. Se describen sin valorarse la exigencia de los resultados de aprendizaje, porque su nivel '
+          'adecuado depende del nivel de formación, y el nivel de evidencia de los indicadores (V5), porque la plantilla no '
+          'lo exige; para este se recomienda al menos un indicador de aprendizaje demostrado (N3) por estrategia.'),
     ('p', 'Para ubicar cada resultado de aprendizaje en una escala de exigencia, las matrices emplean dos taxonomías: Bloom en su '
           'versión clásica (48,5 % de los resultados de aprendizaje únicos) y una adaptación con aportes de Krathwohl (BAK, 51,5 %); '
           '26 de las 50 matrices combinan ambas. Las dos distinguen los dominios cognitivo, procedimental y actitudinal, pero solo BAK '
@@ -169,8 +177,19 @@ PROCEDIMIENTO = [
           'varios temas en un solo ítem (3), repiten el nombre de la asignatura (6), se duplican dentro de una misma asignatura '
           '(0) o tienen una extensión atípica, superior a Q3 + 1,5 × RIC del corpus (más de 14 palabras; 255; Tukey, 1977): en '
           'total, 264 núcleos (3,9 %).'),
-    ('p', 'Etapa 3. Calidad del diseño. Cada programa recibe un puntaje de 0 a 100 que pondera la exigencia de sus resultados de '
-          'aprendizaje (40 %), el equilibrio entre tipos de saber (30 %) y la variedad de estrategias didácticas (30 %).'),
+    ('p', 'Etapa 3. Valoración por criterios. Cada matriz se valora eslabón por eslabón de la cadena de evidencia contra la '
+          'regla que exige la propia plantilla institucional: todo atributo del perfil respaldado en competencias, RA y '
+          'asignaturas (V1); ningún verbo repetido entre competencias específicas (V2); todo RA con verbo observable y finalidad '
+          '(V3); todo RA vinculado a una estrategia mesocurricular con instrumento (V4), y cada estrategia con al menos un '
+          'indicador y un instrumento (V5; Paso 4). El estado es Cumple si la regla se cumple en todos los casos, Parcial si se '
+          'cumple en algunos y No cumple si no se cumple en ninguno, de modo que la valoración se refiere a un criterio y no a la '
+          'posición del programa en el grupo (Glaser, 1963). No se construye un puntaje compuesto: sin una línea base '
+          'institucional, los pesos y las normalizaciones de un índice serían arbitrarios. La mediana del conjunto se informa '
+          'solo como referencia descriptiva. La completitud de la matriz y la proporción de competencias con resultados de '
+          'aprendizaje asociados se verificaron en todos los programas (100 % en las 50 matrices) y se reportan como '
+          'condiciones verificadas. Se describen sin valorarse la exigencia de los resultados de aprendizaje, porque su nivel '
+          'adecuado depende del nivel de formación, y el nivel de evidencia de los indicadores (V5), porque la plantilla no '
+          'lo exige; para este se recomienda al menos un indicador de aprendizaje demostrado (N3) por estrategia.'),
     ('p', 'La exigencia de los resultados de aprendizaje se estableció mediante dos taxonomías: Bloom clásica (48,5 % de los '
           'resultados únicos) y una adaptación con aportes de Krathwohl (BAK, 51,5 %); 26 de las 50 matrices emplean ambas. Las dos '
           'contemplan los dominios cognitivo, procedimental y actitudinal, aunque BAK incorpora escalas diferenciadas para los dos '
@@ -205,8 +224,9 @@ PROCEDIMIENTO = [
           'rango evaluado (k = 5–30). Dado que LDA puede ser inestable con textos breves, los resultados se obtuvieron mediante el '
           'consenso de diez réplicas con semillas distintas. La estabilidad mejoró frente a un LDA simple: dos consensos '
           'independientes compartieron el 59 % de sus palabras principales, frente al 22 %.'),
-    ('p', 'Etapa 7. Reportes y consulta. Por cada programa se generan un archivo consolidado y un informe navegable; el aplicativo '
-          'CurriculoPoli permite filtrar los resultados por sede, nivel y programa (Tabla 6).'),
+    ('p', 'Etapa 7. Reportes y consulta. Por cada matriz programa-sede se generan un informe navegable (HTML), con la '
+          'valoración por criterios de la Etapa 3, y sus resultados en JSON; un archivo consolidado reúne los indicadores de todo '
+          'el corpus. El aplicativo CurriculoPoli permite filtrar los resultados por programa, sede, modalidad y nivel (Tabla 6).'),
     ('t', 'Tabla 6. Stack tecnológico', ['Componente', 'Tecnología', 'Momento de uso'],
      [['Lenguaje y datos', 'Python 3.10 (despliegue), pandas, numpy', 'Ejecución'],
       ['Procesamiento de texto', 'scikit-learn (TF-IDF, LDA), rank-bm25, spaCy, sentence-transformers',
@@ -662,7 +682,9 @@ DISCUSION = [
           'y los núcleos se registran en celdas combinadas sobre las filas de Saber, SaberHacer y SaberSer, y la lectura con pandas '
           'conserva el valor solo en la primera fila. Las rutinas originales no propagaban ese valor, por lo que los análisis por '
           'asignatura descartaban dos de cada tres registros; la auditoría incorporó la propagación y los resultados reportados ya la '
-          'aplican. El tercero es prospectivo: si la redacción de RA converge hacia los patrones que sugieren los modelos generativos, '
+          'aplican. Del mismo modo, 59 de las 1.757 asignaturas registran el semestre en números romanos (I, II), que el aplicativo '
+          'leía como faltantes (198 registros, 3,3 %); la lectura se normalizó, ningún resultado reportado depende del semestre y '
+          'unificar el formato en la plantilla evitaría el error. El tercero es prospectivo: si la redacción de RA converge hacia los patrones que sugieren los modelos generativos, '
           'los currículos podrían conservar coherencia formal y perder capacidad de diferenciación. Este estudio no lo evalúa; queda '
           'como hipótesis para seguimiento longitudinal.'),
 ]
@@ -675,6 +697,8 @@ REFERENCIAS_CAMBIOS = [
     ('p', 'Se retira: Liu, F. T., Ting, K. M., & Zhou, Z.-H. (2008). Isolation forest. En Proceedings of the 2008 Eighth IEEE '
           'International Conference on Data Mining (pp. 413–422). IEEE. https://doi.org/10.1109/ICDM.2008.17 — el detector no se '
           'ejecuta en el flujo (P21; ver Observaciones).'),
+    ('p', 'Se agrega: Glaser, R. (1963). Instructional technology and the measurement of learning outcomes: Some '
+          'questions. American Psychologist, 18(8), 519–521. https://doi.org/10.1037/h0049294'),
     ('p', 'Se agrega: Rahm, E., & Do, H. H. (2000). Data cleaning: Problems and current approaches. IEEE Data Engineering '
           'Bulletin, 23(4), 3–13.'),
     ('p', 'Se agrega: Tukey, J. W. (1977). Exploratory data analysis. Addison-Wesley.'),

@@ -65,6 +65,31 @@ def print_header():
     print(f"Fecha y hora: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
 
 
+def _cadena_matriz(file_path: Path) -> dict:
+    """V1–V5 y exigencia de una matriz con los métodos del artículo (src.asociacion_perfil, src.indicadores_articulo)."""
+    from src import asociacion_perfil as ap
+    from src import indicadores_articulo as ia
+    items = [i for i in ap.resumen_items(ap.asociar(str(file_path))) if i.get('evaluable', True)]
+    tres = sum(i['estado'] == 'Asociado en las tres capas' for i in items)
+    sin = sum(i['estado'] == 'Sin asociación' for i in items)
+    clave = ia.nombre_matriz(file_path.name)[0]
+    fila = ia.calcular_indicadores([(file_path.name, str(file_path))], v1={clave: (tres, len(items))})['por_matriz'][0]
+    exig = ia.calcular_exigencia([(file_path.name, str(file_path))])[0]['Índice de exigencia']
+    return {'fila': fila, 'sin_pct': round(100 * sin / len(items), 1) if items else None, 'exigencia': exig}
+
+
+def generar_informes_html(resultados: list, generator: ReportGenerator) -> None:
+    """Escribe el informe HTML de cada matriz con su valoración por criterios y las medianas del conjunto procesado."""
+    from src import indicadores_articulo as ia
+    ref = ia.referencias_conjunto([r['cadena']['fila'] for r in resultados],
+                                  {r['cadena']['fila']['Matriz']: r['cadena']['exigencia'] for r in resultados})
+    for r in resultados:
+        c = r['cadena']
+        valoracion = ia.valorar_matriz(c['fila'], c['sin_pct'], c['exigencia'], ref)
+        generator.generate_html_report(r['data'], r['indicadores'], r['html_path'], valoracion=valoracion,
+                                       n_referencia=ref['n'])
+
+
 def process_single_program(
     file_path: Path,
     detector: ThematicDetector,
@@ -112,12 +137,13 @@ def process_single_program(
         # Un informe por matriz programa-sede (P16): sin la sede, las matrices multisede se sobrescribían.
         codigo_sede = data['metadata'].get('codigo_sede') or ''
         base = f"reporte_{programa_nombre}_{codigo_sede}" if codigo_sede else f"reporte_{programa_nombre}"
-        html_path = run_dir / 'reportes' / f'{base}.html'
-        generator.generate_html_report(data, indicadores, str(html_path))
         json_path = run_dir / 'reportes' / f'{base}.json'
         generator.generate_json_report(data, indicadores, tematicas, str(json_path))
 
-        print(f"    [OK] Completado - Score: {indicadores['score_calidad']}/100")
+        # Cadena V1–V5 de la matriz (valoración por criterios, D26); el HTML se escribe al final, con las referencias
+        cadena = _cadena_matriz(file_path)
+
+        print(f"    [OK] Completado - V1 {cadena['fila'].get('V1 %')} %, V4 {cadena['fila'].get('V4 %')} %")
         print(f"       Temáticas: {len(tematicas['tematicas_presentes'])}")
         print(
             f"       Cobertura Perfil: {cobertura_perfil['cobertura_global']}% "
@@ -133,6 +159,8 @@ def process_single_program(
 
         return {
             'data': data,
+            'html_path': str(run_dir / 'reportes' / f'{base}.html'),
+            'cadena': cadena,
             'indicadores': indicadores,
             'tematicas': tematicas,
             'validacion': validacion,
@@ -183,6 +211,10 @@ def main():
         else:
             errors += 1
         print()
+
+    if all_results:
+        print("[HTML] Generando informes por matriz con valoración por criterios...")
+        generar_informes_html(all_results, generator)
 
     print("="*60)
     print("GENERANDO REPORTES CONSOLIDADOS")
@@ -263,17 +295,19 @@ def main():
     if all_results:
         print(f"   - Excel maestro: {run_dir / 'consolidado' / 'excel_maestro.xlsx'}")
 
-    if scores:
-        sorted_results = sorted(all_results, key=lambda x: x['indicadores']['score_calidad'], reverse=True)
-        print("\n[CHART] ESTADÍSTICAS GENERALES:")
-        print(f"   - Score promedio: {score_prom:.1f}/100")
-        print(f"   - Score máximo: {max(scores):.1f}/100")
-        print(f"   - Score mínimo: {min(scores):.1f}/100")
-        print("\n[TOP] TOP 5 PROGRAMAS (por Score de Calidad):")
-        for i, res in enumerate(sorted_results[:5], 1):
-            prog = res['data']['metadata']['programa']
-            sc = res['indicadores']['score_calidad']
-            print(f"   {i}. {prog}: {sc}/100")
+    if all_results:
+        # Valoración por criterios (D26): sin ranking ni puntaje compuesto; cuántas matrices cumplen cada criterio
+        from collections import Counter
+        from src import indicadores_articulo as ia
+        print("\n[CHART] VALORACIÓN POR CRITERIOS (matrices por estado):")
+        estados = Counter()
+        for r in all_results:
+            c = r['cadena']
+            for v in ia.valorar_matriz(c['fila'], c['sin_pct'], c['exigencia']):
+                if v['Variable'] != '—':
+                    estados[(v['Variable'], v['Estado'])] += 1
+        for v, eslabon, _ in ia.CRITERIOS:
+            print(f"   - {v} {eslabon}: " + ', '.join(f"{e} {estados[(v, e)]}" for e in ia.ESTADOS))
 
     print(f"\n[CLOCK] Duración total: {duracion:.0f}s")
     print(f"[*] Análisis completado — corrida ID={run_id}")

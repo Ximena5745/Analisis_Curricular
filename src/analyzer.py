@@ -535,6 +535,10 @@ class CurricularAnalyzer:
         Returns:
             float: Score de calidad (0-100)
         """
+        return self.desglose_score_calidad()['total']
+
+    def desglose_score_calidad(self) -> Dict:
+        """Componentes del score de calidad: valor de entrada, puntaje 0-100, peso, aporte y regla."""
         complejidad = self.calcular_complejidad_cognitiva()
         balance = self.calcular_balance_tipo_saber()
         diversidad = self.calcular_diversidad_metodologica()
@@ -543,15 +547,22 @@ class CurricularAnalyzer:
         score_complejidad = complejidad['indice_complejidad']
         score_balance = 100 - balance['desviacion_estandar'] * 5  # Menor desviación = mejor
         score_balance = max(0, min(100, score_balance))
-        score_diversidad = min(100, diversidad['num_estrategias_unicas'] * 8)  # 12+ estrategias = 100
+        score_diversidad = min(100, diversidad['num_estrategias_unicas'] * 8)  # 13+ estrategias = 100
 
-        score_total = (
-            score_complejidad * QUALITY_WEIGHTS['complejidad_cognitiva'] +
-            score_balance * QUALITY_WEIGHTS['balance_tipo_saber'] +
-            score_diversidad * QUALITY_WEIGHTS['diversidad_metodologica']
-        )
-
-        return round(score_total, 1)
+        componentes = [
+            ('Exigencia de los RA', f"nivel medio en escala 1–6 → índice {score_complejidad:.1f}",
+             score_complejidad, QUALITY_WEIGHTS['complejidad_cognitiva'],
+             'Índice = (nivel medio de los RA únicos − 1) / 5 × 100'),
+            ('Equilibrio de tipos de saber', f"desviación estándar {balance['desviacion_estandar']:.1f} puntos",
+             score_balance, QUALITY_WEIGHTS['balance_tipo_saber'],
+             '100 − 5 × desviación estándar de Saber, SaberHacer y SaberSer (0–100)'),
+            ('Variedad de estrategias', f"{diversidad['num_estrategias_unicas']} estrategias distintas",
+             score_diversidad, QUALITY_WEIGHTS['diversidad_metodologica'],
+             '8 puntos por estrategia distinta, máximo 100'),
+        ]
+        filas = [{'componente': c, 'entrada': e, 'puntaje': round(p, 1), 'peso': w, 'aporte': round(p * w, 1),
+                  'regla': r} for c, e, p, w, r in componentes]
+        return {'componentes': filas, 'total': round(sum(p * w for _, _, p, w, _ in componentes), 1)}
 
     def generar_reporte_indicadores(self) -> Dict:
         """
@@ -583,6 +594,7 @@ class CurricularAnalyzer:
         reporte = {
             'programa': self.programa_nombre,
             'score_calidad': self.calcular_score_calidad(),
+            'score_desglose': self.desglose_score_calidad(),
             'balance_tipo_saber': self.calcular_balance_tipo_saber(),
             'complejidad_cognitiva': self.calcular_complejidad_cognitiva(),
             'cobertura_competencias': self.calcular_cobertura_competencias(),
