@@ -866,6 +866,20 @@ def extract_modality_sede(filename):
     return {'modalidad': modalidad, 'sede': sede, 'codigo': codigo}
 
 
+_ROMANOS = {'I': 1, 'II': 2, 'III': 3, 'IV': 4, 'V': 5, 'VI': 6, 'VII': 7, 'VIII': 8, 'IX': 9, 'X': 10,
+            'XI': 11, 'XII': 12}
+
+
+def _normalizar_semestre(v):
+    """Semestre como entero: acepta 3, '3', '3.0' y números romanos ('III'); deja intacto lo no reconocible."""
+    if v is None or (isinstance(v, float) and pd.isna(v)):
+        return v
+    t = str(v).strip().upper()
+    if re.fullmatch(r'\d+(\.0+)?', t):
+        return int(float(t))
+    return _ROMANOS.get(t, v)
+
+
 def procesar_archivos(uploaded_files) -> pd.DataFrame:
     """Procesa archivos Excel subidos y consolida datos."""
     all_data = []
@@ -966,6 +980,9 @@ def procesar_archivos(uploaded_files) -> pd.DataFrame:
         return pd.DataFrame(), failed_files
 
     df_consolidado = pd.concat(all_data, ignore_index=True)
+    # Semestre en números romanos («I», «II»: 59 asignaturas del corpus) → número; antes se leían como faltantes
+    if 'Semestre' in df_consolidado.columns:
+        df_consolidado['Semestre'] = df_consolidado['Semestre'].map(_normalizar_semestre)
 
     # Derivar Nivel cuando no exista como columna explícita
     if 'Nivel' not in df_consolidado.columns:
@@ -3395,35 +3412,30 @@ def pagina_resumen_ejecutivo(df: pd.DataFrame, tendencias: Dict) -> None:
     # 1b. Semestres sin datos
     df_sem_num = df.copy()
     df_sem_num['Semestre_num'] = pd.to_numeric(df_sem_num['Semestre'], errors='coerce')
-    pct_sin_semestre = df_sem_num['Semestre_num'].isna().mean() * 100
-    if pct_sin_semestre > 20:
+    # Sin umbral: cualquier registro sin semestre reconocible se informa con su conteo (los romanos ya se normalizan)
+    n_sin_semestre = int(df_sem_num['Semestre_num'].isna().sum())
+    if n_sin_semestre:
         alertas.append({
             'Prioridad': 'Media',
             'Categoría': 'Completitud de datos',
-            'Hallazgo': f'{pct_sin_semestre:.0f}% de registros sin semestre numérico válido',
-            'Recomendación': 'Estandarizar el campo Semestre en los archivos Excel (usar números: 1, 2, 3…)'
+            'Hallazgo': (f'{n_sin_semestre} de {len(df_sem_num)} registros ({100 * n_sin_semestre / len(df_sem_num):.1f} %) '
+                         f'sin semestre reconocible'),
+            'Recomendación': 'Revisar el campo Semestre de esas asignaturas en el Paso 5 (valores vacíos o no numéricos).'
         })
 
-    # 1c. Tendencias globales ausentes
+    # 1c. Tendencias globales: no hay un mínimo de cobertura establecido, así que no se califican como «baja»;
+    # se presentan juntas, con sus conteos, como una recomendación de revisión (después de las alertas).
     resultados_tend = analizar_tendencias(df, tendencias)
-    if resultados_tend['ausentes']:
-        desc_ausentes = [tendencias[t]['descripcion'] for t in resultados_tend['ausentes'] if t in tendencias]
-        alertas.append({
-            'Prioridad': 'Alta',
-            'Categoría': 'Tendencias Globales',
-            'Hallazgo': f'{len(desc_ausentes)} tendencia(s) sin cobertura: {", ".join(desc_ausentes[:3])}{"…" if len(desc_ausentes) > 3 else ""}',
-            'Recomendación': 'Revisar si estas tendencias son relevantes para el perfil del egresado y actualizar los contenidos.'
-        })
-
-    # 1d. Tendencias con muy baja cobertura (<20%)
-    for tid, pct in resultados_tend['cobertura'].items():
-        if 0 < pct < 20 and tid in tendencias:
-            alertas.append({
-                'Prioridad': 'Baja',
-                'Categoría': 'Tendencias Globales',
-                'Hallazgo': f'Baja cobertura de **{tendencias[tid]["descripcion"]}** ({pct:.1f}%)',
-                'Recomendación': 'Solo unas pocas asignaturas abordan esta tendencia. Considerar ampliar su presencia.'
-            })
+    n_prog = df['Programa'].nunique()
+    tabla_tend = pd.DataFrame([{
+        'Tendencia': tendencias[tid]['descripcion'],
+        'Asignaturas': resultados_tend['asig_counts'].get(tid, 0),
+        '% de asignaturas': round(pct, 1),
+        'Programas': int((resultados_tend['matriz'][tid] > 0).sum()),
+    } for tid, pct in resultados_tend['cobertura'].items() if tid in tendencias])
+    if not tabla_tend.empty:
+        tabla_tend['% de programas'] = (100 * tabla_tend['Programas'] / n_prog).round(1) if n_prog else 0.0
+        tabla_tend = tabla_tend.sort_values(['% de asignaturas', 'Programas']).reset_index(drop=True)
 
     # 1e. Asignaturas sin núcleos temáticos
     # Las electivas no declaran núcleos propios (su contenido depende de la electiva elegida): no son brecha
@@ -3451,6 +3463,21 @@ def pagina_resumen_ejecutivo(df: pd.DataFrame, tendencias: Dict) -> None:
                 st.markdown(f"**💡 Recomendación:** {a['Recomendación']}")
     else:
         st.success("✅ No se detectaron alertas críticas en los programas analizados.")
+
+    if not tabla_tend.empty:
+        total_asig = resultados_tend['total_asigs']
+        ausentes = tabla_tend[tabla_tend['Asignaturas'] == 0]['Tendencia'].tolist()
+        st.markdown("### 💡 Recomendación: presencia de las tendencias globales")
+        with st.expander(f"{len(tabla_tend)} tendencias, de menor a mayor presencia en {total_asig} asignaturas y "
+                         f"{n_prog} programas", expanded=False):
+            st.markdown(
+                "No existe un mínimo institucional de cobertura, por lo que ninguna tendencia se califica como baja. "
+                "La tabla ordena las tendencias según su presencia para que el comité curricular decida cuáles "
+                "reforzar de acuerdo con el perfil de egreso de cada programa."
+                + (f" **Sin presencia:** {', '.join(ausentes)}." if ausentes else ""))
+            st.dataframe(tabla_tend, hide_index=True, width='stretch',
+                         column_config={'% de asignaturas': st.column_config.NumberColumn(format='%.1f %%'),
+                                        '% de programas': st.column_config.NumberColumn(format='%.1f %%')})
 
     # ── Sección 2: Fortalezas detectadas ───────────────────────────────────
     st.markdown("---")
@@ -4810,6 +4837,44 @@ def _indicadores_v1_v5(uploaded_files) -> Dict:
     return cache[firma]
 
 
+def _seccion_valoracion_criterios(res: Dict, uploaded_files) -> None:
+    """Valoración por criterios (D26): cada matriz contra la regla de la plantilla; sin puntaje ni pesos."""
+    from src import indicadores_articulo as ia
+    perfil = _asociacion_perfil_por_programa(uploaded_files)
+    sin_pct = {}
+    for p, r in perfil.items():
+        if 'error' not in r and len(r.get('items', [])):
+            ev = r['items'][r['items']['evaluable']]
+            sin_pct[p] = round(100 * (ev['capas_con_respaldo'] == 0).mean(), 1) if len(ev) else None
+    if 'exigencia' not in st.session_state:
+        st.session_state['exigencia'] = pd.DataFrame(ia.calcular_exigencia([(f.name, f) for f in uploaded_files]))
+        for f in uploaded_files:
+            f.seek(0)
+    exig = dict(zip(st.session_state['exigencia']['Matriz'], st.session_state['exigencia']['Índice de exigencia']))
+    ref = ia.referencias_conjunto(res['por_matriz'], exig)
+    val = {m['Matriz']: ia.valorar_matriz(m, sin_pct.get(m['Matriz']), exig.get(m['Matriz']), ref)
+           for m in res['por_matriz']}
+
+    st.subheader("Valoración por criterios")
+    st.caption("Cada eslabón se compara con la regla que exige la plantilla institucional. Cumple: en todos los "
+               "casos; Parcial: en algunos; No cumple: en ninguno. No hay puntaje compuesto ni pesos; la mediana del "
+               "conjunto cargado solo sitúa a cada matriz.")
+    filas = [{'Variable': f"{v['Variable']} {v['Eslabón']}", 'Estado': v['Estado']}
+             for vs in val.values() for v in vs if v['Variable'] != '—']
+    if filas:
+        conteo = pd.DataFrame(filas).value_counts().rename('Matrices').reset_index()
+        fig = px.bar(conteo, y='Variable', x='Matrices', color='Estado', orientation='h', text='Matrices',
+                     category_orders={'Estado': list(ia.ESTADOS),
+                                      'Variable': [f"{v} {e}" for v, e, _ in ia.CRITERIOS]},
+                     color_discrete_map={'Cumple': '#1FB2DE', 'Parcial': '#FBAF17', 'No cumple': '#EC0677',
+                                         'Sin dato': '#8A94A0'})
+        fig.update_layout(height=320, yaxis_title=None, xaxis_title='Matrices', legend_title=None,
+                          margin=dict(l=10, r=10, t=10, b=10))
+        st.plotly_chart(fig, width='stretch')
+    sel = st.selectbox("Ver la valoración de una matriz", list(val), key='val_matriz')
+    st.dataframe(pd.DataFrame(val[sel]), width='stretch', hide_index=True)
+
+
 def pagina_indicadores_articulo():
     """Indicadores V1–V5, cadena de evidencia y contrastes (R1–R7), calculados con los archivos cargados."""
     st.title("Indicadores de Coherencia y Trazabilidad (V1–V5)")
@@ -4863,6 +4928,8 @@ def pagina_indicadores_articulo():
     fig.update_layout(height=60 * len(cadena) + 80, xaxis=dict(range=[0, 125], ticksuffix=' %'),
                       margin=dict(l=10, r=10, t=10, b=10), plot_bgcolor='white')
     st.plotly_chart(fig, width='stretch')
+
+    _seccion_valoracion_criterios(res, uploaded_files)
 
     st.subheader("Indicadores por matriz")
     df_m = pd.DataFrame(res['por_matriz'])
