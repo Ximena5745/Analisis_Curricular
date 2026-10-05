@@ -48,7 +48,7 @@ def sin_tildes(t):
     return unicodedata.normalize('NFKD', t).encode('ascii', 'ignore').decode()
 
 
-NUM = re.compile(r'(?m)^\s*(\d+(?:\.\d+)*)[\.\)]?\s*(?=[^\d\s])')
+NUM = re.compile(r'(?m)(?:^\s*|(?<=\S)\s{2,})(\d+(?:\.\d+)*)(?:[\.\)]\s*|\s*(?=[^\d\s]))(?=[^\d\s])')  # D7b
 
 
 def nucleos_por_numeracion(txt):

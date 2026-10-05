@@ -12,14 +12,14 @@ RESUMEN = [
           'aprendizaje únicos (deduplicados en cada matriz), 391 estrategias mesocurriculares declaradas, 1.757 registros de '
           'asignatura y 50 perfiles profesionales y 50 perfiles ocupacionales, analizados mediante cinco variables de coherencia '
           'y trazabilidad, minería de texto, modelado temático y contraste estadístico exploratorio. Resultados. La evaluabilidad '
-          'alcanzó [A7, pendiente] %, y el [A8, pendiente; recálculo de auditoría ≈ 86 %] % de los resultados de aprendizaje '
-          'presentó una ruta documentada hasta una estrategia con instrumento de evaluación. El 65,7 % de los 2.574 atributos del '
+          'alcanzó el 100 %, condición impuesta por la plantilla, y el 87,0 % de los resultados de aprendizaje '
+          'presentó una ruta documentada hasta una estrategia con instrumento de evaluación (98,0 % sin el RA genérico institucional). El 65,7 % de los 2.574 atributos del '
           'perfil se respaldó a la vez en competencias, RA y asignaturas, y el 3,8 % en ninguna de ellas (10,9 % en las poblaciones '
           'de actuación); el 9,4 % de las asignaturas '
           'homónimas mostró contenidos divergentes y la inteligencia artificial apareció en el 79,5 % de los programas, pero solo '
-          'en el 3,5 % de los registros de asignatura.'),
-    ('n', 'Las cifras entre corchetes siguen pendientes de la etapa de Resultados (A7, A8). El 3,5 % de IA usa la lista estricta '
-          'de términos con coincidencia de palabra completa sobre 1.757 registros; requiere confirmar la lista con la autora.'),
+          'en el 3,8 % de las asignaturas.'),
+    ('n', 'Cifras de IA según la lista oficial de 15 tendencias (D21) sobre las 1.616 asignaturas sin electivas (R8.2): 31 de 39 '
+          'programas y 62 asignaturas.'),
 ]
 
 CORPUS = [
@@ -46,8 +46,8 @@ CORPUS = [
           'en total). Las 391 estrategias declaradas se '
           'vinculan a los RA mediante 1.612 registros RA–estrategia.'),
     ('p', 'En el componente microcurricular se procesaron 1.757 registros de asignatura², correspondientes a 709 denominaciones '
-          'únicas (normalizadas sin distinguir mayúsculas, tildes ni puntuación). Las asignaturas declaran 6.671 núcleos temáticos, '
-          'identificados por la numeración con que cada matriz los enumera (2.815 únicos; mediana de 4 por asignatura). El modelo se '
+          'únicas (normalizadas sin distinguir mayúsculas, tildes ni puntuación). Las asignaturas declaran 6.684 núcleos temáticos, '
+          'identificados por la numeración con que cada matriz los enumera (2.828 únicos; mediana de 4 por asignatura). El modelo se '
           'aplica igual a ambos niveles de formación, aunque los resultados se diferencian porque propósitos, alcance y profundidad varían.'),
     ('n', '² Incluye 141 espacios electivos, cuyo contenido depende de la electiva elegida y que, por tanto, no declaran núcleos temáticos.'),
     ('p', 'Se incluyeron todas las matrices que habían completado los cinco pasos y contaban con autorización, y se excluyeron las '
@@ -61,11 +61,15 @@ CORPUS = [
 ETAPA_2 = [
     ('p', 'Etapa 2. Identificación de los núcleos temáticos. Cada asignatura declara sus núcleos temáticos como una lista numerada '
           'en texto libre. Los núcleos se separaron por su numeración, de modo que un núcleo que ocupa varias líneas o contiene comas '
-          'se conserva como unidad; en las cuatro celdas sin numeración se tomó cada línea como un núcleo. Se obtuvieron 6.671 núcleos '
-          '(2.815 únicos) en 1.616 asignaturas; un control de calidad (celdas vacías, solo números o texto de instrucciones de la '
+          'se conserva como unidad; en las cuatro celdas sin numeración se tomó cada línea como un núcleo. Se obtuvieron 6.684 núcleos '
+          '(2.828 únicos) en 1.616 asignaturas; un control de calidad (celdas vacías, solo números o texto de instrucciones de la '
           'plantilla) no identificó entradas inválidas. A los núcleos se les asigna un puntaje orientativo, no decisorio, que contrasta '
-          'vocabulario académico con vocabulario de formato, y un detector de valores atípicos señala núcleos anómalos frente al corpus '
-          '(Liu et al., 2008).'),
+          'vocabulario académico con vocabulario de formato. '
+          'Un control con reglas explícitas y deterministas, basado en la clasificación de problemas de calidad de datos de una '
+          'sola fuente (Rahm & Do, 2000), señala para revisión, sin excluirlos ni alterar los conteos, los núcleos que agrupan '
+          'varios temas en un solo ítem (3), repiten el nombre de la asignatura (6), se duplican dentro de una misma asignatura '
+          '(0) o tienen una extensión atípica, superior a Q3 + 1,5 × RIC del corpus (más de 14 palabras; 255; Tukey, 1977): en '
+          'total, 264 núcleos (3,9 %).'),
 ]
 
 ETAPA_3 = [
@@ -155,11 +159,16 @@ PROCEDIMIENTO = [
       ['Paso 5', 'Estrategias microcurriculares', 'Asignatura, Núcleos temáticos, Créditos, Actividades']]),
     ('p', 'Etapa 2. Depuración de los temas declarados. Cada asignatura declara sus núcleos temáticos como una lista numerada en '
           'texto libre. Los núcleos se separaron por su numeración, de modo que un núcleo que ocupa varias líneas o contiene comas se '
-          'conserva como unidad; en las cuatro celdas sin numeración se tomó cada línea como un núcleo. Se obtuvieron 6.671 núcleos '
-          '(2.815 únicos) en 1.616 asignaturas; un control de calidad (celdas vacías, solo números o texto de instrucciones de la '
+          'conserva como unidad; en las cuatro celdas sin numeración se tomó cada línea como un núcleo. Se obtuvieron 6.684 núcleos '
+          '(2.828 únicos) en 1.616 asignaturas; un control de calidad (celdas vacías, solo números o texto de instrucciones de la '
           'plantilla) no identificó entradas inválidas.'),
     ('p', 'A los temas retenidos se les asigna un puntaje orientativo, no decisorio, que contrasta vocabulario académico con '
-          'vocabulario de formato, y un detector de valores atípicos señala temas anómalos frente al corpus (Liu et al., 2008).'),
+          'vocabulario de formato. '
+          'Un control con reglas explícitas y deterministas, basado en la clasificación de problemas de calidad de datos de una '
+          'sola fuente (Rahm & Do, 2000), señala para revisión, sin excluirlos ni alterar los conteos, los núcleos que agrupan '
+          'varios temas en un solo ítem (3), repiten el nombre de la asignatura (6), se duplican dentro de una misma asignatura '
+          '(0) o tienen una extensión atípica, superior a Q3 + 1,5 × RIC del corpus (más de 14 palabras; 255; Tukey, 1977): en '
+          'total, 264 núcleos (3,9 %).'),
     ('p', 'Etapa 3. Calidad del diseño. Cada programa recibe un puntaje de 0 a 100 que pondera la exigencia de sus resultados de '
           'aprendizaje (40 %), el equilibrio entre tipos de saber (30 %) y la variedad de estrategias didácticas (30 %).'),
     ('p', 'La exigencia de los resultados de aprendizaje se estableció mediante dos taxonomías: Bloom clásica (48,5 % de los '
@@ -199,17 +208,40 @@ PROCEDIMIENTO = [
     ('p', 'Etapa 7. Reportes y consulta. Por cada programa se generan un archivo consolidado y un informe navegable; el aplicativo '
           'CurriculoPoli permite filtrar los resultados por sede, nivel y programa (Tabla 6).'),
     ('t', 'Tabla 6. Stack tecnológico', ['Componente', 'Tecnología', 'Momento de uso'],
-     [['Lenguaje y datos', 'Python 3.10 ❓, pandas, numpy', 'Ejecución'],
-      ['Procesamiento de texto', 'scikit-learn (TF-IDF, LDA, Isolation Forest), rank-bm25, spaCy, sentence-transformers',
+     [['Lenguaje y datos', 'Python 3.10 (despliegue), pandas, numpy', 'Ejecución'],
+      ['Procesamiento de texto', 'scikit-learn (TF-IDF, LDA), rank-bm25, spaCy, sentence-transformers',
        'Ejecución'],
       ['Estadística', 'scipy.stats', 'Ejecución'],
       ['Visualización', 'plotly, streamlit', 'Ejecución'],
-      ['IA generativa', 'Claude Sonnet ❓', 'Solo diseño y construcción']]),
-    ('n', 'Nota. ❓ Pendiente de confirmar por la autora: la versión de Python de la corrida final (el entorno de auditoría usa '
-          '3.14) y el modelo de IA generativa empleado.'),
+      ['IA generativa', 'Claude (Anthropic)', 'Solo diseño y construcción']]),
+    ('n', 'Nota. Versión de Python según la imagen de despliegue y la integración continua del proyecto. La integración de IA '
+          'generativa en ejecución (claude-3-5-sonnet-20241022) existe en el código y está desactivada.'),
     ('p', 'El código, las versiones de bibliotecas, semillas, parámetros, diccionarios, umbrales y reglas de preprocesamiento están '
-          'documentados y la estructuración generativa de las matrices es trazable mediante el registro de entradas, salidas y '
-          'decisiones humanas.'),
+          'documentados en el repositorio del proyecto.'),
+]
+
+# Observaciones al final del documento: textos retirados del Procedimiento por no estar respaldados en el proyecto.
+OBSERVACIONES = [
+    ('h2', 'Observaciones'),
+    ('p', 'Se retiraron del Procedimiento los siguientes textos, porque el proyecto no los respalda. Pueden reincorporarse si se '
+          'aporta el soporte indicado.'),
+    ('p', '1. Etapa 2: «y un detector de valores atípicos señala temas anómalos frente al corpus (Liu et al., 2008)», y '
+          '«Isolation Forest» en la Tabla 6. La función existe (src/nucleos_cleaner.detectar_anomalias_nucleos), pero ningún '
+          'script ni el aplicativo la ejecutan, por lo que ningún resultado procede de ella (P21). Se retira también la referencia: '
+          'Liu, F. T., Ting, K. M., & Zhou, Z.-H. (2008). Isolation forest. En Proceedings of the 2008 Eighth IEEE International '
+          'Conference on Data Mining (pp. 413–422). IEEE. https://doi.org/10.1109/ICDM.2008.17. En una prueba sobre los 6.671 '
+          'núcleos de la lectura anterior (D7), el detector marcó siempre la cuota fijada por su parámetro de contaminación (997 con 0,15), con temas '
+          'académicos legítimos y extensos. Se sustituyó por el control con reglas explícitas descrito en la Etapa 2 '
+          '(src/nucleos_cleaner.control_nucleos_reglas).'),
+    ('p', '2. Cierre del Procedimiento: «y la estructuración generativa de las matrices es trazable mediante el registro de '
+          'entradas, salidas y decisiones humanas». El registro no está en el repositorio (P20). Para reincorporarlo: aportar el '
+          'registro como material suplementario.'),
+    ('p', '3. Tabla 6: la versión de Python se acota a «3.10 (despliegue)», que es la que fijan el Dockerfile y la integración '
+          'continua. La corrida de los resultados pudo hacerse en el entorno local (3.12.7), y las versiones exactas de las '
+          'bibliotecas no están fijadas (P17). Para cerrarlo: regenerar los resultados en el entorno de despliegue y fijar las '
+          'versiones (pip freeze).'),
+    ('p', '4. Etapa 7: el nombre «CurriculoPoli» no coincide con el título del aplicativo en el código («Analisis Tematico '
+          'Microcurricular») (P22). Se mantiene en el texto hasta que se unifique.'),
 ]
 
 ETAPA_5 = [
@@ -617,10 +649,10 @@ DISCUSION = [
           'El primero es el puntaje académico de los núcleos temáticos, que suma por términos de contenido (análisis, metodología, '
           'sistema) y por extensión del texto, y resta por términos de formato o secuencia (taller, exposición, salida de campo, '
           'introducción). No tiene canal hacia ninguna decisión: se calcula después de los filtros de validez, no alimenta V1–V5 y se '
-          'exporta solo como columna informativa; su umbral de 0,5 nunca se implementó y, aplicado, excluiría el 95,2 % de los 6.671 '
-          'núcleos (media 0,197). La auditoría retiró, además, el término práctica, que figuraba a la vez en ambas listas.'),
+          'exporta solo como columna informativa; su umbral de 0,5 nunca se implementó y, aplicado, excluiría el 95,2 % de los 6.684 '
+          'núcleos (media 0,196). La auditoría retiró, además, el término práctica, que figuraba a la vez en ambas listas.'),
     ('p', 'Sin embargo, el puntaje no es neutral respecto de la disciplina. Agrupados los 39 programas por campo amplio CINE-F 2013, '
-          'la mediana del puntaje por programa difiere entre campos (Kruskal-Wallis H = 19,71; gl = 7; p = 0,006; ε² = 0,41); la '
+          'la mediana del puntaje por programa difiere entre campos (Kruskal-Wallis H = 19,56; gl = 7; p = 0,007; ε² = 0,41); la '
           'mediana por campo va de 0,12 en Ciencias sociales, periodismo e información a 0,22 en Educación (Figura 7). El contraste es exploratorio —ocho '
           'campos, varios con dos o tres programas, y una asignación CINE-F pendiente de validación—, pero basta para descartar su uso '
           'como criterio de comparación entre programas. Debe eliminarse o, si se conserva, rediseñarse separando contenido y formato '
@@ -640,6 +672,12 @@ REFERENCIAS_CAMBIOS = [
     ('p', 'Se conserva: Robertson, S., & Zaragoza, H. (2009). The probabilistic relevance framework: BM25 and beyond. Foundations '
           'and Trends in Information Retrieval, 3(4), 333–389. https://doi.org/10.1561/1500000019 — la cita la medida '
           'complementaria de saberes y valor agregado (Etapa 4 del Procedimiento); no interviene en V1.'),
+    ('p', 'Se retira: Liu, F. T., Ting, K. M., & Zhou, Z.-H. (2008). Isolation forest. En Proceedings of the 2008 Eighth IEEE '
+          'International Conference on Data Mining (pp. 413–422). IEEE. https://doi.org/10.1109/ICDM.2008.17 — el detector no se '
+          'ejecuta en el flujo (P21; ver Observaciones).'),
+    ('p', 'Se agrega: Rahm, E., & Do, H. H. (2000). Data cleaning: Problems and current approaches. IEEE Data Engineering '
+          'Bulletin, 23(4), 3–13.'),
+    ('p', 'Se agrega: Tukey, J. W. (1977). Exploratory data analysis. Addison-Wesley.'),
     ('p', 'Se agrega: Cohen, J. (1960). A coefficient of agreement for nominal scales. Educational and Psychological Measurement, '
           '20(1), 37–46. https://doi.org/10.1177/001316446002000104'),
     ('p', 'Se agrega: Reimers, N., & Gurevych, I. (2020). Making monolingual sentence embeddings multilingual using knowledge '

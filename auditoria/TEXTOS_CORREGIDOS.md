@@ -1,12 +1,12 @@
 # Textos corregidos del artículo
 
-Versiones aprobadas por la autora durante la auditoría (verificación 2026-10-04 15:44). Las mismas están en el Word y en el Excel (hoja Textos_corregidos).
+Versiones aprobadas por la autora durante la auditoría (verificación 2026-10-04 18:50). Las mismas están en el Word y en el Excel (hoja Textos_corregidos).
 
 ## Resumen (versión corregida)
 
-Estudio aplicado de métodos mixtos sobre 50 matrices curriculares de 39 programas académicos: 338 resultados de aprendizaje únicos (deduplicados en cada matriz), 391 estrategias mesocurriculares declaradas, 1.757 registros de asignatura y 50 perfiles profesionales y 50 perfiles ocupacionales, analizados mediante cinco variables de coherencia y trazabilidad, minería de texto, modelado temático y contraste estadístico exploratorio. Resultados. La evaluabilidad alcanzó [A7, pendiente] %, y el [A8, pendiente; recálculo de auditoría ≈ 86 %] % de los resultados de aprendizaje presentó una ruta documentada hasta una estrategia con instrumento de evaluación. El 65,7 % de los 2.574 atributos del perfil se respaldó a la vez en competencias, RA y asignaturas, y el 3,8 % en ninguna de ellas (10,9 % en las poblaciones de actuación); el 9,4 % de las asignaturas homónimas mostró contenidos divergentes y la inteligencia artificial apareció en el 79,5 % de los programas, pero solo en el 3,5 % de los registros de asignatura.
+Estudio aplicado de métodos mixtos sobre 50 matrices curriculares de 39 programas académicos: 338 resultados de aprendizaje únicos (deduplicados en cada matriz), 391 estrategias mesocurriculares declaradas, 1.757 registros de asignatura y 50 perfiles profesionales y 50 perfiles ocupacionales, analizados mediante cinco variables de coherencia y trazabilidad, minería de texto, modelado temático y contraste estadístico exploratorio. Resultados. La evaluabilidad alcanzó el 100 %, condición impuesta por la plantilla, y el 87,0 % de los resultados de aprendizaje presentó una ruta documentada hasta una estrategia con instrumento de evaluación (98,0 % sin el RA genérico institucional). El 65,7 % de los 2.574 atributos del perfil se respaldó a la vez en competencias, RA y asignaturas, y el 3,8 % en ninguna de ellas (10,9 % en las poblaciones de actuación); el 9,4 % de las asignaturas homónimas mostró contenidos divergentes y la inteligencia artificial apareció en el 79,5 % de los programas, pero solo en el 3,8 % de las asignaturas.
 
-*Las cifras entre corchetes siguen pendientes de la etapa de Resultados (A7, A8). El 3,5 % de IA usa la lista estricta de términos con coincidencia de palabra completa sobre 1.757 registros; requiere confirmar la lista con la autora.*
+*Cifras de IA según la lista oficial de 15 tendencias (D21) sobre las 1.616 asignaturas sin electivas (R8.2): 31 de 39 programas y 62 asignaturas.*
 
 ## Corpus
 
@@ -27,7 +27,7 @@ Las fuentes son 50 matrices curriculares en Excel de 39 programas académicos, o
 
 *¹ Incluye tres licenciaturas. Los resultados de aprendizaje únicos se deduplican dentro de cada matriz, sin distinguir mayúsculas, tildes ni puntuación, porque un mismo RA se registra una vez por cada competencia a la que aporta (586 registros en total). Las 391 estrategias declaradas se vinculan a los RA mediante 1.612 registros RA–estrategia.*
 
-En el componente microcurricular se procesaron 1.757 registros de asignatura², correspondientes a 709 denominaciones únicas (normalizadas sin distinguir mayúsculas, tildes ni puntuación). Las asignaturas declaran 6.671 núcleos temáticos, identificados por la numeración con que cada matriz los enumera (2.815 únicos; mediana de 4 por asignatura). El modelo se aplica igual a ambos niveles de formación, aunque los resultados se diferencian porque propósitos, alcance y profundidad varían.
+En el componente microcurricular se procesaron 1.757 registros de asignatura², correspondientes a 709 denominaciones únicas (normalizadas sin distinguir mayúsculas, tildes ni puntuación). Las asignaturas declaran 6.684 núcleos temáticos, identificados por la numeración con que cada matriz los enumera (2.828 únicos; mediana de 4 por asignatura). El modelo se aplica igual a ambos niveles de formación, aunque los resultados se diferencian porque propósitos, alcance y profundidad varían.
 
 *² Incluye 141 espacios electivos, cuyo contenido depende de la electiva elegida y que, por tanto, no declaran núcleos temáticos.*
 
@@ -35,7 +35,7 @@ Se incluyeron todas las matrices que habían completado los cinco pasos y contab
 
 ## Procedimiento – Etapa 2
 
-Etapa 2. Identificación de los núcleos temáticos. Cada asignatura declara sus núcleos temáticos como una lista numerada en texto libre. Los núcleos se separaron por su numeración, de modo que un núcleo que ocupa varias líneas o contiene comas se conserva como unidad; en las cuatro celdas sin numeración se tomó cada línea como un núcleo. Se obtuvieron 6.671 núcleos (2.815 únicos) en 1.616 asignaturas; un control de calidad (celdas vacías, solo números o texto de instrucciones de la plantilla) no identificó entradas inválidas. A los núcleos se les asigna un puntaje orientativo, no decisorio, que contrasta vocabulario académico con vocabulario de formato, y un detector de valores atípicos señala núcleos anómalos frente al corpus (Liu et al., 2008).
+Etapa 2. Identificación de los núcleos temáticos. Cada asignatura declara sus núcleos temáticos como una lista numerada en texto libre. Los núcleos se separaron por su numeración, de modo que un núcleo que ocupa varias líneas o contiene comas se conserva como unidad; en las cuatro celdas sin numeración se tomó cada línea como un núcleo. Se obtuvieron 6.684 núcleos (2.828 únicos) en 1.616 asignaturas; un control de calidad (celdas vacías, solo números o texto de instrucciones de la plantilla) no identificó entradas inválidas. A los núcleos se les asigna un puntaje orientativo, no decisorio, que contrasta vocabulario académico con vocabulario de formato. Un control con reglas explícitas y deterministas, basado en la clasificación de problemas de calidad de datos de una sola fuente (Rahm & Do, 2000), señala para revisión, sin excluirlos ni alterar los conteos, los núcleos que agrupan varios temas en un solo ítem (3), repiten el nombre de la asignatura (6), se duplican dentro de una misma asignatura (0) o tienen una extensión atípica, superior a Q3 + 1,5 × RIC del corpus (más de 14 palabras; 255; Tukey, 1977): en total, 264 núcleos (3,9 %).
 
 ## Procedimiento – Etapa 3
 
@@ -364,9 +364,9 @@ Esta separación importa porque el currículo no es un documento neutro: define 
 
 ### 4.5 Riesgos latentes identificados en la auditoría
 
-La auditoría del procedimiento identificó tres riesgos que no alteran los resultados reportados, pero requieren control. El primero es el puntaje académico de los núcleos temáticos, que suma por términos de contenido (análisis, metodología, sistema) y por extensión del texto, y resta por términos de formato o secuencia (taller, exposición, salida de campo, introducción). No tiene canal hacia ninguna decisión: se calcula después de los filtros de validez, no alimenta V1–V5 y se exporta solo como columna informativa; su umbral de 0,5 nunca se implementó y, aplicado, excluiría el 95,2 % de los 6.671 núcleos (media 0,197). La auditoría retiró, además, el término práctica, que figuraba a la vez en ambas listas.
+La auditoría del procedimiento identificó tres riesgos que no alteran los resultados reportados, pero requieren control. El primero es el puntaje académico de los núcleos temáticos, que suma por términos de contenido (análisis, metodología, sistema) y por extensión del texto, y resta por términos de formato o secuencia (taller, exposición, salida de campo, introducción). No tiene canal hacia ninguna decisión: se calcula después de los filtros de validez, no alimenta V1–V5 y se exporta solo como columna informativa; su umbral de 0,5 nunca se implementó y, aplicado, excluiría el 95,2 % de los 6.684 núcleos (media 0,196). La auditoría retiró, además, el término práctica, que figuraba a la vez en ambas listas.
 
-Sin embargo, el puntaje no es neutral respecto de la disciplina. Agrupados los 39 programas por campo amplio CINE-F 2013, la mediana del puntaje por programa difiere entre campos (Kruskal-Wallis H = 19,71; gl = 7; p = 0,006; ε² = 0,41); la mediana por campo va de 0,12 en Ciencias sociales, periodismo e información a 0,22 en Educación (Figura 7). El contraste es exploratorio —ocho campos, varios con dos o tres programas, y una asignación CINE-F pendiente de validación—, pero basta para descartar su uso como criterio de comparación entre programas. Debe eliminarse o, si se conserva, rediseñarse separando contenido y formato pedagógico y validarse por campo antes de cualquier uso decisorio.
+Sin embargo, el puntaje no es neutral respecto de la disciplina. Agrupados los 39 programas por campo amplio CINE-F 2013, la mediana del puntaje por programa difiere entre campos (Kruskal-Wallis H = 19,56; gl = 7; p = 0,007; ε² = 0,41); la mediana por campo va de 0,12 en Ciencias sociales, periodismo e información a 0,22 en Educación (Figura 7). El contraste es exploratorio —ocho campos, varios con dos o tres programas, y una asignación CINE-F pendiente de validación—, pero basta para descartar su uso como criterio de comparación entre programas. Debe eliminarse o, si se conserva, rediseñarse separando contenido y formato pedagógico y validarse por campo antes de cualquier uso decisorio.
 
 *[Figura 7. Puntaje académico de los núcleos temáticos]*
 
@@ -387,6 +387,12 @@ Asignaturas compartidas: 159 asignaturas homónimas, de las cuales 15 (9,4 %) so
 ## Referencias – cambios por el método de V1
 
 Se conserva: Robertson, S., & Zaragoza, H. (2009). The probabilistic relevance framework: BM25 and beyond. Foundations and Trends in Information Retrieval, 3(4), 333–389. https://doi.org/10.1561/1500000019 — la cita la medida complementaria de saberes y valor agregado (Etapa 4 del Procedimiento); no interviene en V1.
+
+Se retira: Liu, F. T., Ting, K. M., & Zhou, Z.-H. (2008). Isolation forest. En Proceedings of the 2008 Eighth IEEE International Conference on Data Mining (pp. 413–422). IEEE. https://doi.org/10.1109/ICDM.2008.17 — el detector no se ejecuta en el flujo (P21; ver Observaciones).
+
+Se agrega: Rahm, E., & Do, H. H. (2000). Data cleaning: Problems and current approaches. IEEE Data Engineering Bulletin, 23(4), 3–13.
+
+Se agrega: Tukey, J. W. (1977). Exploratory data analysis. Addison-Wesley.
 
 Se agrega: Cohen, J. (1960). A coefficient of agreement for nominal scales. Educational and Psychological Measurement, 20(1), 37–46. https://doi.org/10.1177/001316446002000104
 

@@ -1,17 +1,16 @@
 # Pendientes por definir (inicio de la etapa de Resultados)
 
-Generado por auditoria/scripts/generar_entregables.py (2026-10-04 15:44). También en el Excel (hoja Pendientes) y en el Word.
+Generado por auditoria/scripts/generar_entregables.py (2026-10-04 18:50). También en el Excel (hoja Pendientes) y en el Word.
 
 | ID | Tema | Etapa | Qué falta definir |
 |---|---|---|---|
 | C12 | Validación de V1 fuera de la muestra | Método | El 80,1 % es acuerdo dentro de la muestra con una referencia asistida por IAg (40 de 429 ítems revisados). Validar con el comité sobre matrices no usadas en la calibración. |
 | C25 | Concordancia entre jueces de V5 | Método | Segunda codificación de las 170 redacciones y κ. Tres indicadores N2 con componente de logro podrían ser N3 (V5 ≈ 1,5 %). |
 | Tabla 16 | Tópicos del análisis temático | Resultados | Re-estimar con el LDA de consenso (k = 13; consolidado/topicos_lda.xlsx al correr run_analysis.py). Nota: el tópico 1 (mercadeo, comunicación, planeación) es dominante en 330 de 1.192 asignaturas y el tópico 11 en ninguna; confianza media 0,42. |
-| A11 | IA en 79,5 % de los programas y 3,3 % de los registros | Resultados | Búsqueda por palabra completa ya corregida. Definir la base: con texto de RA 31/39; con núcleos + indicadores 32/39 y 86 de 1.616 asignaturas. |
 | V1–V5 | Tabla 2 (variables) | Variables | V1 cerrada (D13); V2 cerrada (D14 = 90 %); V3 cerrada (D15 = 100 %, estructural); V4 cerrada (D16 = 87,1 %; 98,0 % sin RA genérico); V5 definida (D17 = 0,8 % de estrategias con evidencia directa; falta kappa). Pendientes: V5 constante por estrategia. Luego regenerar la Figura 1 sin V1. |
 | P16 | Reportes por programa (Etapa 7) | Procedimiento | DECISIÓN: nombrar reporte_<Programa>_<Sede> (hoy 50 matrices → 39 informes por sobrescritura). Recomendado; no cambia cifras. |
 | P17 | Versión de Python y bibliotecas (Tabla 6) | Procedimiento | DECISIÓN: indicar el entorno de la corrida final (Docker 3.10, entorno local 3.12.7; la auditoría usó 3.14) y generar requirements con versiones exactas (pip freeze). |
-| P21 | Isolation Forest en la Tabla 6 | Procedimiento | DECISIÓN: no se usa (detectar_anomalias_nucleos no se invoca). Quitar de la Tabla 6 (recomendado) o integrarlo y describirlo en una etapa. |
+| P21 | Isolation Forest en la Tabla 6 | Procedimiento | RESUELTO (D24): Isolation Forest retirado de la Tabla 6; sustituido por control_nucleos_reglas (269 núcleos señalados, 4,0 %). Esta fila puede eliminarse. |
 | P20 | Registro de la estructuración generativa | Procedimiento | DECISIÓN: aportar el registro de entradas, salidas y decisiones humanas (fuera del repositorio) o eliminar la frase. |
 | P22 | Nombre del aplicativo "CurriculoPoli" | Procedimiento | CONFIRMAR: el código titula la app "Analisis Tematico Microcurricular". Añadir "modalidad" a los filtros del texto. |
 | P19 | Código documentado | Procedimiento | Falta versionar el cálculo de V3 y la fuente de las Tablas 16–17 originales; acotar la afirmación si no aparecen. |

@@ -196,7 +196,7 @@ def tabla(titulo_t, cab, filas, control=False):
 FIGURAS_EN_LINEA = {
     'Figura 7. Puntaje académico de los núcleos temáticos': [('auditoria/figuras/D_score_academico.png', 'Figura 7. Puntaje académico de los núcleos temáticos por campo CINE-F y distribución',
             'a. Núcleos por campo amplio CINE-F 2013 del programa (asignación propuesta, pendiente de validación). b. Distribución '
-            'de los 6.671 núcleos; línea discontinua: umbral 0,5, definido en la configuración y nunca implementado. '
+            'de los 6.684 núcleos; línea discontinua: umbral 0,5, definido en la configuración y nunca implementado. '
             'Fórmula vigente de src/nucleos_cleaner.calcular_score_academico.')],
     'Figura 6. Temas de agenda global: amplitud y profundidad': [('auditoria/figuras/R8_figura6_tendencias.png', 'Figura 6. Tendencias del sector empresarial y educativo: amplitud y profundidad',
             'Amplitud: programas con al menos una asignatura que menciona el tema (n = 39). Profundidad: asignaturas que lo mencionan '
@@ -220,7 +220,7 @@ FIGURAS = {
 }
 ENCABEZADO = re.compile(r'^((?:3\. Resultados)|(?:4\. Discusión)|(?:R\d+\. [^.]*?\((?:V[^)]*|modelos analíticos)\)))\.\s+(.*)$', re.S)
 
-for clave, bloques, estado in [('Procedimiento', TXT.PROCEDIMIENTO, '')] + TXT.SECCIONES_RESULTADOS:
+for clave, bloques, estado in [('Procedimiento', TXT.PROCEDIMIENTO, '')] + TXT.SECCIONES_RESULTADOS + [('Observaciones', TXT.OBSERVACIONES, '')]:
     for b in bloques:
         if b[0] == 'p':
             m = ENCABEZADO.match(b[1])
