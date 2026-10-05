@@ -204,10 +204,11 @@ FIGURAS_EN_LINEA = {
 }
 FIGURAS = {
     'R6': [('auditoria/figuras/R6_figura_distribucion_variables.png', 'Figura 5. Distribución de las variables V1–V5 por matriz',
-            'Cada punto es una matriz (n = 50); los puntos superpuestos se dispersan verticalmente. V1: atributos del perfil respaldados en las tres capas (Etapa 4).')],
-    'Intro': [('auditoria/figuras/R0_figura1_cadena_evidencia.png', 'Figura 1. Cadena de evidencia del logro en las matrices',
-               'Cada eslabón se calcula sobre su propia base (RA únicos, matrices o estrategias). Gris: condición impuesta por el '
-               'instrumento; azul: articulación; magenta: evidencia directa del logro. Fuente: Pasos 1 a 5 de las 50 matrices.')],
+            'Cada punto es una matriz (n = 50); los puntos superpuestos se dispersan verticalmente. V1: atributos del perfil con alineación en al menos una capa (Etapa 4).')],
+    'Intro': [('auditoria/figuras/R0_figura1_cadena_evidencia.png', 'Figura 1. Ruta de alineación curricular en las matrices',
+               'Cada tramo se calcula sobre su propia base (RA únicos, matrices o estrategias). Gris: condición impuesta por el '
+               'instrumento; azul: articulación. El nivel de evidencia de los indicadores (V5) no es un tramo de la ruta y se informa en '
+               'R5. Fuente: Pasos 1 a 5 de las 50 matrices.')],
     'R2': [(F3, 'Figura 2. Verbos más frecuentes en las competencias, por tipo de competencia',
             'N = 222 competencias. La competencia genérica institucional es «Analizar fenómenos contemporáneos». '
             'Fuente: Paso 2 de las 50 matrices.'),

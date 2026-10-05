@@ -21,7 +21,8 @@ d = v4.merge(v5, on='matriz')
 REP = {'Derecho_HMED', 'Derecho_VNAL', 'Ing.Telecomunicaciones_PBOG', 'IngSistemas_PBOG', 'IngSistemas_PMED'}
 d['V2'] = d['matriz'].map(lambda m: 0.0 if m in REP else 100.0)
 v1 = pd.read_excel('auditoria/Asociacion_perfil_50_matrices.xlsx', sheet_name='Resumen')
-d = d.merge(v1.rename(columns={'Matriz': 'matriz', '% tres capas': 'V1'})[['matriz', 'V1']], on='matriz')
+v1['V1'] = 100 - v1['% sin asociación']  # V1 = atributos con alineación en al menos una capa
+d = d.merge(v1.rename(columns={'Matriz': 'matriz'})[['matriz', 'V1']], on='matriz')
 d['V3'] = 100.0
 d = d.rename(columns={'V5_directa': 'V5'})
 

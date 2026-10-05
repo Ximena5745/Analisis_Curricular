@@ -113,21 +113,21 @@ class ReportGenerator:
         logo_html = _logo_html()
         color = {'Cumple': '#1FB2DE', 'Parcial': '#FBAF17', 'No cumple': '#EC0677'}
         filas_val = ''.join(
-            f"<tr><td><strong>{v['Variable']}</strong></td><td>{v['Eslabón']}</td><td>{v['Criterio']}</td>"
+            f"<tr><td><strong>{v['Variable']}</strong></td><td>{v['Tramo']}</td><td>{v['Criterio']}</td>"
             f"<td>{v['Resultado']}</td><td><span class=\"estado\" style=\"background:{color.get(v['Estado'], '#8A94A0')}\">"
             f"{v['Estado']}</span></td><td>{v['Referencia (mediana)']}</td></tr>"
             for v in (valoracion or []))
         conteo = {e: sum(v['Estado'] == e for v in (valoracion or [])) for e in color}
         bloque_valoracion = f"""
         <h2>✅ Valoración por criterios</h2>
-        <p>Cada eslabón de la cadena de evidencia se compara con la regla que exige la plantilla institucional.
+        <p>Cada tramo de la ruta de alineación curricular se compara con la regla que exige la plantilla institucional.
         <strong>Cumple</strong>: la regla se cumple en todos los casos; <strong>Parcial</strong>: en algunos;
         <strong>No cumple</strong>: en ninguno. No hay puntaje compuesto ni pesos.</p>
         <div class="metric"><div class="metric-value" style="color:#1FB2DE">{conteo['Cumple']}</div><div class="metric-label">Cumple</div></div>
         <div class="metric"><div class="metric-value" style="color:#FBAF17">{conteo['Parcial']}</div><div class="metric-label">Parcial</div></div>
         <div class="metric"><div class="metric-value" style="color:#EC0677">{conteo['No cumple']}</div><div class="metric-label">No cumple</div></div>
         <table>
-            <thead><tr><th>Var.</th><th>Eslabón</th><th>Criterio</th><th>Resultado del programa</th><th>Estado</th>
+            <thead><tr><th>Var.</th><th>Tramo</th><th>Criterio</th><th>Resultado del programa</th><th>Estado</th>
             <th>Mediana del conjunto{f' (n = {n_referencia})' if n_referencia else ''}</th></tr></thead>
             <tbody>{filas_val}</tbody>
         </table>

@@ -4519,6 +4519,7 @@ def _indicadores_perfil(items: pd.DataFrame) -> Dict:
             '% Competencias': round(100 * ev['Competencia'].mean(), 1),
             '% RA': round(100 * ev['RA'].mean(), 1),
             '% Asignaturas': round(100 * ev['Asignatura'].mean(), 1),
+            'V1 % (alguna capa)': round(100 * (ev['capas_con_respaldo'] >= 1).mean(), 1),
             '% Tres capas': round(100 * (ev['capas_con_respaldo'] == 3).mean(), 1),
             '% Sin asociación': round(100 * (ev['capas_con_respaldo'] == 0).mean(), 1)}
 
@@ -4679,7 +4680,7 @@ def pagina_asociacion_perfil():
         "**¿Qué mide esta sección?** Divide el perfil profesional y el ocupacional en atributos (funciones del texto, "
         "áreas, tareas y poblaciones) y busca, **solo en la matriz del propio programa**, si cada atributo está "
         "respaldado por alguna **competencia**, algún **resultado de aprendizaje** y alguna **asignatura** "
-        "(indicadores y núcleos temáticos). **V1** es la proporción de atributos respaldados en las tres capas. "
+        "(indicadores y núcleos temáticos). **V1** es la proporción de atributos alineados en al menos una capa; se informa además la alineación con las tres capas a la vez. "
         "El método es determinista: la misma matriz con la misma configuración "
         f"(versión **{cfg['VERSION']}**, huella {cfg['HUELLA'][:12]}) produce el mismo resultado. "
         + _texto_validacion(cfg) +
@@ -4733,8 +4734,9 @@ def _resultados_asociacion_perfil(uploaded_files, cfg: Dict):
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("Matrices", len(validos))
     c2.metric("Atributos evaluados", tot['Atributos'])
-    c3.metric("V1 · tres capas", f"{tot['% Tres capas']}%")
-    c4.metric("Sin asociación en ninguna capa", f"{tot['% Sin asociación']}%")
+    c3.metric("V1 · alineación en alguna capa", f"{tot['V1 % (alguna capa)']}%",
+              help=f"Alineación con las tres capas a la vez: {tot['% Tres capas']}%.")
+    c4.metric("Sin alineación en ninguna capa", f"{tot['% Sin asociación']}%")
     no_eval = int((~todos['evaluable']).sum())
     if no_eval:
         st.caption(f"{no_eval} ítem(s) no evaluables (cifras de encuestas o etiquetas de nivel) excluidos de los indicadores.")
@@ -4763,15 +4765,14 @@ def _resultados_asociacion_perfil(uploaded_files, cfg: Dict):
     st.subheader("Indicadores por matriz")
     df_prog = pd.DataFrame([{'Matriz': p, **_indicadores_perfil(r['items'])} for p, r in validos.items()])
     df_prog = df_prog[df_prog['Atributos'] > 0].sort_values('% Sin asociación', ascending=False)
-    st.caption("En magenta: matrices con más del 15 % de atributos sin asociación (revisión prioritaria).")
+    st.caption("Ordenadas de mayor a menor proporción de atributos sin alineación.")
     st.dataframe(
-        df_prog.style.apply(lambda f: ['background-color: #fde3ef' if f['% Sin asociación'] > 15 else ''] * len(f), axis=1)
-        .format({c: '{:.1f}' for c in df_prog.columns if c.startswith('%')}),
+        df_prog.style.format({c: '{:.1f}' for c in df_prog.columns if '%' in c}),
         width='stretch', hide_index=True)
     if len(df_prog) >= 2:
-        fig = px.bar(df_prog.sort_values('% Tres capas'), x='% Tres capas', y='Matriz', orientation='h',
-                     color='% Sin asociación', color_continuous_scale=['#1fb2de', '#FBAF17', '#ec0677'],
-                     title='V1 por matriz: atributos asociados en las tres capas (color: % sin asociación)')
+        fig = px.bar(df_prog.sort_values('V1 % (alguna capa)'), x='V1 % (alguna capa)', y='Matriz', orientation='h',
+                     color='% Tres capas', color_continuous_scale=['#ec0677', '#FBAF17', '#1fb2de'],
+                     title='V1 por matriz: atributos con alineación en alguna capa (color: % con las tres capas)')
         fig.update_layout(height=max(320, 26 * len(df_prog) + 120), yaxis_title=None)
         st.plotly_chart(fig, width='stretch')
 
@@ -4827,7 +4828,7 @@ def _indicadores_v1_v5(uploaded_files) -> Dict:
             if 'error' in r or r.get('capas_faltantes') or not len(r['items']):
                 continue
             ev = r['items'][r['items']['evaluable']]
-            v1[p] = (int((ev['capas_con_respaldo'] == 3).sum()), len(ev))
+            v1[p] = (int((ev['capas_con_respaldo'] >= 1).sum()), len(ev))  # V1 = alineación en al menos una capa
         with st.spinner("Calculando V2–V5 (trazabilidad e indicadores del Paso 4)…"):
             res = ia.calcular_indicadores([(f.name, f) for f in uploaded_files], v1=v1)
         for f in uploaded_files:
@@ -4841,25 +4842,26 @@ def _seccion_valoracion_criterios(res: Dict, uploaded_files) -> None:
     """Valoración por criterios (D26): cada matriz contra la regla de la plantilla; sin puntaje ni pesos."""
     from src import indicadores_articulo as ia
     perfil = _asociacion_perfil_por_programa(uploaded_files)
-    sin_pct = {}
+    sin_pct, tres_pct = {}, {}
     for p, r in perfil.items():
         if 'error' not in r and len(r.get('items', [])):
             ev = r['items'][r['items']['evaluable']]
             sin_pct[p] = round(100 * (ev['capas_con_respaldo'] == 0).mean(), 1) if len(ev) else None
+            tres_pct[p] = round(100 * (ev['capas_con_respaldo'] == 3).mean(), 1) if len(ev) else None
     if 'exigencia' not in st.session_state:
         st.session_state['exigencia'] = pd.DataFrame(ia.calcular_exigencia([(f.name, f) for f in uploaded_files]))
         for f in uploaded_files:
             f.seek(0)
     exig = dict(zip(st.session_state['exigencia']['Matriz'], st.session_state['exigencia']['Índice de exigencia']))
     ref = ia.referencias_conjunto(res['por_matriz'], exig)
-    val = {m['Matriz']: ia.valorar_matriz(m, sin_pct.get(m['Matriz']), exig.get(m['Matriz']), ref)
+    val = {m['Matriz']: ia.valorar_matriz(m, sin_pct.get(m['Matriz']), exig.get(m['Matriz']), ref, tres_pct.get(m['Matriz']))
            for m in res['por_matriz']}
 
     st.subheader("Valoración por criterios")
-    st.caption("Cada eslabón se compara con la regla que exige la plantilla institucional. Cumple: en todos los "
+    st.caption("Cada tramo se compara con la regla que exige la plantilla institucional. Cumple: en todos los "
                "casos; Parcial: en algunos; No cumple: en ninguno. No hay puntaje compuesto ni pesos; la mediana del "
                "conjunto cargado solo sitúa a cada matriz.")
-    filas = [{'Variable': f"{v['Variable']} {v['Eslabón']}", 'Estado': v['Estado']}
+    filas = [{'Variable': f"{v['Variable']} {v['Tramo']}", 'Estado': v['Estado']}
              for vs in val.values() for v in vs if v['Variable'] != '—']
     if filas:
         conteo = pd.DataFrame(filas).value_counts().rename('Matrices').reset_index()
@@ -4876,7 +4878,7 @@ def _seccion_valoracion_criterios(res: Dict, uploaded_files) -> None:
 
 
 def pagina_indicadores_articulo():
-    """Indicadores V1–V5, cadena de evidencia y contrastes (R1–R7), calculados con los archivos cargados."""
+    """Indicadores V1–V5, ruta de alineación curricular y contrastes (R1–R7), calculados con los archivos cargados."""
     st.title("Indicadores de Coherencia y Trazabilidad (V1–V5)")
     st.markdown("---")
     st.info(
@@ -4907,19 +4909,18 @@ def pagina_indicadores_articulo():
     c[4].metric("V4 Trazabilidad", fmt(g['V4']), help=f"Sin el RA genérico: {fmt(g['V4_programa'])}.")
     c[5].metric("V5 Evidencia directa", fmt(g['V5']), help=f"{g['estrategias_directa']} de {g['estrategias']} estrategias.")
 
-    st.subheader("Cadena de evidencia del logro")
-    st.caption("Cada eslabón se calcula sobre su propia base. Gris: condición que impone la plantilla; azul: "
-               "articulación; magenta: evidencia directa del logro.")
-    est_ind = sum(1 for e in res['estrategias'] if e['indicadores'])
+    st.subheader("Ruta de alineación curricular")
+    st.caption("Cada tramo se calcula sobre su propia base. Gris: condición que impone la plantilla; azul: "
+               "articulación. El nivel de evidencia de los indicadores (V5) no es un tramo de la ruta y se muestra más abajo.")
+    est_ind = sum(1 for e in res['estrategias'] if e['indicadores'] and e.get('instrumento', True))
     cadena = [
-        ('V1 Atributo del perfil respaldado en las tres capas', g['V1'], f"{g['atributos_perfil']} atributos", '#1FB2DE'),
+        ('V1 Atributo del perfil con alineación en alguna capa', g['V1'], f"{g['atributos_perfil']} atributos", '#1FB2DE'),
         ('RA vinculado a una competencia', g['RA_competencia'], f"{g['ra_unicos']} RA únicos", '#8A94A0'),
         ('V3 RA evaluable', g['V3'], f"{g['ra_unicos']} RA únicos", '#8A94A0'),
         ('V2 Matriz sin verbo repetido', g['V2'], f"{g['matrices']} matrices", '#1FB2DE'),
         ('V4 RA con estrategia mesocurricular', g['V4'], f"{g['ra_unicos']} RA únicos", '#1FB2DE'),
-        ('Estrategia con indicador de logro', round(100 * est_ind / g['estrategias'], 1) if g['estrategias'] else None,
+        ('Estrategia con indicador e instrumento', round(100 * est_ind / g['estrategias'], 1) if g['estrategias'] else None,
          f"{g['estrategias']} estrategias", '#8A94A0'),
-        ('V5 Estrategia con evidencia directa del logro', g['V5'], f"{g['estrategias']} estrategias", '#EC0677'),
     ]
     cadena = [x for x in cadena if x[1] is not None]
     fig = go.Figure(go.Bar(x=[x[1] for x in cadena][::-1], y=[x[0] for x in cadena][::-1], orientation='h',
