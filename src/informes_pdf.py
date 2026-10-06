@@ -250,6 +250,21 @@ def _tabla(pdf: _Informe, columnas: Sequence[str], filas: Sequence[Sequence], an
     pdf.ln(2)
 
 
+COLOR_CONTRASTE = {'Coincide': CIAN, 'Nivel difiere': AMARILLO, 'Dominio difiere': MAGENTA,
+                   'Verbo fuera de la base': GRIS}
+NOTA_TAXONOMIAS = ('Cada RA único declara en el Paso 3 su taxonomía (Bloom o BAK), dominio y nivel. El nivel se traduce a '
+                   'una escala común de 1 a 6 según su posición en la progresión de su dominio, y el índice de '
+                   'exigencia es (nivel medio - 1) / 5 x 100; es descriptivo, porque la exigencia adecuada depende del '
+                   'nivel de formación. El contraste compara el dominio y el nivel declarados con los que la base de '
+                   'verbos asigna al verbo del RA: «Coincide» si el dominio está entre los de la base y la diferencia de '
+                   'nivel es menor de 0,5; «Nivel difiere» o «Dominio difiere» piden revisión, no declaran un error, '
+                   'porque un verbo puede admitir varias lecturas.')
+
+
+def _barras_contraste(pdf: _Informe, pct_por_estado: Dict[str, float], n: int):
+    _barras(pdf, [(e, pct_por_estado.get(e), COLOR_CONTRASTE[e], f'{n} RA únicos') for e in COLOR_CONTRASTE], ancho_etq=52)
+
+
 def _nota_metodo(pdf: _Informe, criterios: Sequence[tuple]):
     _seccion(pdf, 'Nota metodológica')
     _lista(pdf, [f'{v} {e}: {c}.' for v, e, c in criterios], tam=8)
@@ -331,6 +346,19 @@ def informe_general(d: Dict) -> bytes:
         _tabla(pdf, cols, [[p.get(c, '') for c in cols] for p in pri], (50, 20, 20, 12, 12, 12, 12, 12, 11, 11),
                col_estado=range(3, 8), tam=6.8, alinear=('LEFT',) * 3 + ('CENTER',) * 7)
 
+    tx = d.get('taxonomias')
+    if tx and tx['resumen']['n']:
+        _seccion(pdf, 'Taxonomías de los RA')
+        _parrafo(pdf, NOTA_TAXONOMIAS, tam=8, color=GRIS)
+        _subtitulo(pdf, 'Coherencia entre lo declarado y el verbo del RA')
+        _barras_contraste(pdf, tx['resumen']['pct'], tx['resumen']['n'])
+        cols = ['Programa', 'RA', '% Bloom', '% BAK', 'Exigencia', 'Coincide', 'Nivel difiere', 'Dominio difiere', 'Fuera']
+        _tabla(pdf, cols, [[p['Programa'], p['RA únicos'], pct(p['% Bloom']), pct(p['% BAK']),
+                            '-' if p['Índice de exigencia'] is None else f"{p['Índice de exigencia']:.1f}".replace('.', ','),
+                            pct(p['% Coincide']), pct(p['% Nivel difiere']), pct(p['% Dominio difiere']),
+                            pct(p['% Verbo fuera de la base'])] for p in tx['por_programa']],
+               (50, 10, 16, 16, 16, 16, 18, 18, 14), tam=6.8, alinear=('LEFT',) + ('CENTER',) * 8)
+
     if d.get('alertas') or d.get('tendencias'):
         _seccion(pdf, 'Hallazgos transversales')
         for a in d.get('alertas', []):
@@ -410,6 +438,23 @@ def informe_programa(d: Dict) -> bytes:
                       + (', '.join(d['tendencias_presentes']) or 'ninguna') + '.', tam=8.5)
         _parrafo(pdf, f"Sin presencia ({len(d['tendencias_ausentes'])}): "
                       + (', '.join(d['tendencias_ausentes']) or 'ninguna') + '.', tam=8.5)
+
+    tx = d.get('taxonomias')
+    if tx and tx['matrices']:
+        _seccion(pdf, 'Taxonomías de los RA')
+        _parrafo(pdf, NOTA_TAXONOMIAS, tam=8, color=GRIS)
+        _tabla(pdf, ['Matriz', 'RA', 'Taxonomía', 'Exigencia (mediana)', 'Cognitivo / Proc. / Actit.'],
+               [[m['etiqueta'], m['ra'], m['taxonomia'],
+                 ('-' if m['exigencia'] is None else f"{m['exigencia']:.1f}".replace('.', ',')) +
+                 ('' if m['mediana'] is None else f" ({str(m['mediana']).replace('.', ',')})"),
+                 m['dominios']] for m in tx['matrices']], (66, 12, 34, 32, 36), tam=7)
+        for m in tx['matrices']:
+            _subtitulo(pdf, f"Contraste verbo-nivel - {m['etiqueta']}")
+            _barras_contraste(pdf, m['pct'], m['ra'])
+        if tx['revisar']:
+            _subtitulo(pdf, f"RA para revisar ({len(tx['revisar'])})")
+            _tabla(pdf, ['Matriz', 'Verbo', 'Declarado', 'Según la base', 'Resultado'], tx['revisar'],
+                   (46, 22, 40, 40, 32), tam=6.8)
 
     anexos = [m for m in d['matrices'] if m.get('sin_alineacion') or m.get('ra_no_evaluables')
               or m.get('ra_sin_estrategia') or m.get('estrategias_incompletas')]

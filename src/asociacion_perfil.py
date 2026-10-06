@@ -296,8 +296,11 @@ def _hoja(wb, pref):
     return next((wb[s] for s in wb.sheetnames if s.strip().startswith(pref) and 'backup' not in s.lower()), None)
 
 
-TAXONOMIA_RESPALDO = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'data', 'raw',
-                                  'Taxonomias.xlsx')
+_RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# Se versiona en assets/taxonomias (el servidor no tiene data/raw); data/raw/ queda como alternativa local
+TAXONOMIA_RESPALDO = next((r for r in (os.path.join(_RAIZ, 'assets', 'taxonomias', 'Taxonomias.xlsx'),
+                                       os.path.join(_RAIZ, 'data', 'raw', 'Taxonomias.xlsx')) if os.path.exists(r)),
+                          os.path.join(_RAIZ, 'assets', 'taxonomias', 'Taxonomias.xlsx'))
 
 
 @lru_cache(maxsize=1)

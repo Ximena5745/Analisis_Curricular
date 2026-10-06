@@ -91,3 +91,6 @@ auditoria/*.xlsx
 auditoria/*.docx
 auditoria/evidencia_*.json
 !auditoria/scripts/
+
+# Bases de verbos de las taxonomías: son insumo de la aplicación y sí se versionan
+!assets/taxonomias/*.xlsx

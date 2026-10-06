@@ -6,6 +6,7 @@ Ejecutar local: streamlit run dashboard_tematico.py
 Deploy cloud:   Subir repo a GitHub y conectar en share.streamlit.io
 """
 
+import os
 import streamlit as st
 import streamlit.components.v1 as st_components
 from streamlit_option_menu import option_menu
@@ -22,7 +23,7 @@ from typing import Dict, Optional
 from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.cluster import AgglomerativeClustering
-from src.nucleos_cleaner import filtrar_nucleos_dataframe, limpiar_nucleo, es_nucleo_valido
+from src.nucleos_cleaner import filtrar_nucleos_dataframe, limpiar_nucleo, es_nucleo_valido, tokenizar_nucleo_celda
 from src.perfil_coverage_analyzer import analizar_cobertura_perfil_completa
 from scipy.stats import entropy
 import io
@@ -724,7 +725,10 @@ def _normalize_value(value: str) -> str:
     return normalized
 
 
-_TAXONOMIAS_MATRIZ_PATH = "data/raw/Taxonomias_MatrizBD.xlsx"
+# Base de verbos (646) versionada en assets/taxonomias; data/raw/ queda como alternativa local
+_TAXONOMIAS_MATRIZ_PATH = next((r for r in ("assets/taxonomias/Taxonomias_MatrizBD.xlsx",
+                                            "data/raw/Taxonomias_MatrizBD.xlsx") if os.path.exists(r)),
+                               "assets/taxonomias/Taxonomias_MatrizBD.xlsx")
 
 # ── Dominio de cada subcategoría (clave normalizada sin acentos) ──────────────
 _SUBCAT_TO_DOMAIN: Dict[str, str] = {
@@ -1061,15 +1065,10 @@ def obtener_tendencias() -> Dict:
 # ============================================================================
 
 def _split_nucleos(texto: str) -> list:
-    """Separa núcleos temáticos. NO divide por coma porque las comas son
-    parte de la descripción del núcleo (ej: 'Ciudadanía: relaciones, dinámicas...')."""
-    partes = re.split(r'[;\n\|]+', texto)
-    # También dividir en ítems numerados tipo "1. Núcleo" o "2) Núcleo"
-    resultado = []
-    for p in partes:
-        sub = re.split(r'(?<!\d)(?=\d+[\.\)]\s+\w)', p)
-        resultado.extend(sub)
-    return resultado
+    """Separa los núcleos de una celda con la regla de la auditoría (D7, D7b): por la numeración al inicio de línea
+    o tras dos espacios; sin numeración, una línea es un núcleo. Un número dentro del texto («ISO 9001: 2015) o su
+    versión actualizada») no abre un núcleo nuevo."""
+    return tokenizar_nucleo_celda(texto)
 
 
 def analizar_cobertura(df: pd.DataFrame) -> Dict:
@@ -1096,7 +1095,7 @@ def analizar_cobertura(df: pd.DataFrame) -> Dict:
 
     # Densidad por asignatura
     densidad = df.groupby('Nombre asignatura o modulo')['Nucleos tematicos'].apply(
-        lambda x: len(_split_nucleos(' '.join(x.fillna('').astype(str))))
+        lambda x: sum(len(_split_nucleos(str(c))) for c in x.fillna(''))
     ).sort_values(ascending=False)
 
     # Shannon entropy
@@ -2006,6 +2005,232 @@ def pagina_inicio(df: pd.DataFrame, totales_oficiales: Optional[Dict] = None):
     #             st.code(st.session_state[k])
 
 
+def _seccion_mapa_integracion(df: pd.DataFrame) -> None:
+    """Mapa de integración temática: asignaturas que comparten núcleos (red, matriz y pares)."""
+    import math as _math
+
+    st.subheader("Mapa de Integración entre Asignaturas")
+    st.caption(
+        "Visualiza qué asignaturas **comparten núcleos temáticos**. "
+        "Un nodo = una asignatura; una línea = al menos un núcleo en común. "
+        "El grosor de la línea indica la cantidad de núcleos compartidos. "
+        "Útil para detectar redundancias, solapamientos u oportunidades de articulación curricular."
+    )
+
+    asig_col = 'Nombre asignatura o modulo'
+
+    # Filtro por programa
+    prog_mapa = st.multiselect(
+        "Filtrar por programa:",
+        sorted(df['Programa'].unique().tolist()),
+        default=sorted(df['Programa'].unique().tolist()),
+        key="mapa_prog_filter"
+    )
+    df_mapa = df[df['Programa'].isin(prog_mapa)] if prog_mapa else df
+
+    # Construir diccionario: asignatura -> set de núcleos
+    nucleos_dict: Dict[str, set] = {}
+    prog_asig: Dict[str, str] = {}
+    for _, row in df_mapa.iterrows():
+        asig = str(row.get(asig_col, '')).strip()
+        if not asig or asig in ('nan', ''):
+            continue
+        raw_nuc = str(row.get('Nucleos tematicos', '')).strip()
+        if raw_nuc and raw_nuc not in ('nan', ''):
+            nset = {
+                unicodedata.normalize('NFKD', limpiar_nucleo(n.strip()).lower()).encode('ascii', 'ignore').decode('ascii')
+                for n in _split_nucleos(raw_nuc)
+                if es_nucleo_valido(n.strip())[0]
+            }
+        else:
+            nset = set()
+        if asig not in nucleos_dict:
+            nucleos_dict[asig] = set()
+            prog_asig[asig] = str(row.get('Programa', ''))
+        nucleos_dict[asig] |= nset
+
+    subjects = sorted(nucleos_dict.keys())
+    n_subjects = len(subjects)
+
+    if n_subjects < 2:
+        st.warning("Se necesitan al menos 2 asignaturas con núcleos temáticos para construir el mapa.")
+    else:
+        # Construir pares con núcleos compartidos
+        pares_compartidos = []
+        for i in range(n_subjects):
+            for j in range(i + 1, n_subjects):
+                s1, s2 = subjects[i], subjects[j]
+                shared = nucleos_dict[s1] & nucleos_dict[s2]
+                if shared:
+                    pares_compartidos.append({
+                        'Asignatura 1': s1,
+                        'Asignatura 2': s2,
+                        'Programa 1': prog_asig[s1],
+                        'Programa 2': prog_asig[s2],
+                        'Núcleos compartidos': len(shared),
+                        'Temas compartidos': ', '.join(sorted(shared)[:5]) + ('…' if len(shared) > 5 else '')
+                    })
+
+        df_pares = pd.DataFrame(pares_compartidos)
+
+        if df_pares.empty:
+            st.info("No se encontraron núcleos temáticos compartidos entre las asignaturas seleccionadas.")
+        else:
+            # Grado de conectividad
+            degree: Counter = Counter()
+            for _, row in df_pares.iterrows():
+                degree[row['Asignatura 1']] += int(row['Núcleos compartidos'])
+                degree[row['Asignatura 2']] += int(row['Núcleos compartidos'])
+
+            connected_set = set(df_pares['Asignatura 1'].tolist() + df_pares['Asignatura 2'].tolist())
+            isolated_subjects = [s for s in subjects if s not in connected_set]
+
+            col_m1, col_m2, col_m3 = st.columns(3)
+            col_m1.metric("Asignaturas en el mapa", n_subjects)
+            col_m2.metric("Pares con núcleos compartidos", len(df_pares))
+            col_m3.metric("Asignaturas sin conexiones", len(isolated_subjects),
+                          delta="aisladas" if isolated_subjects else "Todas conectadas",
+                          delta_color="off")
+            st.markdown("---")
+
+            # ── Red de integración (grafo circular) ──────────────────────
+            st.subheader("Red de Integración Temática")
+            max_nodes = 40
+            if n_subjects > max_nodes:
+                st.info(
+                    f"Hay **{n_subjects}** asignaturas. Mostrando las **{max_nodes}** "
+                    f"con mayor conectividad temática."
+                )
+                top_subjects = [s for s, _ in degree.most_common(max_nodes)]
+            else:
+                top_subjects = subjects
+
+            n_top = len(top_subjects)
+            idx_map = {s: i for i, s in enumerate(top_subjects)}
+            angles_list = [2 * _math.pi * i / n_top for i in range(n_top)]
+            x_pos = {s: _math.cos(a) for s, a in zip(top_subjects, angles_list)}
+            y_pos = {s: _math.sin(a) for s, a in zip(top_subjects, angles_list)}
+
+            # Color por programa
+            progs_unicos = sorted({prog_asig[s] for s in top_subjects})
+            palette = px.colors.qualitative.Set2 + px.colors.qualitative.Pastel
+            prog_color_map = {p: palette[i % len(palette)] for i, p in enumerate(progs_unicos)}
+
+            # Aristas
+            max_shared = int(df_pares['Núcleos compartidos'].max()) if not df_pares.empty else 1
+            edge_traces = []
+            for _, row in df_pares.iterrows():
+                s1, s2 = row['Asignatura 1'], row['Asignatura 2']
+                if s1 not in idx_map or s2 not in idx_map:
+                    continue
+                w = max(1, min(8, int(row['Núcleos compartidos']) / max_shared * 8))
+                alpha = round(0.15 + (int(row['Núcleos compartidos']) / max_shared) * 0.65, 2)
+                edge_traces.append(go.Scatter(
+                    x=[x_pos[s1], x_pos[s2], None],
+                    y=[y_pos[s1], y_pos[s2], None],
+                    mode='lines',
+                    line=dict(width=w, color=f'rgba(100,100,100,{alpha})'),
+                    hoverinfo='none',
+                    showlegend=False
+                ))
+
+            # Nodos por programa (una traza por programa para la leyenda)
+            node_traces = []
+            for prog in progs_unicos:
+                subs_prog = [s for s in top_subjects if prog_asig[s] == prog]
+                node_traces.append(go.Scatter(
+                    x=[x_pos[s] for s in subs_prog],
+                    y=[y_pos[s] for s in subs_prog],
+                    mode='markers+text',
+                    name=prog[:35],
+                    text=[s[:22] + ('…' if len(s) > 22 else '') for s in subs_prog],
+                    textposition='top center',
+                    textfont=dict(size=8),
+                    marker=dict(
+                        size=[10 + min(degree.get(s, 0), 25) for s in subs_prog],
+                        color=prog_color_map[prog],
+                        line=dict(width=1, color='white')
+                    ),
+                    hovertext=[
+                        f"<b>{s}</b><br>Programa: {prog_asig[s]}<br>"
+                        f"Peso de conexiones: {degree.get(s, 0)}<br>"
+                        f"Núcleos únicos: {len(nucleos_dict.get(s, set()))}"
+                        for s in subs_prog
+                    ],
+                    hoverinfo='text'
+                ))
+
+            fig_net = go.Figure(data=edge_traces + node_traces)
+            fig_net.update_layout(
+                title="Red de integración temática (nodos = asignaturas, líneas = núcleos compartidos)",
+                height=660,
+                showlegend=True,
+                legend=dict(title="Programa", orientation='v', x=1.01, font=dict(size=10)),
+                xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+                yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+                plot_bgcolor='white',
+                margin=dict(t=50, b=20, l=20, r=20)
+            )
+            st.plotly_chart(fig_net, use_container_width=True)
+            st.caption(
+                "**Lectura:** El tamaño del nodo refleja el peso total de conexiones temáticas. "
+                "Nodos muy grandes son asignaturas articuladoras del currículo. "
+                "Nodos aislados (sin líneas) pueden indicar asignaturas sin integración con otras."
+            )
+
+            st.markdown("---")
+
+            # ── Heatmap de núcleos compartidos (si hay pocas asignaturas) ─
+            if n_subjects <= 35:
+                st.subheader("Matriz de Integración (Núcleos Compartidos)")
+                st.caption(
+                    "Cada celda muestra cuántos núcleos temáticos comparten dos asignaturas. "
+                    "Valores altos indican alta integración (o posible redundancia a revisar)."
+                )
+                mat = pd.DataFrame(0, index=subjects, columns=subjects)
+                for _, row in df_pares.iterrows():
+                    mat.loc[row['Asignatura 1'], row['Asignatura 2']] = int(row['Núcleos compartidos'])
+                    mat.loc[row['Asignatura 2'], row['Asignatura 1']] = int(row['Núcleos compartidos'])
+                short = {s: (s[:30] + '…' if len(s) > 30 else s) for s in subjects}
+                mat_disp = mat.rename(index=short, columns=short)
+                fig_heat = px.imshow(
+                    mat_disp.values,
+                    x=mat_disp.columns.tolist(),
+                    y=mat_disp.index.tolist(),
+                    color_continuous_scale='Blues',
+                    aspect='auto',
+                    title="Núcleos temáticos compartidos entre asignaturas",
+                    labels=dict(color="Núcleos comunes")
+                )
+                fig_heat.update_layout(
+                    height=max(400, n_subjects * 18),
+                    xaxis_tickangle=45,
+                    xaxis=dict(tickfont=dict(size=9)),
+                    yaxis=dict(tickfont=dict(size=9))
+                )
+                st.plotly_chart(fig_heat, use_container_width=True)
+                st.markdown("---")
+
+            # ── Top pares con más núcleos compartidos ─────────────────────
+            st.subheader("Pares con Mayor Integración Temática")
+            st.caption(
+                "Asignaturas que comparten más núcleos temáticos — "
+                "candidatas a articulación explícita o revisión de solapamiento."
+            )
+            df_top = df_pares.sort_values('Núcleos compartidos', ascending=False).head(20)
+            st.dataframe(df_top, use_container_width=True, hide_index=True)
+
+            # ── Asignaturas aisladas ───────────────────────────────────────
+            if isolated_subjects:
+                with st.expander(f"⚠️ Asignaturas sin integración temática ({len(isolated_subjects)})"):
+                    st.caption(
+                        "Estas asignaturas no comparten ningún núcleo temático con otras. "
+                        "Pueden ser especializadas (normal) o indicar falta de articulación curricular."
+                    )
+                    for s in sorted(isolated_subjects):
+                        st.markdown(f"- **{s}** — Programa: {prog_asig.get(s, 'N/A')}")
+
+
 def pagina_cobertura(df: pd.DataFrame, resultados: Dict):
     """Pagina de cobertura y densidad tematica."""
     st.title("Cobertura y Densidad Temática")
@@ -2226,6 +2451,9 @@ def pagina_cobertura(df: pd.DataFrame, resultados: Dict):
         st.plotly_chart(fig, use_container_width=True)
     else:
         st.info(f"No se encontraron núcleos temáticos para {programa_sel}.")
+
+    st.markdown("---")
+    _seccion_mapa_integracion(df)
 
 
 def pagina_tendencias(df: pd.DataFrame, tendencias: Dict, resultados: Dict):
@@ -3532,6 +3760,11 @@ def _datos_resumen(df: pd.DataFrame, tendencias: Dict, uploaded_files) -> Dict:
             motivo = 'ningún atributo del perfil es evaluable (solo cifras de encuestas o etiquetas)'
         v1_sin_dato.append((m['Matriz'], motivo))
 
+    try:
+        taxo = _con_programa_completo(_taxonomias_ra(archivos), df) if archivos else pd.DataFrame()
+    except Exception:  # noqa: BLE001  un fallo de lectura no debe tumbar el resto del resumen
+        taxo = pd.DataFrame()
+
     total_ra = g.get('ra_unicos', 0)
     kpis = [('Programas', df['Programa'].nunique()),
             ('Matrices', df['Matriz'].nunique() if 'Matriz' in df.columns else len(archivos)),
@@ -3539,15 +3772,20 @@ def _datos_resumen(df: pd.DataFrame, tendencias: Dict, uploaded_files) -> Dict:
             ('Estrategias (Paso 4)', g.get('estrategias', 0))]
     return {'df': df, 'res': res, 'val': val, 'perfil': perfil, 'prioridades': prioridades,
             'conteo_criterios': conteo_criterios, 'tendencias_tabla': tabla_tend, 'tendencias': tendencias,
-            'rt': rt, 'ts': ts, 'etiquetas': etiquetas, 'v1_sin_dato': v1_sin_dato, 'medianas': medianas, 'programas': programas, 'lectura': lectura, 'kpis': kpis,
+            'rt': rt, 'ts': ts, 'etiquetas': etiquetas, 'taxo': taxo, 'v1_sin_dato': v1_sin_dato, 'medianas': medianas, 'programas': programas, 'lectura': lectura, 'kpis': kpis,
 
             'alertas': _alertas_resumen(df), 'alcance': _alcance_filtros(), 'archivos': archivos}
 
 
 def _datos_informe_general(ctx: Dict) -> Dict:
     from src import indicadores_articulo as ia
+    from src import taxonomias_ra as tx
     res = ctx['res'] or {}
-    return {'alcance': ctx['alcance'], 'kpis': [(k, f'{v:,}'.replace(',', '.')) for k, v in ctx['kpis']],
+    taxo = ctx['taxo']
+    return {'taxonomias': ({'resumen': tx.resumen_contraste(taxo),
+                            'por_programa': tx.por_grupo(taxo, 'Programa').to_dict('records')}
+                           if len(taxo) else None),
+            'alcance': ctx['alcance'], 'kpis': [(k, f'{v:,}'.replace(',', '.')) for k, v in ctx['kpis']],
             'globales': res.get('globales', {}), 'criterios': ia.CRITERIOS, 'conteo_criterios': ctx['conteo_criterios'],
             'lectura': ctx['lectura'], 'prioridades': ctx['prioridades'], 'alertas': ctx['alertas'],
             'tendencias': ctx['tendencias_tabla'], 'programas': ctx['programas'],
@@ -3617,7 +3855,31 @@ def _datos_informe_programa(ctx: Dict, programa: str) -> Dict:
     kpis = [('Matrices (sedes)', len(matrices)), ('Asignaturas', df_p[asig_col].nunique()),
             ('RA únicos', sum(d['fila']['RA únicos'] for d in detalle)),
             ('Estrategias', sum(d['fila']['Estrategias'] for d in detalle)), ('Criterios en No cumple', no_cumple)]
-    return {'programa': programa, 'alcance': f'Sedes: {sedes}  |  Nivel: {niveles}  |  Modalidad: {modalidades}',
+    from src import taxonomias_ra as tx
+    taxo = ctx['taxo']
+    tax_prog = None
+    if len(taxo):
+        t_p = taxo[taxo['Programa'] == programa]
+        med = tx.por_grupo(taxo, 'Matriz')['Índice de exigencia'].median()
+        mats, revisar = [], []
+        for mz in matrices:
+            t_m = t_p[t_p['Matriz'] == mz]
+            if not len(t_m):
+                continue
+            etq = ctx['etiquetas'].get(mz, {}).get('completa', mz)
+            res_m = tx.resumen_contraste(t_m)
+            dom = t_m['Dominio declarado'].value_counts()
+            mats.append({'etiqueta': etq, 'ra': len(t_m),
+                         'taxonomia': ' / '.join(f"{k} {100 * v / len(t_m):.0f} %" for k, v in
+                                                 t_m['Taxonomía'].value_counts().items()),
+                         'exigencia': tx.indice_exigencia(t_m['Exigencia declarada']),
+                         'mediana': None if pd.isna(med) else round(float(med), 1),
+                         'dominios': ' / '.join(str(int(dom.get(k, 0))) for k in tx.DOMINIOS), 'pct': res_m['pct']})
+            for _, r in t_m[t_m['Contraste'] != 'Coincide'].iterrows():
+                revisar.append([etq, r['Verbo'], f"{r['Dominio declarado']} - {r['Nivel declarado']}",
+                                f"{r['Dominio(s) según la base'] or '-'} - {r['Nivel según la base'] or '-'}", r['Contraste']])
+        tax_prog = {'matrices': mats, 'revisar': revisar}
+    return {'taxonomias': tax_prog, 'programa': programa, 'alcance': f'Sedes: {sedes}  |  Nivel: {niveles}  |  Modalidad: {modalidades}',
             'kpis': [(k, str(v)) for k, v in kpis], 'matrices': detalle, 'tipo_saber': tipo_saber,
             'tendencias_presentes': presentes, 'tendencias_ausentes': ausentes, 'alertas': alertas,
             'criterios': ia.CRITERIOS}
@@ -3759,589 +4021,221 @@ def pagina_resumen_ejecutivo(df: pd.DataFrame, tendencias: Dict) -> None:
                        "informes_microcurriculares.zip", mime='application/zip')
 
 
-def _seccion_exigencia_ra():
-    """Etapa 3: taxonomía declarada (Bloom o BAK) e índice de exigencia de los RA únicos por matriz."""
-    from src.indicadores_articulo import calcular_exigencia
-    uploaded_files = st.session_state.get('archivos_subidos', [])
-    if not uploaded_files:
-        return
-    firma = tuple(sorted(_sha256_archivo(f) for f in uploaded_files))
-    if st.session_state.get('exigencia_firma') != firma:
-        st.session_state['exigencia'] = pd.DataFrame(calcular_exigencia([(f.name, f) for f in uploaded_files]))
-        st.session_state['exigencia_firma'] = firma
-        for f in uploaded_files:
+def _taxonomias_ra(archivos) -> pd.DataFrame:
+    """RA únicos de las matrices con su contraste frente a la base de verbos (caché por contenido de los archivos
+    y de la base)."""
+    from src import taxonomias_ra as tx
+    base_mtime = os.path.getmtime(tx.RUTA_BD) if os.path.exists(tx.RUTA_BD) else 0
+    firma = (tuple(sorted(_sha256_archivo(f) for f in archivos)), base_mtime)
+    cache = st.session_state.setdefault('taxonomias_cache', {})
+    if firma not in cache:
+        ra = tx.leer_ra([(f.name, f) for f in archivos])
+        for f in archivos:
             f.seek(0)
-    ex = st.session_state['exigencia']
-    if ex.empty or ex['RA únicos'].sum() == 0:
-        return
-    st.subheader("Taxonomía declarada e índice de exigencia de los RA")
-    st.caption("Cada nivel declarado se traduce a una escala común de 1 a 6 según su posición en la progresión de su "
-               "propio dominio (Bloom: 6 niveles; BAK procedimental: 4; BAK actitudinal: 5). Índice de exigencia = "
-               "(nivel medio de los RA únicos − 1) / 5 × 100. La equivalencia entre escalas es un supuesto del método.")
-    total = ex['RA únicos'].sum()
-    bak = (ex['RA únicos'] * ex['% BAK'].fillna(0) / 100).sum()
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("RA únicos", int(total))
-    c2.metric("Bloom", f"{100 * (total - bak) / total:.1f}%")
-    c3.metric("BAK", f"{100 * bak / total:.1f}%")
-    c4.metric("Matrices que combinan ambas", int(((ex['% BAK'] > 0) & (ex['% BAK'] < 100)).sum()))
-    fig = px.bar(ex.sort_values('Índice de exigencia'), x='Índice de exigencia', y='Matriz', orientation='h',
-                 color='% BAK', color_continuous_scale=['#0F385A', '#1FB2DE', '#42F2F2'], range_x=[0, 100],
-                 title='Índice de exigencia por matriz (color: % de RA con BAK)')
-    fig.update_layout(height=max(300, 24 * len(ex) + 120), yaxis_title=None)
-    st.plotly_chart(fig, width='stretch')
-    if ex['RA sin nivel reconocido'].sum():
-        st.caption(f"{int(ex['RA sin nivel reconocido'].sum())} RA con nivel no reconocido quedan fuera del índice.")
-    st.markdown("---")
+        cache.clear()
+        cache[firma] = tx.contrastar(ra, tx.cargar_base())
+    return cache[firma]
 
 
-def pagina_bloom_integracion(df: pd.DataFrame, taxonomias_externas: Dict | None = None):
-    """Taxonomía por dominios/subcategorías de la BD y Mapa de Integración."""
-    import math as _math
+def _con_programa_completo(ra: pd.DataFrame, df: pd.DataFrame) -> pd.DataFrame:
+    """Reemplaza el programa derivado del nombre del archivo por el nombre completo que usa el resto del tablero."""
+    if 'Matriz' not in df.columns or ra.empty:
+        return ra
+    completo = df.groupby('Matriz')['Programa'].first()
+    return ra.assign(Programa=ra['Matriz'].map(completo).fillna(ra['Programa']))
 
-    st.title("🎓 Taxonomías Curriculares e Integración")
+
+def _tabla_excel(hojas: Dict[str, pd.DataFrame]) -> bytes:
+    buf = io.BytesIO()
+    with pd.ExcelWriter(buf, engine='openpyxl') as w:
+        for nombre, d in hojas.items():
+            d.to_excel(w, sheet_name=nombre[:31], index=False)
+    return buf.getvalue()
+
+
+COLORES_CONTRASTE = {'Coincide': '#1FB2DE', 'Nivel difiere': '#FBAF17', 'Dominio difiere': '#EC0677',
+                     'Verbo fuera de la base': '#8A94A0'}
+ORDEN_NIVELES = ['conocimiento', 'comprension', 'aplicacion', 'analisis', 'sintesis', 'evaluacion',
+                 'imitacion', 'manipulacion', 'precision', 'control',
+                 'percepcion', 'responder', 'valorar', 'organizar', 'caracterizar']
+
+
+def pagina_taxonomias(df: pd.DataFrame) -> None:
+    """Taxonomías de los RA: lo declarado en el Paso 3 (Bloom o BAK, dominio, nivel), su exigencia y su coherencia
+    con la base de verbos. Misma unidad que el informe: RA único por matriz."""
+    from src import taxonomias_ra as tx
+    st.title("🎓 Taxonomías Curriculares")
     st.markdown("---")
     st.info(
-        "Clasifica los Resultados de Aprendizaje según los **dominios** (Cognitivo, Procedimental, Actitudinal) "
-        "y **subcategorías** definidas en la base de datos taxonómica (646 verbos). "
-        "Explore la distribución, la progresión por semestre y la articulación temática entre asignaturas."
+        "Cada **resultado de aprendizaje (RA) único** declara en el Paso 3 su taxonomía (**Bloom** o **BAK**), su "
+        "dominio (cognitivo, procedimental, actitudinal) y su nivel. Esta sección resume lo declarado, calcula el "
+        "**índice de exigencia** y contrasta cada RA con la **base de verbos** (646 verbos): ¿el dominio y el nivel "
+        "declarados son coherentes con el verbo del RA? El contraste es una propuesta para revisar con el comité; "
+        "un verbo puede admitir varias lecturas. Es la misma información que lleva el informe PDF."
     )
+    uploaded_files = st.session_state.get('archivos_subidos') or []
+    matrices = set(df['Matriz']) if 'Matriz' in df.columns else None
+    archivos = [f for f in uploaded_files if matrices is None or _nombre_matriz(f.name) in matrices]
+    if not archivos:
+        st.warning("No hay archivos cargados. Sube archivos desde la página de Inicio.")
+        return
+    if not os.path.exists(tx.RUTA_BD):
+        st.error("No se encontró la base de verbos `assets/taxonomias/Taxonomias_MatrizBD.xlsx`: se muestra lo "
+                 "declarado en las matrices, pero no se puede contrastar con los verbos.")
+    with st.spinner("Leyendo las taxonomías declaradas en el Paso 3…"):
+        ra = _con_programa_completo(_taxonomias_ra(archivos), df)
+    if ra.empty:
+        st.warning("Las matrices cargadas no tienen resultados de aprendizaje en el Paso 3.")
+        return
 
-    _seccion_exigencia_ra()
+    resumen = tx.resumen_contraste(ra)
+    c = st.columns(5)
+    c[0].metric("RA únicos", len(ra))
+    c[1].metric("Bloom", f"{100 * (ra['Taxonomía'] == 'Bloom').mean():.1f}%")
+    c[2].metric("BAK", f"{100 * (ra['Taxonomía'] == 'BAK').mean():.1f}%")
+    c[3].metric("Índice de exigencia", f"{tx.indice_exigencia(ra['Exigencia declarada'])}",
+                help="(nivel medio − 1) / 5 × 100, con cada nivel en la escala común de 1 a 6. Es descriptivo: la "
+                     "exigencia adecuada depende del nivel de formación.")
+    c[4].metric("Coherentes con el verbo", f"{resumen['pct']['Coincide']}%",
+                help="RA cuyo dominio y nivel declarados coinciden con los que la base asigna a su verbo.")
 
-    tab_dom, tab_sub, tab_prog, tab_ra, tab_mapa = st.tabs([
-        "🎯 Por Dominio",
-        "📊 Por Subcategoría",
-        "📈 Progresión",
-        "🔍 Explorar RAs",
-        "🕸️ Mapa de Integración",
-    ])
+    tab_res, tab_dom, tab_coh, tab_verb, tab_prog, tab_ra = st.tabs([
+        "📌 Resumen", "🎯 Dominio y nivel", "🔎 Coherencia verbo–nivel", "🔤 Verbos", "📈 Progresión", "📋 Explorar RAs"])
 
-    # ── Construcción del lookup de verbos desde la BD taxonómica ─────────────
-    # verb_to_tax: {verbo_norm: (dominio, subcategoria_display, orden)}
-    verb_to_tax: Dict[str, tuple] = {}
-    subcat_display_map: Dict[str, str] = {}   # norm → display name
+    with tab_res:
+        st.subheader("Índice de exigencia por matriz")
+        st.caption("Cada nivel declarado se traduce a una escala común de 1 a 6 según su posición en la progresión de "
+                   "su propio dominio (Bloom: 6 niveles; BAK procedimental: 4; BAK actitudinal: 5). La equivalencia "
+                   "entre escalas es un supuesto del método. Color: % de RA con BAK.")
+        por_m = tx.por_grupo(ra, 'Matriz')
+        fig = px.bar(por_m.sort_values('Índice de exigencia'), x='Índice de exigencia', y='Matriz', orientation='h',
+                     color='% BAK', color_continuous_scale=['#0F385A', '#42F2F2'], range_x=[0, 100])
+        fig.update_layout(height=max(300, 22 * len(por_m) + 100), yaxis_title=None, margin=dict(l=10, r=10, t=10, b=10))
+        st.plotly_chart(fig, width='stretch')
+        mixtas = int(((ra.groupby('Matriz')['Taxonomía'].nunique()) > 1).sum())
+        st.caption(f"{mixtas} matriz(ces) combinan Bloom y BAK entre sus RA.")
+        st.dataframe(por_m[['Matriz', 'RA únicos', '% Bloom', '% BAK', 'Índice de exigencia']],
+                     hide_index=True, width='stretch')
 
-    if taxonomias_externas:
-        for subcat_norm, verbos_bd in taxonomias_externas.items():
-            dominio  = _SUBCAT_TO_DOMAIN.get(subcat_norm, 'Cognitivo')
-            orden    = _SUBCAT_ORDER.get(subcat_norm, 0)
-            # Display name: title-case sin acentos ASCII → conservar original
-            subcat_display = subcat_norm.replace('comprension', 'Comprensión')\
-                                        .replace('aplicacion',  'Aplicación')\
-                                        .replace('analisis',    'Análisis')\
-                                        .replace('sintesis',    'Síntesis')\
-                                        .replace('evaluacion',  'Evaluación')\
-                                        .replace('creacion',    'Creación')\
-                                        .replace('imitacion',   'Imitación')\
-                                        .replace('manipulacion','Manipulación')\
-                                        .replace('precision',   'Precisión')\
-                                        .replace('percepcion',  'Percepción')\
-                                        .title()
-            subcat_display_map[subcat_norm] = subcat_display
-            for v in verbos_bd:
-                v_n = unicodedata.normalize('NFKD', v).encode('ascii', 'ignore').decode('ascii')
-                if v_n not in verb_to_tax or orden > verb_to_tax[v_n][2]:
-                    verb_to_tax[v_n] = (dominio, subcat_display, orden)
-        st.success(
-            f"✅ BD cargada: **{len(verb_to_tax)}** verbos únicos · "
-            f"**{len(subcat_display_map)}** subcategorías · "
-            f"**3** dominios (Cognitivo / Procedimental / Actitudinal)"
-        )
-    else:
-        st.warning(
-            "⚠️ No se encontró **Taxonomias_MatrizBD.xlsx** en `data/raw/`. "
-            "La clasificación usará solo los verbos base del diccionario interno."
-        )
-
-    def detectar_taxonomia(texto: str):
-        """Retorna (dominio, subcategoria) usando la BD taxonómica con stem matching."""
-        if not texto or str(texto).strip() in ('nan', ''):
-            return ('No identificado', 'No identificado')
-        t = unicodedata.normalize('NFKD', str(texto).lower()).encode('ascii', 'ignore').decode('ascii')
-        words_t = re.findall(r'\b[a-z]{3,}\b', t)
-        text_stems = [(w, _stem_es(w)) for w in words_t]
-        best_orden = -1
-        best_dom   = 'No identificado'
-        best_sub   = 'No identificado'
-        for v_n, (dom, sub, orden) in verb_to_tax.items():
-            if orden <= best_orden:
-                continue
-            if re.search(r'\b' + re.escape(v_n) + r'\b', t):
-                best_orden, best_dom, best_sub = orden, dom, sub
-                continue
-            v_stem = _stem_es(v_n)
-            if len(v_stem) < 4:
-                continue
-            for word, word_stem in text_stems:
-                if word_stem == v_stem or word.startswith(v_stem) or v_n.startswith(word_stem):
-                    best_orden, best_dom, best_sub = orden, dom, sub
-                    break
-        return (best_dom, best_sub)
-
-    df_tax = df.copy()
-    df_tax[['Dominio', 'Subcategoria']] = df_tax['Resultado de aprendizaje'].apply(
-        lambda x: pd.Series(detectar_taxonomia(x))
-    )
-
-    dominios_todos   = ['Cognitivo', 'Procedimental', 'Actitudinal', 'No identificado']
-    programas_todos  = sorted(df_tax['Programa'].unique().tolist())
-
-    # ── Filtros globales (fuera de los tabs) ──────────────────────────────────
-    with st.expander("🔧 Filtros", expanded=False):
-        col_f1, col_f2 = st.columns(2)
-        with col_f1:
-            dom_filter = st.multiselect(
-                "Dominio:", dominios_todos, default=[], key="tax_dom_filter"
-            )
-        with col_f2:
-            prog_filter = st.multiselect(
-                "Programa:", programas_todos, default=[], key="tax_prog_filter"
-            )
-
-    df_filt = df_tax.copy()
-    if dom_filter:
-        df_filt = df_filt[df_filt['Dominio'].isin(dom_filter)]
-    if prog_filter:
-        df_filt = df_filt[df_filt['Programa'].isin(prog_filter)]
-
-    total_ras = len(df_filt)
-
-    # ─────────────────────────────────────────────────────────────────────────
-    # TAB 1 — POR DOMINIO
-    # ─────────────────────────────────────────────────────────────────────────
     with tab_dom:
-        st.subheader("Distribución por Dominio Taxonómico")
-        st.caption(
-            "**Cognitivo**: qué sabe el estudiante (conocimiento, comprensión, análisis…). "
-            "**Procedimental**: qué sabe hacer (imitación → control). "
-            "**Actitudinal**: cómo actúa y valora (percepción → caracterizar)."
-        )
+        col_a, col_b = st.columns(2)
+        with col_a:
+            st.subheader("Dominio declarado")
+            conteo = ra['Dominio declarado'].replace('', 'Sin dominio').value_counts()
+            fig = go.Figure(go.Pie(labels=conteo.index.tolist(), values=conteo.values.tolist(), hole=0.4,
+                                   marker_colors=[_DOMAIN_COLORS.get(d, '#BDC3C7') for d in conteo.index],
+                                   textinfo='label+percent'))
+            fig.update_layout(height=340, showlegend=False, margin=dict(t=10, b=10, l=10, r=10))
+            st.plotly_chart(fig, width='stretch')
+        with col_b:
+            st.subheader("Nivel declarado por dominio")
+            niv = (ra[ra['Nivel declarado'] != ''].groupby(['Dominio declarado', 'Nivel declarado']).size()
+                   .reset_index(name='RA'))
+            niv['orden'] = niv['Nivel declarado'].map({n: i for i, n in enumerate(ORDEN_NIVELES)}).fillna(99)
+            niv = niv.sort_values('orden')
+            fig = px.bar(niv, x='Nivel declarado', y='RA', color='Dominio declarado', color_discrete_map=_DOMAIN_COLORS)
+            fig.update_layout(height=340, xaxis_title=None, margin=dict(t=10, b=10, l=10, r=10), legend_title=None)
+            st.plotly_chart(fig, width='stretch')
+        st.subheader("Composición por dominio en cada programa")
+        comp = ra.groupby(['Programa', 'Dominio declarado']).size().reset_index(name='RA')
+        comp['%'] = 100 * comp['RA'] / comp.groupby('Programa')['RA'].transform('sum')
+        fig = px.bar(comp, x='%', y='Programa', color='Dominio declarado', orientation='h',
+                     color_discrete_map=_DOMAIN_COLORS)
+        fig.update_layout(height=max(320, 24 * ra['Programa'].nunique() + 120), yaxis_title=None, legend_title=None,
+                          xaxis=dict(range=[0, 100], ticksuffix=' %'), margin=dict(l=10, r=10, t=10, b=10))
+        st.plotly_chart(fig, width='stretch')
 
-        conteo_dom = df_filt['Dominio'].value_counts().reindex(dominios_todos, fill_value=0)
+    with tab_coh:
+        st.subheader("¿El dominio y el nivel declarados son coherentes con el verbo del RA?")
+        st.caption("Dominio: el declarado debe estar entre los que la base asigna al verbo. Nivel: si el dominio coincide, "
+                   "se compara el nivel declarado con el de la base en la escala común de 1 a 6 (coincide si la "
+                   "diferencia es menor de 0,5). «Difiere» pide revisión, no declara un error.")
+        cols = st.columns(4)
+        for col, e in zip(cols, tx.ESTADOS):
+            col.metric(e, resumen['estados'][e], f"{resumen['pct'][e]} %", delta_color="off")
+        por_p = tx.por_grupo(ra, 'Programa')
+        largo = por_p.melt(id_vars='Programa', value_vars=[f'% {e}' for e in tx.ESTADOS], var_name='Contraste',
+                           value_name='%')
+        largo['Contraste'] = largo['Contraste'].str[2:]
+        fig = px.bar(largo, x='%', y='Programa', color='Contraste', orientation='h', color_discrete_map=COLORES_CONTRASTE,
+                     category_orders={'Contraste': list(tx.ESTADOS)})
+        fig.update_layout(height=max(320, 24 * len(por_p) + 120), yaxis_title=None, legend_title=None,
+                          xaxis=dict(range=[0, 100], ticksuffix=' %'), margin=dict(l=10, r=10, t=10, b=10))
+        st.plotly_chart(fig, width='stretch')
+        sel = st.multiselect("Mostrar RA con resultado", list(tx.ESTADOS), default=list(tx.ESTADOS[1:]), key='tax_estado')
+        rev = ra[ra['Contraste'].isin(sel)][['Matriz', 'Verbo', 'Taxonomía', 'Dominio declarado', 'Nivel declarado',
+                                             'Dominio(s) según la base', 'Nivel según la base',
+                                             'Diferencia de nivel (declarado − base)', 'Contraste', 'RA']]
+        st.caption(f"{len(rev)} RA para revisar.")
+        st.dataframe(rev, hide_index=True, width='stretch', height=min(520, 35 * len(rev) + 40))
+        st.download_button("Descargar el contraste (Excel)", _tabla_excel({'Contraste': ra.drop(columns='clave'),
+                                                                          'Por programa': por_p}),
+                           "taxonomias_contraste.xlsx",
+                           mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
-        col_d1, col_d2 = st.columns([1, 1])
-        with col_d1:
-            fig_dom_pie = go.Figure(go.Pie(
-                labels=conteo_dom.index.tolist(),
-                values=conteo_dom.values.tolist(),
-                marker_colors=[_DOMAIN_COLORS.get(d, '#BDC3C7') for d in conteo_dom.index],
-                hole=0.38,
-                textinfo='label+percent',
-                pull=[0.04 if d == 'No identificado' else 0 for d in conteo_dom.index]
-            ))
-            fig_dom_pie.update_layout(
-                title="% de RAs por dominio",
-                height=370, showlegend=False,
-                margin=dict(t=50, b=0, l=0, r=0)
-            )
-            st.plotly_chart(fig_dom_pie, use_container_width=True)
+    with tab_verb:
+        st.subheader("Verbos de los RA")
+        st.caption("Verbo con el que inicia cada RA (Paso 3), su frecuencia y el dominio y nivel que más se le declara.")
+        moda = lambda s: s.mode().iat[0] if len(s.mode()) else ''  # noqa: E731
+        verbos = (ra.assign(Verbo=ra['Verbo'].str.lower()).groupby('Verbo')
+                  .agg(RA=('RA', 'size'), Dominio=('Dominio declarado', moda), Nivel=('Nivel declarado', moda),
+                       Lecturas=('Dominio(s) según la base', moda))
+                  .reset_index().sort_values('RA', ascending=False))
+        fig = px.bar(verbos.head(20).sort_values('RA'), x='RA', y='Verbo', orientation='h', color='Dominio',
+                     color_discrete_map=_DOMAIN_COLORS)
+        fig.update_layout(height=520, yaxis_title=None, legend_title=None, margin=dict(l=10, r=10, t=10, b=10))
+        st.plotly_chart(fig, width='stretch')
+        verbos = verbos.rename(columns={'Dominio': 'Dominio más declarado', 'Nivel': 'Nivel más declarado',
+                                        'Lecturas': 'Dominio(s) según la base'})
+        st.dataframe(verbos, hide_index=True, width='stretch')
 
-        with col_d2:
-            st.markdown("**Resumen de dominios:**")
-            for dom in dominios_todos:
-                n   = int(conteo_dom.get(dom, 0))
-                pct = n / total_ras * 100 if total_ras > 0 else 0
-                color = _DOMAIN_COLORS.get(dom, '#BDC3C7')
-                st.markdown(
-                    f"<div style='margin:8px 0;padding:8px 12px;border-left:4px solid {color};"
-                    f"border-radius:4px;background:#f8f9fa'>"
-                    f"<b style='color:{color}'>{dom}</b><br>"
-                    f"<span style='font-size:1.3em;font-weight:bold'>{n}</span> RAs "
-                    f"<span style='color:#666'>({pct:.1f}%)</span>"
-                    f"</div>",
-                    unsafe_allow_html=True
-                )
-
-        # Distribución por programa
-        st.markdown("---")
-        st.subheader("Distribución por Dominio y Programa")
-        prog_dom = (
-            df_filt.groupby(['Programa', 'Dominio'])
-            .size().reset_index(name='RAs')
-        )
-        total_prog = prog_dom.groupby('Programa')['RAs'].transform('sum')
-        prog_dom['pct'] = prog_dom['RAs'] / total_prog * 100
-        fig_bar_dom = px.bar(
-            prog_dom, x='Programa', y='pct', color='Dominio',
-            color_discrete_map=_DOMAIN_COLORS,
-            category_orders={'Dominio': dominios_todos},
-            barmode='stack', text_auto='.0f',
-            labels={'pct': '% RAs', 'Programa': ''},
-            title="Composición por dominio (%) por programa"
-        )
-        fig_bar_dom.update_layout(height=400, xaxis_tickangle=15, yaxis_title="% de RAs",
-                                   legend=dict(orientation='h', y=-0.25))
-        st.plotly_chart(fig_bar_dom, use_container_width=True)
-
-    # ─────────────────────────────────────────────────────────────────────────
-    # TAB 2 — POR SUBCATEGORÍA
-    # ─────────────────────────────────────────────────────────────────────────
-    with tab_sub:
-        st.subheader("Distribución por Subcategoría")
-        st.caption("Seleccione uno o más dominios para filtrar las subcategorías mostradas.")
-
-        dom_sub_filter = st.multiselect(
-            "Dominio a mostrar:",
-            ['Cognitivo', 'Procedimental', 'Actitudinal'],
-            default=['Cognitivo', 'Procedimental', 'Actitudinal'],
-            key="tax_dom_sub_filter"
-        )
-        df_sub = df_filt[df_filt['Dominio'].isin(dom_sub_filter)] if dom_sub_filter else df_filt
-        df_sub = df_sub[df_sub['Subcategoria'] != 'No identificado']
-
-        conteo_sub = (
-            df_sub.groupby(['Dominio', 'Subcategoria'])
-            .size().reset_index(name='RAs')
-            .sort_values(['Dominio', 'RAs'], ascending=[True, False])
-        )
-
-        if conteo_sub.empty:
-            st.info("No hay datos para las subcategorías seleccionadas.")
-        else:
-            fig_sub_bar = px.bar(
-                conteo_sub, x='RAs', y='Subcategoria', color='Dominio',
-                color_discrete_map=_DOMAIN_COLORS,
-                orientation='h', text='RAs',
-                labels={'RAs': 'Resultados de Aprendizaje', 'Subcategoria': ''},
-                title="RAs clasificados por subcategoría taxonómica"
-            )
-            fig_sub_bar.update_layout(height=max(350, len(conteo_sub) * 30),
-                                       yaxis={'categoryorder': 'total ascending'},
-                                       legend=dict(orientation='h', y=-0.15))
-            st.plotly_chart(fig_sub_bar, use_container_width=True)
-
-            # Tabla resumen con % por subcategoría
-            total_sub = int(conteo_sub['RAs'].sum())
-            conteo_sub['%'] = (conteo_sub['RAs'] / total_sub * 100).round(1)
-            st.dataframe(
-                conteo_sub[['Dominio', 'Subcategoria', 'RAs', '%']]
-                .reset_index(drop=True),
-                use_container_width=True, hide_index=True
-            )
-
-    # ─────────────────────────────────────────────────────────────────────────
-    # TAB 3 — PROGRESIÓN POR SEMESTRE
-    # ─────────────────────────────────────────────────────────────────────────
     with tab_prog:
-        st.subheader("Progresión por Semestre")
-        st.caption(
-            "Un currículo progresivo muestra dominios procedimentales y actitudinales crecientes "
-            "hacia semestres superiores, junto con subcategorías cognitivas más complejas."
-        )
-
-        prog_prog_filter = st.multiselect(
-            "Programa (vacío = todos):",
-            programas_todos, default=[], key="tax_prog_prog_filter"
-        )
-        vista_prog = st.radio(
-            "Agrupar por:", ["Dominio", "Subcategoría"], horizontal=True, key="tax_vista_prog"
-        )
-
-        df_p = df_filt[df_filt['Programa'].isin(prog_prog_filter)] if prog_prog_filter else df_filt
-        df_p = df_p.copy()
-        df_p['Semestre_num'] = pd.to_numeric(df_p['Semestre'], errors='coerce')
-        df_p = df_p.dropna(subset=['Semestre_num'])
-        df_p['Semestre_num'] = df_p['Semestre_num'].astype(int)
-
-        if df_p.empty:
-            st.warning("No hay datos con semestre numérico para mostrar la progresión.")
+        st.subheader("Progresión por semestre")
+        st.caption("Exigencia y dominio de los RA declarados, según el semestre en que se trabajan las asignaturas "
+                   "(Paso 5). Cada RA cuenta una vez por matriz y semestre.")
+        if 'Semestre' not in df.columns:
+            st.info("Las matrices cargadas no traen el semestre.")
         else:
-            group_col = 'Dominio' if vista_prog == "Dominio" else 'Subcategoria'
-            pivot_p = (
-                df_p.groupby(['Semestre_num', group_col])
-                .size().reset_index(name='count')
-            )
-            total_g = pivot_p.groupby('Semestre_num')['count'].transform('sum')
-            pivot_p['pct'] = pivot_p['count'] / total_g * 100
-            sems_ord = sorted(df_p['Semestre_num'].unique())
+            from src.indicadores_articulo import _norm
+            sem = df[['Matriz', 'Semestre', 'Resultado de aprendizaje']].copy()
+            sem['Semestre'] = pd.to_numeric(sem['Semestre'], errors='coerce')
+            sem['clave'] = sem['Resultado de aprendizaje'].map(lambda t: _norm(t) if pd.notna(t) else '')
+            sem = sem.dropna(subset=['Semestre']).drop_duplicates(['Matriz', 'Semestre', 'clave'])
+            sem = sem.merge(ra[['Matriz', 'clave', 'Dominio declarado', 'Exigencia declarada']], on=['Matriz', 'clave'])
+            if sem.empty:
+                st.info("No se pudo vincular los RA del Paso 3 con los semestres del Paso 5.")
+            else:
+                st.caption(f"{sem[['Matriz', 'clave']].drop_duplicates().shape[0]} de {len(ra)} RA únicos se vinculan "
+                           f"con un semestre numérico.")
+                med = (sem.groupby('Semestre')['Exigencia declarada'].apply(tx.indice_exigencia).reset_index(
+                    name='Índice de exigencia'))
+                fig = px.line(med, x='Semestre', y='Índice de exigencia', markers=True, range_y=[0, 100])
+                fig.update_layout(height=320, margin=dict(l=10, r=10, t=10, b=10))
+                st.plotly_chart(fig, width='stretch')
+                dom = sem.groupby(['Semestre', 'Dominio declarado']).size().reset_index(name='RA')
+                dom['%'] = 100 * dom['RA'] / dom.groupby('Semestre')['RA'].transform('sum')
+                fig = px.bar(dom, x='Semestre', y='%', color='Dominio declarado', color_discrete_map=_DOMAIN_COLORS)
+                fig.update_layout(height=320, legend_title=None, yaxis=dict(range=[0, 100], ticksuffix=' %'),
+                                  margin=dict(l=10, r=10, t=10, b=10))
+                st.plotly_chart(fig, width='stretch')
 
-            color_map_prog = _DOMAIN_COLORS if vista_prog == "Dominio" else {
-                row[group_col]: _SUBCAT_COLORS.get(row[group_col], '#BDC3C7')
-                for _, row in pivot_p.iterrows()
-            }
-            cats_presentes = pivot_p[group_col].unique().tolist()
-
-            fig_p = go.Figure()
-            for cat in cats_presentes:
-                datos_cat = pivot_p[pivot_p[group_col] == cat]
-                val_map   = {int(r['Semestre_num']): r['pct'] for _, r in datos_cat.iterrows()}
-                y_vals    = [val_map.get(s, 0) for s in sems_ord]
-                fig_p.add_trace(go.Scatter(
-                    x=sems_ord, y=y_vals, name=cat,
-                    mode='lines+markers',
-                    line=dict(color=color_map_prog.get(cat, '#BDC3C7'), width=2.5),
-                    marker=dict(size=7),
-                    stackgroup='one', groupnorm='percent'
-                ))
-            fig_p.update_layout(
-                title=f"Composición por {group_col} (%) por semestre",
-                xaxis_title="Semestre", yaxis_title="% de RAs",
-                height=450,
-                legend=dict(orientation='h', y=-0.3),
-                xaxis=dict(tickmode='array', tickvals=sems_ord)
-            )
-            st.plotly_chart(fig_p, use_container_width=True)
-
-    # ─────────────────────────────────────────────────────────────────────────
-    # TAB 4 — EXPLORAR RAs
-    # ─────────────────────────────────────────────────────────────────────────
     with tab_ra:
-        st.subheader("Explorar Resultados de Aprendizaje")
-
-        col_e1, col_e2, col_e3 = st.columns(3)
-        with col_e1:
-            dom_e = st.selectbox(
-                "Dominio:", ['Todos'] + dominios_todos, key="tax_dom_e"
-            )
-        with col_e2:
-            subcats_disp = sorted(df_tax['Subcategoria'].unique().tolist())
-            sub_e = st.selectbox(
-                "Subcategoría:", ['Todas'] + subcats_disp, key="tax_sub_e"
-            )
-        with col_e3:
-            prog_e = st.selectbox(
-                "Programa:", ['Todos'] + programas_todos, key="tax_prog_e"
-            )
-
-        df_e = df_tax.copy()
-        if dom_e != 'Todos':
-            df_e = df_e[df_e['Dominio'] == dom_e]
-        if sub_e != 'Todas':
-            df_e = df_e[df_e['Subcategoria'] == sub_e]
-        if prog_e != 'Todos':
-            df_e = df_e[df_e['Programa'] == prog_e]
-
-        cols_show = ['Programa', 'Semestre', 'Nombre asignatura o modulo',
-                     'Resultado de aprendizaje', 'Dominio', 'Subcategoria']
-        cols_show = [c for c in cols_show if c in df_e.columns]
-        df_e_show = df_e[cols_show].drop_duplicates().sort_values(['Programa', 'Semestre'])
-        st.markdown(f"**{len(df_e_show)} RAs** coinciden con los filtros seleccionados.")
-        st.dataframe(df_e_show, use_container_width=True, hide_index=True)
-
-    # ─────────────────────────────────────────────────────────────────────────
-    # ─────────────────────────────────────────────────────────────────────────
-    with tab_mapa:
-        st.subheader("Mapa de Integración entre Asignaturas")
-        st.caption(
-            "Visualiza qué asignaturas **comparten núcleos temáticos**. "
-            "Un nodo = una asignatura; una línea = al menos un núcleo en común. "
-            "El grosor de la línea indica la cantidad de núcleos compartidos. "
-            "Útil para detectar redundancias, solapamientos u oportunidades de articulación curricular."
-        )
-
-        asig_col = 'Nombre asignatura o modulo'
-
-        # Filtro por programa
-        prog_mapa = st.multiselect(
-            "Filtrar por programa:",
-            sorted(df['Programa'].unique().tolist()),
-            default=sorted(df['Programa'].unique().tolist()),
-            key="mapa_prog_filter"
-        )
-        df_mapa = df[df['Programa'].isin(prog_mapa)] if prog_mapa else df
-
-        # Construir diccionario: asignatura -> set de núcleos
-        nucleos_dict: Dict[str, set] = {}
-        prog_asig: Dict[str, str] = {}
-        for _, row in df_mapa.iterrows():
-            asig = str(row.get(asig_col, '')).strip()
-            if not asig or asig in ('nan', ''):
-                continue
-            raw_nuc = str(row.get('Nucleos tematicos', '')).strip()
-            if raw_nuc and raw_nuc not in ('nan', ''):
-                nset = {
-                    unicodedata.normalize('NFKD', limpiar_nucleo(n.strip()).lower()).encode('ascii', 'ignore').decode('ascii')
-                    for n in _split_nucleos(raw_nuc)
-                    if es_nucleo_valido(n.strip())[0]
-                }
-            else:
-                nset = set()
-            if asig not in nucleos_dict:
-                nucleos_dict[asig] = set()
-                prog_asig[asig] = str(row.get('Programa', ''))
-            nucleos_dict[asig] |= nset
-
-        subjects = sorted(nucleos_dict.keys())
-        n_subjects = len(subjects)
-
-        if n_subjects < 2:
-            st.warning("Se necesitan al menos 2 asignaturas con núcleos temáticos para construir el mapa.")
-        else:
-            # Construir pares con núcleos compartidos
-            pares_compartidos = []
-            for i in range(n_subjects):
-                for j in range(i + 1, n_subjects):
-                    s1, s2 = subjects[i], subjects[j]
-                    shared = nucleos_dict[s1] & nucleos_dict[s2]
-                    if shared:
-                        pares_compartidos.append({
-                            'Asignatura 1': s1,
-                            'Asignatura 2': s2,
-                            'Programa 1': prog_asig[s1],
-                            'Programa 2': prog_asig[s2],
-                            'Núcleos compartidos': len(shared),
-                            'Temas compartidos': ', '.join(sorted(shared)[:5]) + ('…' if len(shared) > 5 else '')
-                        })
-
-            df_pares = pd.DataFrame(pares_compartidos)
-
-            if df_pares.empty:
-                st.info("No se encontraron núcleos temáticos compartidos entre las asignaturas seleccionadas.")
-            else:
-                # Grado de conectividad
-                degree: Counter = Counter()
-                for _, row in df_pares.iterrows():
-                    degree[row['Asignatura 1']] += int(row['Núcleos compartidos'])
-                    degree[row['Asignatura 2']] += int(row['Núcleos compartidos'])
-
-                connected_set = set(df_pares['Asignatura 1'].tolist() + df_pares['Asignatura 2'].tolist())
-                isolated_subjects = [s for s in subjects if s not in connected_set]
-
-                col_m1, col_m2, col_m3 = st.columns(3)
-                col_m1.metric("Asignaturas en el mapa", n_subjects)
-                col_m2.metric("Pares con núcleos compartidos", len(df_pares))
-                col_m3.metric("Asignaturas sin conexiones", len(isolated_subjects),
-                              delta="aisladas" if isolated_subjects else "Todas conectadas",
-                              delta_color="off")
-                st.markdown("---")
-
-                # ── Red de integración (grafo circular) ──────────────────────
-                st.subheader("Red de Integración Temática")
-                max_nodes = 40
-                if n_subjects > max_nodes:
-                    st.info(
-                        f"Hay **{n_subjects}** asignaturas. Mostrando las **{max_nodes}** "
-                        f"con mayor conectividad temática."
-                    )
-                    top_subjects = [s for s, _ in degree.most_common(max_nodes)]
-                else:
-                    top_subjects = subjects
-
-                n_top = len(top_subjects)
-                idx_map = {s: i for i, s in enumerate(top_subjects)}
-                angles_list = [2 * _math.pi * i / n_top for i in range(n_top)]
-                x_pos = {s: _math.cos(a) for s, a in zip(top_subjects, angles_list)}
-                y_pos = {s: _math.sin(a) for s, a in zip(top_subjects, angles_list)}
-
-                # Color por programa
-                progs_unicos = sorted({prog_asig[s] for s in top_subjects})
-                palette = px.colors.qualitative.Set2 + px.colors.qualitative.Pastel
-                prog_color_map = {p: palette[i % len(palette)] for i, p in enumerate(progs_unicos)}
-
-                # Aristas
-                max_shared = int(df_pares['Núcleos compartidos'].max()) if not df_pares.empty else 1
-                edge_traces = []
-                for _, row in df_pares.iterrows():
-                    s1, s2 = row['Asignatura 1'], row['Asignatura 2']
-                    if s1 not in idx_map or s2 not in idx_map:
-                        continue
-                    w = max(1, min(8, int(row['Núcleos compartidos']) / max_shared * 8))
-                    alpha = round(0.15 + (int(row['Núcleos compartidos']) / max_shared) * 0.65, 2)
-                    edge_traces.append(go.Scatter(
-                        x=[x_pos[s1], x_pos[s2], None],
-                        y=[y_pos[s1], y_pos[s2], None],
-                        mode='lines',
-                        line=dict(width=w, color=f'rgba(100,100,100,{alpha})'),
-                        hoverinfo='none',
-                        showlegend=False
-                    ))
-
-                # Nodos por programa (una traza por programa para la leyenda)
-                node_traces = []
-                for prog in progs_unicos:
-                    subs_prog = [s for s in top_subjects if prog_asig[s] == prog]
-                    node_traces.append(go.Scatter(
-                        x=[x_pos[s] for s in subs_prog],
-                        y=[y_pos[s] for s in subs_prog],
-                        mode='markers+text',
-                        name=prog[:35],
-                        text=[s[:22] + ('…' if len(s) > 22 else '') for s in subs_prog],
-                        textposition='top center',
-                        textfont=dict(size=8),
-                        marker=dict(
-                            size=[10 + min(degree.get(s, 0), 25) for s in subs_prog],
-                            color=prog_color_map[prog],
-                            line=dict(width=1, color='white')
-                        ),
-                        hovertext=[
-                            f"<b>{s}</b><br>Programa: {prog_asig[s]}<br>"
-                            f"Peso de conexiones: {degree.get(s, 0)}<br>"
-                            f"Núcleos únicos: {len(nucleos_dict.get(s, set()))}"
-                            for s in subs_prog
-                        ],
-                        hoverinfo='text'
-                    ))
-
-                fig_net = go.Figure(data=edge_traces + node_traces)
-                fig_net.update_layout(
-                    title="Red de integración temática (nodos = asignaturas, líneas = núcleos compartidos)",
-                    height=660,
-                    showlegend=True,
-                    legend=dict(title="Programa", orientation='v', x=1.01, font=dict(size=10)),
-                    xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-                    yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-                    plot_bgcolor='white',
-                    margin=dict(t=50, b=20, l=20, r=20)
-                )
-                st.plotly_chart(fig_net, use_container_width=True)
-                st.caption(
-                    "**Lectura:** El tamaño del nodo refleja el peso total de conexiones temáticas. "
-                    "Nodos muy grandes son asignaturas articuladoras del currículo. "
-                    "Nodos aislados (sin líneas) pueden indicar asignaturas sin integración con otras."
-                )
-
-                st.markdown("---")
-
-                # ── Heatmap de núcleos compartidos (si hay pocas asignaturas) ─
-                if n_subjects <= 35:
-                    st.subheader("Matriz de Integración (Núcleos Compartidos)")
-                    st.caption(
-                        "Cada celda muestra cuántos núcleos temáticos comparten dos asignaturas. "
-                        "Valores altos indican alta integración (o posible redundancia a revisar)."
-                    )
-                    mat = pd.DataFrame(0, index=subjects, columns=subjects)
-                    for _, row in df_pares.iterrows():
-                        mat.loc[row['Asignatura 1'], row['Asignatura 2']] = int(row['Núcleos compartidos'])
-                        mat.loc[row['Asignatura 2'], row['Asignatura 1']] = int(row['Núcleos compartidos'])
-                    short = {s: (s[:30] + '…' if len(s) > 30 else s) for s in subjects}
-                    mat_disp = mat.rename(index=short, columns=short)
-                    fig_heat = px.imshow(
-                        mat_disp.values,
-                        x=mat_disp.columns.tolist(),
-                        y=mat_disp.index.tolist(),
-                        color_continuous_scale='Blues',
-                        aspect='auto',
-                        title="Núcleos temáticos compartidos entre asignaturas",
-                        labels=dict(color="Núcleos comunes")
-                    )
-                    fig_heat.update_layout(
-                        height=max(400, n_subjects * 18),
-                        xaxis_tickangle=45,
-                        xaxis=dict(tickfont=dict(size=9)),
-                        yaxis=dict(tickfont=dict(size=9))
-                    )
-                    st.plotly_chart(fig_heat, use_container_width=True)
-                    st.markdown("---")
-
-                # ── Top pares con más núcleos compartidos ─────────────────────
-                st.subheader("Pares con Mayor Integración Temática")
-                st.caption(
-                    "Asignaturas que comparten más núcleos temáticos — "
-                    "candidatas a articulación explícita o revisión de solapamiento."
-                )
-                df_top = df_pares.sort_values('Núcleos compartidos', ascending=False).head(20)
-                st.dataframe(df_top, use_container_width=True, hide_index=True)
-
-                # ── Asignaturas aisladas ───────────────────────────────────────
-                if isolated_subjects:
-                    with st.expander(f"⚠️ Asignaturas sin integración temática ({len(isolated_subjects)})"):
-                        st.caption(
-                            "Estas asignaturas no comparten ningún núcleo temático con otras. "
-                            "Pueden ser especializadas (normal) o indicar falta de articulación curricular."
-                        )
-                        for s in sorted(isolated_subjects):
-                            st.markdown(f"- **{s}** — Programa: {prog_asig.get(s, 'N/A')}")
+        st.subheader("Explorar resultados de aprendizaje")
+        f1, f2, f3 = st.columns(3)
+        prog = f1.multiselect("Programa", sorted(ra['Programa'].unique()), key='tax_ra_prog')
+        dom = f2.multiselect("Dominio declarado", [d for d in tx.DOMINIOS if d in set(ra['Dominio declarado'])],
+                             key='tax_ra_dom')
+        busca = f3.text_input("Buscar en el texto del RA", key='tax_ra_txt')
+        vista = ra
+        if prog:
+            vista = vista[vista['Programa'].isin(prog)]
+        if dom:
+            vista = vista[vista['Dominio declarado'].isin(dom)]
+        if busca.strip():
+            vista = vista[vista['RA'].str.contains(busca.strip(), case=False, regex=False)]
+        st.caption(f"{len(vista)} de {len(ra)} RA.")
+        st.dataframe(vista[['Matriz', 'Verbo', 'Taxonomía', 'Dominio declarado', 'Nivel declarado', 'Tipo de saber',
+                            'Contraste', 'RA']], hide_index=True, width='stretch', height=520)
 
 
 def _cargar_cobertura_perfil_por_programa(uploaded_files) -> Dict:
@@ -5537,7 +5431,7 @@ def main():
         "Cobertura Temática":   ("map",             "Núcleos temáticos: diversidad y densidad por programa"),
         "Tendencias Globales":  ("graph-up-arrow",  "Alineación con IA, Sostenibilidad, Innovación, etc."),
         "Minería de Texto":     ("search",          "Términos clave, similitud y frases frecuentes"),
-        "Bloom & Integración":  ("diagram-3",       "Taxonomía de Bloom y mapa de integración temática"),
+        "Taxonomías":           ("diagram-3",       "Taxonomías, niveles de verbos y exigencia de los RA"),
         "Familias Curriculares":("diagram-2",       "Clustering jerárquico y familias de programas"),
         "Configurar Tendencias":("sliders",         "Personalizar las tendencias globales a detectar"),
         "Explorar Datos":       ("table",           "Explorar y filtrar los registros cargados"),
@@ -5919,7 +5813,7 @@ def main():
             </div>
             <div class="feature-card" style="--card-color:#7c3aed;--card-bg:#f3e8ff;">
                 <div><div class="feature-icon-box">{icon_bloom}</div>
-                    <h3>Bloom &amp; Integraci&#243;n</h3>
+                    <h3>Taxonom&#237;as</h3>
                     <p>Niveles taxon&#243;micos detectados en las competencias y resultados de aprendizaje.</p></div>
                 <div class="feature-meta"><span class="status">NIVEL: CREAR</span><span class="arrow">&#8250;</span></div>
             </div>
@@ -6104,9 +5998,8 @@ def main():
             resultados_nlp = analizar_nlp(df_filtered)
         pagina_nlp(df_filtered, resultados_nlp)
 
-    elif pagina == "Bloom & Integración":
-        taxonomias_bloom = leer_taxonomias_bloom(uploaded_files)
-        pagina_bloom_integracion(df_filtered, taxonomias_bloom)
+    elif pagina == "Taxonomías":
+        pagina_taxonomias(df_filtered)
 
     elif pagina == "Familias Curriculares":
         with st.spinner("Agrupando programas en familias curriculares..."):
