@@ -13,6 +13,8 @@ import sys
 import unicodedata
 
 import docx
+import docx.text.run
+from docx.enum.text import WD_COLOR_INDEX
 from docx.oxml.ns import qn
 
 sys.path.insert(0, 'auditoria/scripts')
@@ -25,14 +27,25 @@ log = []
 
 
 def poner_texto(p, texto):
-    """Reemplaza el texto del párrafo conservando el formato de su primer run."""
+    """Reemplaza el texto del párrafo conservando el formato de su primer run; ⟦…⟧ se resalta en verde (cambio en revisión)."""
     runs = p.runs
     if not runs:
-        p.add_run(texto)
-        return
-    runs[0].text = texto
+        runs = [p.add_run('')]
+    base = runs[0]
     for r in runs[1:]:
         r._r.getparent().remove(r._r)
+    trozos = re.split(r'⟦|⟧', texto)
+    base.text = trozos[0]
+    ultimo = base._r
+    for i, trozo in enumerate(trozos[1:], 1):
+        if not trozo:
+            continue
+        nuevo = copy.deepcopy(base._r)
+        ultimo.addnext(nuevo)
+        ultimo = nuevo
+        r = docx.text.run.Run(nuevo, p)
+        r.text = trozo
+        r.font.highlight_color = WD_COLOR_INDEX.BRIGHT_GREEN if i % 2 else None
 
 
 def reemplazar_en(p, viejo, nuevo):
@@ -68,8 +81,8 @@ TABLA2 = [
     ('V3. Evaluabilidad', 'Proporción de RA únicos con verbo observable (en SaberSer se admite el verbo afectivo) y finalidad '
      'de desempeño o producto declarado.'),
     ('V4. Trazabilidad', 'Proporción de RA únicos vinculados a una estrategia mesocurricular con indicador e instrumento (Paso 4).'),
-    ('V5. Nivel de evidencia de los indicadores', 'Proporción de estrategias con al menos un indicador de aprendizaje '
-     'demostrado (N3) o de transferencia (N4); descriptiva, no exigida por la plantilla.'),
+    ('V5. Nivel de evidencia de los indicadores', 'Proporción de estrategias cuyo indicador de mayor nivel supera la mera '
+     'implementación (N2 o superior, D29); la evidencia directa del logro (N3–N4) se informa como dato descriptivo.'),
 ]
 for t in M.tables:
     if len(t.rows) >= 6 and t.cell(1, 0).text.strip().startswith('V1.'):
@@ -150,6 +163,7 @@ def formato_tabla_manuscrito(tbl):
                 for r in p.findall(qn('w:r')):
                     viejo = r.find(qn('w:rPr'))
                     cursiva = viejo is not None and viejo.find(qn('w:i')) is not None
+                    resaltado = viejo.find(qn('w:highlight')) if viejo is not None else None  # cambio en revisión
                     if viejo is not None:
                         r.remove(viejo)
                     rPr = r.makeelement(qn('w:rPr'), {})  # orden del esquema: rFonts, b, bCs, i, iCs, color, sz, szCs
@@ -164,6 +178,8 @@ def formato_tabla_manuscrito(tbl):
                     rPr.append(rPr.makeelement(qn('w:color'), {qn('w:val'): color}))
                     rPr.append(rPr.makeelement(qn('w:sz'), {qn('w:val'): '20'}))
                     rPr.append(rPr.makeelement(qn('w:szCs'), {qn('w:val'): '20'}))
+                    if resaltado is not None:
+                        rPr.append(resaltado)  # highlight va después de szCs
                     r.insert(0, rPr)
 
 

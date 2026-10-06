@@ -24,10 +24,21 @@ v1 = pd.read_excel('auditoria/Asociacion_perfil_50_matrices.xlsx', sheet_name='R
 v1['V1'] = 100 - v1['% sin asociación']  # V1 = atributos con alineación en al menos una capa
 d = d.merge(v1.rename(columns={'Matriz': 'matriz'})[['matriz', 'V1']], on='matriz')
 d['V3'] = 100.0
-d = d.rename(columns={'V5_directa': 'V5'})
+# D29: V5 = % de estrategias con indicador de nivel N2 o superior, por matriz, desde las fuentes
+import glob, sys  # noqa: E402
+sys.path.insert(0, '.')
+from src import indicadores_articulo as ia  # noqa: E402
+v5 = {}
+for f in sorted(glob.glob('data/raw/FORMATOS RA CICLO UNO RC/*.xlsx')):
+    m = ia._evaluar_matriz(ia._leer_matriz(os.path.basename(f), f))
+    niv = [e['nivel_max'][:2] if e['nivel_max'] else 'N0' for e in m['estrategias']]
+    v5[m['matriz']] = 100 * sum(x >= 'N2' for x in niv) / len(niv) if niv else 0.0
+d['V5'] = d['matriz'].map(v5)
+assert d['V5'].notna().all(), d.loc[d['V5'].isna(), 'matriz'].tolist()
 
 FILAS = [('V1', 'V1 Correspondencia del perfil', AZUL), ('V2', 'V2 Coherencia horizontal', AZUL),
-         ('V3', 'V3 Evaluabilidad', GRIS), ('V4', 'V4 Trazabilidad', AZUL), ('V5', 'V5 Evidencia directa del logro', MAGENTA)]
+         ('V3', 'V3 Evaluabilidad', GRIS), ('V4', 'V4 Trazabilidad', AZUL),
+         ('V5', 'V5 Evidencia del logro (N2 o superior)', AZUL)]
 rng = np.random.default_rng(42)
 fig = go.Figure()
 for i, (v, nombre, color) in enumerate(FILAS):
@@ -36,7 +47,7 @@ for i, (v, nombre, color) in enumerate(FILAS):
                              marker=dict(size=9, color=color, opacity=0.75, line=dict(color=NAVY, width=0.6)),
                              text=d['matriz'], hovertemplate='%{text}: %{x:.1f} %<extra></extra>'))
     nota = {'V1': f"{d.V1.min():.1f} %–{d.V1.max():.1f} %".replace('.', ','), 'V3': 'constante', 'V2': '45 en 100 %, 5 en 0 %',
-            'V5': f"{(d.V5 > 0).sum()} matrices > 0 %", 'V4': f"{d.V4.min():.1f} %–{d.V4.max():.1f} %".replace('.', ',')}[v]
+            'V5': f"{d.V5.min():.1f} %–{d.V5.max():.1f} %<br>({(d.V5 == 100).sum()} en 100 %)".replace('.', ','), 'V4': f"{d.V4.min():.1f} %–{d.V4.max():.1f} %".replace('.', ',')}[v]
     fig.add_annotation(x=1.02, xref='paper', y=y, text=nota, showarrow=False, xanchor='left', font=dict(size=12, color=GRIS))
 fig.update_layout(font=dict(family='Arial', size=13, color=NAVY), paper_bgcolor='white', plot_bgcolor='white',
                   width=1100, height=480, margin=dict(t=20, b=60, l=260, r=190), separators=',.',

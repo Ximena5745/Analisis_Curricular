@@ -22,7 +22,7 @@ import openpyxl
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from docx import Document
-from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_COLOR_INDEX
 from docx.shared import Cm, Pt, RGBColor
 
 warnings.filterwarnings('ignore')
@@ -76,21 +76,17 @@ COL = {'Saber': NAVY, 'SaberHacer': AZUL, 'SaberSer': DORADO}
 layout_base = dict(font=dict(family=FUENTE, size=14, color=NAVY), paper_bgcolor='white', plot_bgcolor='white', separators=',.')
 
 # ---------------------------------------------------------------- Figura 2
-fig = make_subplots(rows=1, cols=2, specs=[[{'type': 'domain'}, {'type': 'domain'}]],
-                    subplot_titles=['Registros de RA (RA × competencia)', 'RA únicos'])
-for i, (datos, centro) in enumerate([(reg_tipo, 'registros'), (unico_tipo, 'RA únicos')], 1):
-    n = sum(datos.values())
-    fig.add_trace(go.Pie(labels=[ETIQ[t] for t in ORDEN], values=[datos[t] for t in ORDEN], hole=0.55, sort=False,
-                         marker=dict(colors=[COL[t] for t in ORDEN], line=dict(color='white', width=2)),
-                         text=[f'{100 * datos[t] / n:.1f} %'.replace('.', ',') + f'<br>({datos[t]})' for t in ORDEN],
-                         textinfo='text', textfont=dict(size=14, color='white'),
-                         hovertemplate='%{label}: %{value}<extra></extra>', showlegend=(i == 1),
-                         title=dict(text=f'<b>{n}</b><br><span style="font-size:13px">{centro}</span>',
-                                    position='middle center', font=dict(size=24, color=NAVY))), 1, i)
-fig.update_layout(**layout_base, width=1100, height=520, margin=dict(t=50, b=60, l=20, r=20),
+# Solo RA únicos: los registros (RA × competencia) repiten el RA y reparten de forma artificial los tipos de saber
+n = sum(unico_tipo.values())
+fig = go.Figure(go.Pie(labels=[ETIQ[t] for t in ORDEN], values=[unico_tipo[t] for t in ORDEN], hole=0.55, sort=False,
+                       marker=dict(colors=[COL[t] for t in ORDEN], line=dict(color='white', width=2)),
+                       text=[f'{100 * unico_tipo[t] / n:.1f} %'.replace('.', ',') + f'<br>({unico_tipo[t]})' for t in ORDEN],
+                       textinfo='text', textfont=dict(size=14, color='white'),
+                       hovertemplate='%{label}: %{value}<extra></extra>',
+                       title=dict(text=f'<b>{n}</b><br><span style="font-size:13px">RA únicos</span>',
+                                  position='middle center', font=dict(size=24, color=NAVY))))
+fig.update_layout(**layout_base, width=700, height=520, margin=dict(t=30, b=60, l=20, r=20),
                   legend=dict(orientation='h', x=0.5, xanchor='center', y=-0.05))
-fig.layout.annotations[0].update(font=dict(size=15, color=NAVY))
-fig.layout.annotations[1].update(font=dict(size=15, color=NAVY))
 F2 = f'{OUT}/R2_figura2_tipo_saber.png'
 fig.write_image(F2, scale=2)
 
@@ -122,6 +118,18 @@ for s in doc.sections:
     s.left_margin = s.right_margin = s.top_margin = s.bottom_margin = Cm(2.54)
 
 
+def runs(p, texto):
+    """Agrega el texto en runs; lo marcado con ⟦…⟧ (cambio en revisión) se resalta en verde."""
+    out = []
+    for i, trozo in enumerate(re.split(r'⟦|⟧', texto)):
+        if trozo:
+            r = p.add_run(trozo)
+            if i % 2:
+                r.font.highlight_color = WD_COLOR_INDEX.BRIGHT_GREEN
+            out.append(r)
+    return out
+
+
 def parrafo(texto, sangria=True, tam=None, cursiva=False, alinear=None, interlineado=None):
     p = doc.add_paragraph()
     if sangria:
@@ -130,10 +138,10 @@ def parrafo(texto, sangria=True, tam=None, cursiva=False, alinear=None, interlin
         p.alignment = alinear
     if interlineado:
         p.paragraph_format.line_spacing = interlineado
-    r = p.add_run(texto)
-    r.font.name, r.italic = LETRA, cursiva
-    if tam:
-        r.font.size = Pt(tam)
+    for r in runs(p, texto):
+        r.font.name, r.italic = LETRA, cursiva
+        if tam:
+            r.font.size = Pt(tam)
     return p
 
 
@@ -141,19 +149,19 @@ def titulo(texto, nivel=2):
     # APA 7: nivel 1 centrado en negrita; nivel 2 a la izquierda en negrita
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER if nivel == 1 else WD_ALIGN_PARAGRAPH.LEFT
-    r = p.add_run(texto)
-    r.bold, r.font.name = True, LETRA
+    for r in runs(p, texto):
+        r.bold, r.font.name = True, LETRA
 
 
 def rotulo(texto):
     # APA 7: "Tabla N" en negrita y, debajo, el título en cursiva
     numero, nombre = texto.split('. ', 1)
     p = doc.add_paragraph()
-    r = p.add_run(numero)
-    r.bold, r.font.name = True, LETRA
+    for r in runs(p, numero):
+        r.bold, r.font.name = True, LETRA
     p = doc.add_paragraph()
-    r = p.add_run(nombre)
-    r.italic, r.font.name = True, LETRA
+    for r in runs(p, nombre):
+        r.italic, r.font.name = True, LETRA
 
 
 def nota(texto):
@@ -162,8 +170,8 @@ def nota(texto):
     cuerpo = texto[len('Nota.'):].strip() if texto.startswith('Nota.') else texto
     r = p.add_run('Nota. ')
     r.italic, r.font.name, r.font.size = True, LETRA, Pt(10)
-    r = p.add_run(cuerpo)
-    r.font.name, r.font.size = LETRA, Pt(10)
+    for r in runs(p, cuerpo):
+        r.font.name, r.font.size = LETRA, Pt(10)
 
 
 def figura(ruta, texto, texto_nota):
@@ -179,15 +187,15 @@ def tabla(titulo_t, cab, filas, control=False):
     t = doc.add_table(rows=1, cols=len(cab))
     t.style = 'Table Grid'
     for i, c in enumerate(cab):
-        run = t.rows[0].cells[i].paragraphs[0].add_run(c)
-        run.bold, run.font.name, run.font.size = True, LETRA, Pt(10)
+        for run in runs(t.rows[0].cells[i].paragraphs[0], c):
+            run.bold, run.font.name, run.font.size = True, LETRA, Pt(10)
     for fila in filas:
         celdas = t.add_row().cells
         for i, v in enumerate(fila):
-            run = celdas[i].paragraphs[0].add_run(str(v))
-            run.font.name, run.font.size = LETRA, Pt(10)
-            if fila[0] == 'Total':
-                run.bold = True
+            for run in runs(celdas[i].paragraphs[0], str(v)):
+                run.font.name, run.font.size = LETRA, Pt(10)
+                if fila[0] == 'Total':
+                    run.bold = True
     for fila in t.rows:
         for c in fila.cells:
             c.paragraphs[0].paragraph_format.line_spacing = 1.0
@@ -198,13 +206,17 @@ FIGURAS_EN_LINEA = {
             'a. Núcleos por campo amplio CINE-F 2013 del programa (asignación propuesta, pendiente de validación). b. Distribución '
             'de los 6.684 núcleos; línea discontinua: umbral 0,5, definido en la configuración y nunca implementado. '
             'Fórmula vigente de src/nucleos_cleaner.calcular_score_academico.')],
-    'Figura 6. Temas de agenda global: amplitud y profundidad': [('auditoria/figuras/R8_figura6_tendencias.png', 'Figura 6. Tendencias del sector empresarial y educativo: amplitud y profundidad',
-            'Amplitud: programas con al menos una asignatura que menciona el tema (n = 39). Profundidad: asignaturas que lo mencionan '
-            '(n = 1.616, sin electivas). Regla de asignación en la nota del texto.')],
+    'Figura 6. Temas de agenda global: amplitud y profundidad': [('auditoria/figuras/R8_figura6_tendencias.png', 'Figura 6. ⟦Integración de las tendencias del sector empresarial y educativo en los programas⟧',
+            '⟦Izquierda: los 39 programas según cómo integran cada tendencia —en asignaturas propias, solo por el núcleo común '
+            'institucional o no la tienen—; las cifras son número de programas y las tendencias se ordenan de menor a mayor '
+            'integración propia. Derecha: profundidad, o proporción de las 1.616 asignaturas sin electivas que incluyen la tendencia. '
+            'Se omite la formación ciudadana, humanística, investigativa y práctica (véase el texto).⟧ Regla de asignación en la '
+            'nota del texto.')],
 }
 FIGURAS = {
     'R6': [('auditoria/figuras/R6_figura_distribucion_variables.png', 'Figura 5. Distribución de las variables V1–V5 por matriz',
-            'Cada punto es una matriz (n = 50); los puntos superpuestos se dispersan verticalmente. V1: atributos del perfil con alineación en al menos una capa (Etapa 4).')],
+            'Cada punto es una matriz (n = 50); los puntos superpuestos se dispersan verticalmente. V1: atributos del perfil con alineación en al menos una capa (Etapa 4). '
+            'V5: estrategias con indicador de nivel N2 o superior (D29). Gris: variable constante (V3).')],
     'Intro': [('auditoria/figuras/R0_figura1_cadena_evidencia.png', 'Figura 1. Ruta de alineación curricular en las matrices',
                'Cada tramo se calcula sobre su propia base (RA únicos, matrices o estrategias). Gris: condición impuesta por el '
                'instrumento; azul: articulación. El nivel de evidencia de los indicadores (V5) no es un tramo de la ruta y se informa en '
@@ -213,8 +225,8 @@ FIGURAS = {
             'N = 222 competencias. La competencia genérica institucional es «Analizar fenómenos contemporáneos». '
             'Fuente: Paso 2 de las 50 matrices.'),
            (F2, 'Figura 3. Distribución de los resultados de aprendizaje por tipo de saber',
-            f'Registros (N = {sum(reg_tipo.values())}): RA asociado a una competencia. RA únicos (N = {sum(unico_tipo.values())}): '
-            'contados una vez por matriz. Fuente: Paso 3 de las 50 matrices.')],
+            f'N = {sum(unico_tipo.values())} RA únicos, contados una vez por matriz aunque aporten a varias competencias. '
+            'Fuente: Paso 3 de las 50 matrices.')],
     'R4': [('auditoria/figuras/R4_figura4_trazabilidad.png', 'Figura 4. RA sin estrategia mesocurricular por sede, clase y matriz',
             'Izquierda: los 44 RA únicos sin estrategia, según sean el RA de la competencia genérica institucional o RA de programa. '
             'Derecha: matrices con RA de programa sin estrategia. Fuente: Pasos 3 y 4 de las 50 matrices.')],

@@ -15,7 +15,9 @@ de celdas combinadas (B, C y E); sus indicadores (D) e instrumentos (F) ocupan f
                             finalidad de desempeño o producto concreto. Condición del instrumento.
   V4 Trazabilidad (D16)     % de RA únicos con estrategia meso que declara instrumento, emparejados
                             por similitud ≥ 0,80 o mejor coincidencia mutua ≥ 0,50.
-  V5 Evidencia directa (D17) % de estrategias con al menos un indicador N3 o N4.
+  V5 Evidencia (D29)        % de estrategias cuyo indicador de mayor nivel es N2 o superior (0 solo si no hay
+                            indicadores o todos son de implementación). La evidencia directa (N3–N4, antes V5
+                            según D17) se informa como dato descriptivo.
 
 Los scripts de auditoria/scripts (verificar_v3, v4_alternativas, verificar_v5) son la evidencia del
 artículo; este módulo reproduce sus reglas para el dashboard (tests: test_indicadores_articulo).
@@ -184,7 +186,8 @@ def _evaluar_matriz(m: Dict) -> Dict:
         est.append({'matriz': m['matriz'], 'programa': m['programa'], 'sede': m['sede'], 'estrategia': e['estrategia'],
                     'indicadores': len(e['indicadores']), 'niveles': niveles, 'instrumento': e['ins'],
                     'nivel_max': max(niveles) if niveles else None,
-                    'V5': any(n[:2] in ('N3', 'N4') for n in niveles)})
+                    'V5': bool(niveles) and max(niveles)[:2] >= 'N2',  # D29
+                    'directa': any(n[:2] in ('N3', 'N4') for n in niveles)})
     return {'matriz': m['matriz'], 'programa': m['programa'], 'sede': m['sede'],
             'competencias': len(m['competencias']), 'verbos_repetidos': repetidos, 'V2': not repetidos,
             'ras': ras, 'estrategias': est,
@@ -228,6 +231,7 @@ def calcular_indicadores(archivos: Iterable[Tuple[str, object]], v1: Dict[str, T
                            'V3 %': pct([x['V3'] for x in r]), 'V4 %': pct([x['V4'] for x in r]),
                            'RA sin estrategia': sum(not x['V4'] for x in r),
                            'V5 %': pct([x['V5'] for x in e]),
+                           'Evidencia directa %': pct([x['directa'] for x in e]),
                            'Estrategias con indicador e instrumento': sum(bool(x['indicadores']) and x['instrumento'] for x in e),
                            'Indicadores por nivel': dict(Counter(n[:2] for x in e for n in x['niveles']))})
     globales = {
@@ -245,7 +249,8 @@ def calcular_indicadores(archivos: Iterable[Tuple[str, object]], v1: Dict[str, T
         'genericos_con_estrategia': sum(r['V4'] for r in ras if r['generica']),
         'ra_sin_estrategia': sum(not r['V4'] for r in ras),
         'ra_sin_estrategia_programa': sum(not r['V4'] and not r['generica'] for r in ras),
-        'V5': pct([e['V5'] for e in est]), 'estrategias_directa': sum(e['V5'] for e in est),
+        'V5': pct([e['V5'] for e in est]), 'estrategias_directa': sum(e['directa'] for e in est),
+        'evidencia_directa': pct([e['directa'] for e in est]),
         'niveles': dict(Counter(i['nivel'] for i in inds)),
         'matrices_con_repeticion': sum(not m['V2'] for m in matrices),
         'programas_con_repeticion': len({m['programa'] for m in matrices if not m['V2']}),
@@ -405,8 +410,7 @@ def valorar_matriz(fila: Dict, sin_respaldo_pct: float = None, exigencia: float 
     ref = referencia or {}
     f = lambda x: '—' if x is None else f'{x:.1f} %'.replace('.', ',')
     n_ra, n_est = fila.get('RA únicos') or 0, fila.get('Estrategias') or 0
-    v5 = fila.get('V5 %')
-    directas = round((v5 or 0) * n_est / 100)
+    directas = round((fila.get('Evidencia directa %') or 0) * n_est / 100)
     resultado = {
         'V1': (fila.get('V1 %'), f"{f(fila.get('V1 %'))} con alguna alineación"
                + (f"; {f(sin_respaldo_pct)} sin alineación" if sin_respaldo_pct is not None else '')
@@ -429,9 +433,10 @@ def valorar_matriz(fila: Dict, sin_respaldo_pct: float = None, exigencia: float 
                               'demostrado (N3) por estrategia',
                   'Resultado': (f"{n_ind} indicadores: N1 implementación {niv.get('N1', 0)}, N2 percepción "
                                 f"{niv.get('N2', 0)}, N3–N4 aprendizaje {niv.get('N3', 0) + niv.get('N4', 0)}, "
-                                f"N5 efecto externo {niv.get('N5', 0)}; {directas} de {n_est} estrategias con N3–N4")
+                                f"N5 efecto externo {niv.get('N5', 0)}; V5 (N2 o superior) {f(fila.get('V5 %'))}; "
+                                f"{directas} de {n_est} estrategias con N3–N4")
                                 if n_ind else '—',
-                  'Estado': 'Descriptiva', 'Referencia (mediana)': f(ref.get('V5 %')) + ' de estrategias con N3–N4'
+                  'Estado': 'Descriptiva', 'Referencia (mediana)': f(ref.get('V5 %')) + ' de estrategias con N2 o superior'
                   if ref.get('V5 %') is not None else '—'})
     filas.append({'Variable': '—', 'Tramo': 'Exigencia de los RA (descriptiva)',
                   'Criterio': 'Sin criterio: la exigencia adecuada depende del nivel de formación',

@@ -4886,8 +4886,8 @@ def pagina_indicadores_articulo():
         "**V2** Coherencia horizontal: matriz sin verbo repetido entre competencias específicas (no cuenta la "
         "competencia genérica institucional). **V3** Evaluabilidad: RA con verbo observable y finalidad de desempeño. "
         "**V4** Trazabilidad: RA únicos con estrategia mesocurricular que declara instrumento (Paso 4). "
-        "**V5** Evidencia directa del logro: estrategias con al menos un indicador de aprendizaje demostrado (N3) o "
-        "de transferencia (N4). Todo se calcula con los archivos cargados."
+        "**V5** Evidencia del logro: estrategias cuyo indicador de mayor nivel supera la mera implementación (N2 o "
+        "superior); vale 0 solo si no hay indicadores o todos son de implementación. Todo se calcula con los archivos cargados."
     )
     uploaded_files = st.session_state.get('archivos_subidos', [])
     if not uploaded_files:
@@ -4907,7 +4907,9 @@ def pagina_indicadores_articulo():
     c[2].metric("V2 Coherencia", fmt(g['V2']), help=f"{g['matrices_con_repeticion']} matriz(ces) con verbo repetido.")
     c[3].metric("V3 Evaluabilidad", fmt(g['V3']), help=f"{g['ra_unicos']} RA únicos.")
     c[4].metric("V4 Trazabilidad", fmt(g['V4']), help=f"Sin el RA genérico: {fmt(g['V4_programa'])}.")
-    c[5].metric("V5 Evidencia directa", fmt(g['V5']), help=f"{g['estrategias_directa']} de {g['estrategias']} estrategias.")
+    c[5].metric("V5 Evidencia (N2+)", fmt(g['V5']),
+                help=f"Evidencia directa (N3–N4, descriptiva): {g['estrategias_directa']} de {g['estrategias']} "
+                     f"estrategias ({fmt(g['evidencia_directa'])}).")
 
     st.subheader("Ruta de alineación curricular")
     st.caption("Cada tramo se calcula sobre su propia base. Gris: condición que impone la plantilla; azul: "
