@@ -42,7 +42,7 @@ def texto(t) -> str:
 
 
 def pct(v) -> str:
-    return '-' if v is None else f'{v:.1f} %'.replace('.', ',')
+    return '-' if v is None else f'{v:.0f} %'.replace('.', ',')
 
 
 class _Informe(FPDF):
@@ -429,7 +429,7 @@ def informe_programa(d: Dict) -> bytes:
         _tabla(pdf, ['Tipo de saber', 'Programa', 'Mediana del conjunto', 'Diferencia'],
                [[t['Tipo'], pct(t['Programa']), pct(t['Mediana']),
                  '-' if t['Programa'] is None or t['Mediana'] is None
-                 else f"{t['Programa'] - t['Mediana']:+.1f} pp".replace('.', ',')] for t in d['tipo_saber']],
+                 else f"{t['Programa'] - t['Mediana']:+.0f} pp".replace('.', ',')] for t in d['tipo_saber']],
                (60, 40, 40, 40), alinear=('LEFT', 'CENTER', 'CENTER', 'CENTER'))
 
     if d.get('tendencias_presentes') is not None:

@@ -48,6 +48,19 @@ COLORES_SEDE = {
 # se usan desde src.nucleos_cleaner (importado arriba).
 
 
+def _df(data, **kw):
+    """st.dataframe con las columnas de porcentaje (nombre con «%» o «Cobertura») como enteros de 0 a 100 con su signo.
+    Un column_config explícito de quien llama tiene prioridad."""
+    if isinstance(data, pd.DataFrame):
+        cfg = {c: st.column_config.NumberColumn(format='%.0f%%') for c in data.columns
+               if isinstance(c, str) and ('%' in c or c in ('Cobertura', 'Cobertura (%)'))
+               and pd.api.types.is_numeric_dtype(data[c])}
+        cfg.update(kw.pop('column_config', None) or {})
+        if cfg:
+            kw['column_config'] = cfg
+    return st.dataframe(data, **kw)
+
+
 def render_icon_svg(name: str, color: str = "#0f3460", size: int = 28) -> str:
     icons = {
         'document': f'''<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 2H14L18 6V22H6V2Z" fill="{color}" fill-opacity="0.12"/><path d="M14 2V6H18" stroke="{color}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 2H14L18 6V22H6V2Z" stroke="{color}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 12H15" stroke="{color}" stroke-width="1.8" stroke-linecap="round"/><path d="M9 16H15" stroke="{color}" stroke-width="1.8" stroke-linecap="round"/></svg>''',
@@ -1974,7 +1987,7 @@ def pagina_inicio(df: pd.DataFrame, totales_oficiales: Optional[Dict] = None):
     </style>
     """, unsafe_allow_html=True)
 
-    st.dataframe(
+    _df(
         resumen_pagina.style.map(_color_dif, subset=['Diferencia']),
         use_container_width=True, 
         hide_index=True,
@@ -2218,7 +2231,7 @@ def _seccion_mapa_integracion(df: pd.DataFrame) -> None:
                 "candidatas a articulación explícita o revisión de solapamiento."
             )
             df_top = df_pares.sort_values('Núcleos compartidos', ascending=False).head(20)
-            st.dataframe(df_top, use_container_width=True, hide_index=True)
+            _df(df_top, use_container_width=True, hide_index=True)
 
             # ── Asignaturas aisladas ───────────────────────────────────────
             if isolated_subjects:
@@ -2256,7 +2269,7 @@ def pagina_cobertura(df: pd.DataFrame, resultados: Dict):
         df_revision = pd.DataFrame(
             [{'Núcleo': n, 'Menciones': c} for n, c in todos_nucleos_ord]
         )
-        st.dataframe(df_revision, use_container_width=True, hide_index=True, height=250)
+        _df(df_revision, use_container_width=True, hide_index=True, height=250)
 
         opciones = [n for n, _ in todos_nucleos_ord]
         excluidos_sel = st.multiselect(
@@ -2364,7 +2377,7 @@ def pagina_cobertura(df: pd.DataFrame, resultados: Dict):
                 if k != v
             ])
             if not nombres_df.empty:
-                st.dataframe(nombres_df, use_container_width=True, hide_index=True)
+                _df(nombres_df, use_container_width=True, hide_index=True)
             else:
                 st.caption("Todos los nombres son cortos y se muestran completos.")
 
@@ -2829,7 +2842,7 @@ def pagina_tendencias(df: pd.DataFrame, tendencias: Dict, resultados: Dict):
                 hover_data=['Asignaturas'],
                 labels={'Cobertura': '% Asignaturas', 'Tendencia': ''},
             )
-            fig_cob.update_traces(texttemplate='%{text:.1f}%', textposition='outside', textfont_size=10)
+            fig_cob.update_traces(texttemplate='%{text:.0f}%', textposition='outside', textfont_size=10)
             fig_cob.add_vline(x=50, line_dash='dash', line_color='#0F385A', line_width=1.5,
                               annotation_text='50 %', annotation_font_size=10,
                               annotation_position='top right')
@@ -2902,7 +2915,7 @@ def pagina_tendencias(df: pd.DataFrame, tendencias: Dict, resultados: Dict):
             st.markdown(
                 f"**{tendencias[tend_sel]['descripcion']}** — presente en "
                 f"**{n_asigs_tend} de {total_asigs}** asignaturas "
-                f"({n_asigs_tend/total_asigs*100:.1f}% de cobertura)"
+                f"({n_asigs_tend/total_asigs*100:.0f}% de cobertura)"
             )
 
             # Construir pares exactos (Programa, Asignatura) desde resultados['detalle']
@@ -3003,7 +3016,7 @@ def pagina_tendencias(df: pd.DataFrame, tendencias: Dict, resultados: Dict):
         col_p1, col_p2, col_p3 = st.columns(3)
         col_p1.metric("Asignaturas del programa", total_asigs_prog)
         col_p2.metric("Tendencias detectadas", f"{n_con_tend}/{len(tendencias)}")
-        col_p3.metric("Cobertura promedio", f"{df_cob_prog['Cobertura'].mean():.1f}%")
+        col_p3.metric("Cobertura promedio", f"{df_cob_prog['Cobertura'].mean():.0f}%")
 
         st.markdown("---")
 
@@ -3038,7 +3051,7 @@ def pagina_tendencias(df: pd.DataFrame, tendencias: Dict, resultados: Dict):
             if asigs_lista:
                 st.markdown(
                     f"**{len(asigs_lista)} asignatura(s)** de {prog_sel} abordan "
-                    f"**{tendencias[tend_sel_prog]['descripcion']}** ({row_sel['Cobertura']:.1f}%):"
+                    f"**{tendencias[tend_sel_prog]['descripcion']}** ({row_sel['Cobertura']:.0f}%):"
                 )
                 for a in asigs_lista:
                     st.markdown(f"- {a}")
@@ -3153,7 +3166,7 @@ def pagina_nlp(df: pd.DataFrame, resultados: Dict):
                 par = res_sim['par_similar']
                 st.info(
                     f"**Par más similar:** {par['asig1']} ↔ {par['asig2']} "
-                    f"(Similitud: {par['similitud']:.1%})"
+                    f"(Similitud: {par['similitud']:.0%})"
                 )
 
             sim_df = res_sim['similitud_df']
@@ -3252,7 +3265,7 @@ def pagina_nlp(df: pd.DataFrame, resultados: Dict):
                             if val >= 0.6:
                                 return 'background-color:#FFFBEA;color:#8C6000'
                         return ''
-                    st.dataframe(
+                    _df(
                         df_pares.style.map(highlight_similar, subset=['Similitud']),
                         use_container_width=True,
                         hide_index=True
@@ -3268,7 +3281,7 @@ def pagina_nlp(df: pd.DataFrame, resultados: Dict):
         res_busq = df[mask][['Programa', 'Nombre asignatura o modulo',
                              'Tipo de Saber', 'Semestre']].drop_duplicates()
         st.markdown(f"**{len(res_busq)} registros encontrados** para «{termino_buscar}»")
-        st.dataframe(res_busq, use_container_width=True, hide_index=True)
+        _df(res_busq, use_container_width=True, hide_index=True)
 
     _seccion_topicos_lda(df)
 
@@ -3298,7 +3311,7 @@ def _seccion_topicos_lda(df: pd.DataFrame):
     tabla = pd.DataFrame([{'Tópico': t['topic_id'] + 1, 'Términos característicos': ', '.join(t['top_words'][:8]),
                            'Asignaturas': int(conteo.get(t['topic_id'], 0)),
                            '%': round(100 * conteo.get(t['topic_id'], 0) / len(asig), 1)} for t in r['topics']])
-    st.dataframe(tabla.sort_values('Asignaturas', ascending=False), width='stretch', hide_index=True)
+    _df(tabla.sort_values('Asignaturas', ascending=False), width='stretch', hide_index=True)
     st.caption(f"{r['corpus_size']} asignaturas · confianza media del tópico dominante {asig['confianza'].mean():.2f}.")
 
 
@@ -3352,7 +3365,7 @@ def pagina_tipo_saber(df: pd.DataFrame):
     if len(pivot_wide) >= 3 and rango_entre_programas and max(rango_entre_programas.values()) <= 10:
         st.warning(
             "La distribución por tipo de saber es casi igual en todos los programas cargados (diferencia máxima "
-            f"entre programas: {max(rango_entre_programas.values()):.1f} puntos). Esta paridad la fija la plantilla, "
+            f"entre programas: {max(rango_entre_programas.values()):.0f} puntos). Esta paridad la fija la plantilla, "
             "no una decisión de diseño: no debe leerse como equilibrio ni como déficit."
         )
 
@@ -3367,7 +3380,7 @@ def pagina_tipo_saber(df: pd.DataFrame):
             title='Composición global (todos los programas)'
         )
         fig_donut.update_traces(
-            texttemplate='%{label}<br><b>%{percent:.1%}</b>',
+            texttemplate='%{label}<br><b>%{percent:.0%}</b>',
             textfont_size=12
         )
         fig_donut.update_layout(height=380, showlegend=False,
@@ -3386,10 +3399,10 @@ def pagina_tipo_saber(df: pd.DataFrame):
                 f"<div style='margin:10px 0;padding:10px 14px;border-radius:8px;"
                 f"border-left:4px solid {COLORES_SABER[tipo]};background:#F5FDFF'>"
                 f"<b style='color:{COLORES_SABER[tipo]}'>{tipo}</b> "
-                f"<span style='float:right;color:{color};font-weight:700'>{icono} {pct:.1f}%</span><br>"
+                f"<span style='float:right;color:{color};font-weight:700'>{icono} {pct:.0f}%</span><br>"
                 f"<div style='background:#E0F0F8;border-radius:4px;height:8px;margin:6px 0'>"
                 f"<div style='background:{COLORES_SABER[tipo]};width:{min(bar_pct,100)}%;height:8px;border-radius:4px'></div></div>"
-                f"<small style='color:#666'>Mediana de programas: {ref_med:.1f}% (P25–P75: {ref_min:.1f}–{ref_max:.1f}%) "
+                f"<small style='color:#666'>Mediana de programas: {ref_med:.0f}% (P25–P75: {ref_min:.0f}–{ref_max:.0f}%) "
                 f"&nbsp;|&nbsp; {n} registros</small>"
                 f"</div>",
                 unsafe_allow_html=True
@@ -3573,9 +3586,9 @@ def pagina_tipo_saber(df: pd.DataFrame):
     tabla_display = tabla_wide[[c for c in cols_mostrar if c in tabla_wide.columns]].rename(
         columns={'Nombre asignatura o modulo': 'Asignatura'}
     )
-    st.dataframe(
+    _df(
         tabla_display.style.format(
-            {c: '{:.1f}%' for c in ['Saber', 'SaberHacer', 'SaberSer'] if c in tabla_display.columns}
+            {c: '{:.0f}%' for c in ['Saber', 'SaberHacer', 'SaberSer'] if c in tabla_display.columns}
         ),
         use_container_width=True,
         hide_index=True,
@@ -3612,8 +3625,8 @@ def _alertas_resumen(df: pd.DataFrame) -> list:
                 if p < lim_bajo or p > lim_alto:
                     alertas.append({
                         'Programa': prog, 'Categoría': 'Tipo de Saber',
-                        'Hallazgo': (f'**{prog}**: {tipo} {p:.1f}% se aparta del conjunto cargado '
-                                     f'(mediana {piv[tipo].median():.1f}%; P25–P75 {q1:.1f}–{q3:.1f}%)'),
+                        'Hallazgo': (f'**{prog}**: {tipo} {p:.0f}% se aparta del conjunto cargado '
+                                     f'(mediana {piv[tipo].median():.0f}%; P25–P75 {q1:.0f}–{q3:.0f}%)'),
                         'Recomendación': ('Revisar si la diferencia responde a una decisión de diseño o a un error de '
                                           'diligenciamiento de la matriz.')})
     # Sin umbral: cualquier registro sin semestre reconocible se informa con su conteo (los romanos ya se normalizan)
@@ -3621,7 +3634,7 @@ def _alertas_resumen(df: pd.DataFrame) -> list:
     if n_sin_semestre:
         alertas.append({
             'Programa': None, 'Categoría': 'Completitud de datos',
-            'Hallazgo': (f'{n_sin_semestre} de {len(df)} registros ({100 * n_sin_semestre / len(df):.1f} %) '
+            'Hallazgo': (f'{n_sin_semestre} de {len(df)} registros ({100 * n_sin_semestre / len(df):.0f} %) '
                          f'sin semestre reconocible'),
             'Recomendación': 'Revisar el campo Semestre de esas asignaturas en el Paso 5 (valores vacíos o no numéricos).'})
     n_sin_nucleos = len(_asignaturas_sin_nucleos(df))
@@ -3729,7 +3742,7 @@ def _datos_resumen(df: pd.DataFrame, tendencias: Dict, uploaded_files) -> Dict:
         ev = pd.concat([r['items'][r['items']['evaluable']] for r in validos])
         if len(ev):
             n_sin = int((ev['capas_con_respaldo'] == 0).sum())
-            lectura.append(f"Perfil de egreso: **{n_sin} de {len(ev)}** atributos ({100 * n_sin / len(ev):.1f} %) sin "
+            lectura.append(f"Perfil de egreso: **{n_sin} de {len(ev)}** atributos ({100 * n_sin / len(ev):.0f} %) sin "
                            f"alineación en ninguna capa (competencias, RA o asignaturas).")
     if g.get('ra_unicos'):
         n_noeval = sum(not r['V3'] for r in res['ra'])
@@ -3918,7 +3931,7 @@ def pagina_resumen_ejecutivo(df: pd.DataFrame, tendencias: Dict) -> None:
         st.markdown("---")
         st.subheader("📐 Coherencia y trazabilidad curricular (V1–V5)")
         g = res['globales']
-        fmt = lambda v: '—' if v is None else f"{v:.1f}%"  # noqa: E731
+        fmt = lambda v: '—' if v is None else f"{v:.0f}%"  # noqa: E731
         c = st.columns(5)
         c[0].metric("V1 Perfil", fmt(g['V1']), help=f"{g['atributos_perfil']} atributos evaluables del perfil.")
         c[1].metric("V2 Coherencia", fmt(g['V2']), help=f"{g['matrices_con_repeticion']} matriz(ces) con verbo repetido.")
@@ -3952,7 +3965,7 @@ def pagina_resumen_ejecutivo(df: pd.DataFrame, tendencias: Dict) -> None:
         tabla = pd.DataFrame(ctx['prioridades'])
         for v in VARIABLES_CRITERIO:
             tabla[v] = tabla[v].map(ESTADO_ICONO)
-        st.dataframe(tabla.rename(columns=nombres), hide_index=True, width='stretch',
+        _df(tabla.rename(columns=nombres), hide_index=True, width='stretch',
                      height=min(560, 35 * len(tabla) + 40))
 
     st.markdown("---")
@@ -3968,9 +3981,9 @@ def pagina_resumen_ejecutivo(df: pd.DataFrame, tendencias: Dict) -> None:
             st.markdown("No existe un mínimo institucional de cobertura, por lo que ninguna tendencia se califica como "
                         "baja. La tabla las ordena para que el comité decida cuáles reforzar según el perfil de egreso "
                         "de cada programa.")
-            st.dataframe(pd.DataFrame(ctx['tendencias_tabla']), hide_index=True, width='stretch',
-                         column_config={'% de asignaturas': st.column_config.NumberColumn(format='%.1f %%'),
-                                        '% de programas': st.column_config.NumberColumn(format='%.1f %%')})
+            _df(pd.DataFrame(ctx['tendencias_tabla']), hide_index=True, width='stretch',
+                         column_config={'% de asignaturas': st.column_config.NumberColumn(format='%.0f%%'),
+                                        '% de programas': st.column_config.NumberColumn(format='%.0f%%')})
 
     # ── Informes PDF ──────────────────────────────────────────────────────
     st.markdown("---")
@@ -3999,7 +4012,7 @@ def pagina_resumen_ejecutivo(df: pd.DataFrame, tendencias: Dict) -> None:
     if prog:
         for d in datos['matrices']:
             with st.expander(f"Vista previa: {d['etiqueta']}", expanded=len(datos['matrices']) == 1):
-                st.dataframe(pd.DataFrame(d['valoracion'])[['Variable', 'Tramo', 'Resultado', 'Estado', 'Referencia (mediana)']],
+                _df(pd.DataFrame(d['valoracion'])[['Variable', 'Tramo', 'Resultado', 'Estado', 'Referencia (mediana)']],
                              hide_index=True, width='stretch')
                 if d['recomendaciones']:
                     st.markdown("**Acciones sugeridas**\n" + '\n'.join(f'- {r}' for r in d['recomendaciones']))
@@ -4091,12 +4104,12 @@ def pagina_taxonomias(df: pd.DataFrame) -> None:
     resumen = tx.resumen_contraste(ra)
     c = st.columns(5)
     c[0].metric("RA únicos", len(ra))
-    c[1].metric("Bloom", f"{100 * (ra['Taxonomía'] == 'Bloom').mean():.1f}%")
-    c[2].metric("BAK", f"{100 * (ra['Taxonomía'] == 'BAK').mean():.1f}%")
+    c[1].metric("Bloom", f"{100 * (ra['Taxonomía'] == 'Bloom').mean():.0f}%")
+    c[2].metric("BAK", f"{100 * (ra['Taxonomía'] == 'BAK').mean():.0f}%")
     c[3].metric("Índice de exigencia", f"{tx.indice_exigencia(ra['Exigencia declarada'])}",
                 help="(nivel medio − 1) / 5 × 100, con cada nivel en la escala común de 1 a 6. Es descriptivo: la "
                      "exigencia adecuada depende del nivel de formación.")
-    c[4].metric("Coherentes con el verbo", f"{resumen['pct']['Coincide']}%",
+    c[4].metric("Coherentes con el verbo", f"{resumen['pct']['Coincide']:.0f}%",
                 help="RA cuyo dominio y nivel declarados coinciden con los que la base asigna a su verbo.")
 
     tab_res, tab_dom, tab_coh, tab_verb, tab_prog, tab_ra = st.tabs([
@@ -4114,7 +4127,7 @@ def pagina_taxonomias(df: pd.DataFrame) -> None:
         st.plotly_chart(fig, width='stretch')
         mixtas = int(((ra.groupby('Matriz')['Taxonomía'].nunique()) > 1).sum())
         st.caption(f"{mixtas} matriz(ces) combinan Bloom y BAK entre sus RA.")
-        st.dataframe(por_m[['Matriz', 'RA únicos', '% Bloom', '% BAK', 'Índice de exigencia']],
+        _df(por_m[['Matriz', 'RA únicos', '% Bloom', '% BAK', 'Índice de exigencia']],
                      hide_index=True, width='stretch')
 
     with tab_dom:
@@ -4152,7 +4165,7 @@ def pagina_taxonomias(df: pd.DataFrame) -> None:
                    "diferencia es menor de 0,5). «Difiere» pide revisión, no declara un error.")
         cols = st.columns(4)
         for col, e in zip(cols, tx.ESTADOS):
-            col.metric(e, resumen['estados'][e], f"{resumen['pct'][e]} %", delta_color="off")
+            col.metric(e, resumen['estados'][e], f"{resumen['pct'][e]:.0f}%", delta_color="off")
         por_p = tx.por_grupo(ra, 'Programa')
         largo = por_p.melt(id_vars='Programa', value_vars=[f'% {e}' for e in tx.ESTADOS], var_name='Contraste',
                            value_name='%')
@@ -4167,7 +4180,7 @@ def pagina_taxonomias(df: pd.DataFrame) -> None:
                                              'Dominio(s) según la base', 'Nivel según la base',
                                              'Diferencia de nivel (declarado − base)', 'Contraste', 'RA']]
         st.caption(f"{len(rev)} RA para revisar.")
-        st.dataframe(rev, hide_index=True, width='stretch', height=min(520, 35 * len(rev) + 40))
+        _df(rev, hide_index=True, width='stretch', height=min(520, 35 * len(rev) + 40))
         st.download_button("Descargar el contraste (Excel)", _tabla_excel({'Contraste': ra.drop(columns='clave'),
                                                                           'Por programa': por_p}),
                            "taxonomias_contraste.xlsx",
@@ -4187,7 +4200,7 @@ def pagina_taxonomias(df: pd.DataFrame) -> None:
         st.plotly_chart(fig, width='stretch')
         verbos = verbos.rename(columns={'Dominio': 'Dominio más declarado', 'Nivel': 'Nivel más declarado',
                                         'Lecturas': 'Dominio(s) según la base'})
-        st.dataframe(verbos, hide_index=True, width='stretch')
+        _df(verbos, hide_index=True, width='stretch')
 
     with tab_prog:
         st.subheader("Progresión por semestre")
@@ -4234,7 +4247,7 @@ def pagina_taxonomias(df: pd.DataFrame) -> None:
         if busca.strip():
             vista = vista[vista['RA'].str.contains(busca.strip(), case=False, regex=False)]
         st.caption(f"{len(vista)} de {len(ra)} RA.")
-        st.dataframe(vista[['Matriz', 'Verbo', 'Taxonomía', 'Dominio declarado', 'Nivel declarado', 'Tipo de saber',
+        _df(vista[['Matriz', 'Verbo', 'Taxonomía', 'Dominio declarado', 'Nivel declarado', 'Tipo de saber',
                             'Contraste', 'RA']], hide_index=True, width='stretch', height=520)
 
 
@@ -4381,7 +4394,7 @@ def pagina_cobertura_perfil(df_micro: pd.DataFrame):
             for e in r.get('elementos', [])
             if e.get('clasificacion') == 'CUBIERTO' and 0.35 <= e.get('score', 0) < 0.50
         )
-        col3.metric("Cobertura global promedio", f"{avg_cob:.1f}%")
+        col3.metric("Cobertura global promedio", f"{avg_cob:.0f}%")
         col4.metric("Brechas totales", total_brechas)
         col5.metric("Cobertura superficial", en_riesgo)
 
@@ -4407,6 +4420,7 @@ def pagina_cobertura_perfil(df_micro: pd.DataFrame):
             aspect='auto',
             text_auto='.0f',
         )
+        fig_heat.update_traces(texttemplate='%{z:.0f}%')
         fig_heat.update_layout(height=max(280, len(df_heat) * 40 + 120))
         st.plotly_chart(fig_heat, use_container_width=True)
 
@@ -4438,7 +4452,7 @@ def pagina_cobertura_perfil(df_micro: pd.DataFrame):
         color = "🟢" if r['cobertura_global'] >= 60 else ("🟡" if r['cobertura_global'] >= 35 else "🔴")
         with st.expander(
             f"{color} **{r['programa']}** — "
-            f"Cobertura: {r['cobertura_global']}% | "
+            f"Cobertura: {r['cobertura_global']:.0f}% | "
             f"{r['total_elementos'] - r['num_brechas']}/{r['total_elementos']} cubiertos | "
             f"{r['num_brechas']} brecha(s)"
         ):
@@ -4453,7 +4467,7 @@ def pagina_cobertura_perfil(df_micro: pd.DataFrame):
                     rows.append({
                         'Campo': e['campo'],
                         'Elemento': e['elemento'][:80] + ('…' if len(e['elemento']) > 80 else ''),
-                        'Score': f"{e['score']:.2%}",
+                        'Score': f"{e['score']:.0%}",
                         'Umbral': f"{e.get('umbral', 0.35):.0%}",
                         'Estado': e['clasificacion'],
                         'Asignatura trazable': traz[:100],
@@ -4464,7 +4478,7 @@ def pagina_cobertura_perfil(df_micro: pd.DataFrame):
                     "Colores: rojo <25% · naranja 25–35% · amarillo 35–50% (superficial) · "
                     "azul 50–70% · verde >70%"
                 )
-                st.dataframe(
+                _df(
                     _styler_tabla_cobertura_perfil(df_elem),
                     use_container_width=True,
                     hide_index=True,
@@ -4488,7 +4502,7 @@ def pagina_cobertura_perfil(df_micro: pd.DataFrame):
                     for campo, pct in sorted(
                         r['cobertura_por_campo'].items(), key=lambda x: x[1]
                     ):
-                        st.markdown(f"- {campo}: **{pct}%**")
+                        st.markdown(f"- {campo}: **{pct:.0f}%**")
                 if r['recomendaciones']:
                     st.markdown("**Recomendaciones:**")
                     for rec in r['recomendaciones']:
@@ -4513,7 +4527,7 @@ def pagina_cobertura_perfil(df_micro: pd.DataFrame):
             color='Cobertura Global (%)', color_continuous_scale='RdYlGn',
             text='Cobertura Global (%)', range_color=[0, 100],
         )
-        fig.update_traces(texttemplate='%{text:.1f}%', textposition='outside')
+        fig.update_traces(texttemplate='%{text:.0f}%', textposition='outside')
         fig.update_layout(height=400, xaxis_tickangle=45)
         st.plotly_chart(fig, use_container_width=True)
 
@@ -4651,15 +4665,15 @@ def _seccion_validacion_referencia(uploaded_files):
     g = r['metricas_activas']['Global']
     c1, c2, c3 = st.columns(3)
     c1.metric("Decisiones comparadas", g['n'])
-    c2.metric("Acuerdo", f"{100 * g['acuerdo']:.1f}%")
+    c2.metric("Acuerdo", f"{100 * g['acuerdo']:.0f}%")
     c3.metric("Kappa de Cohen", f"{g['kappa']:.2f}")
-    st.dataframe(pd.DataFrame([{'Capa': k, **v} for k, v in r['metricas_activas'].items()]),
+    _df(pd.DataFrame([{'Capa': k, **v} for k, v in r['metricas_activas'].items()]),
                  width='stretch', hide_index=True)
     if r['sin_emparejar']:
         st.caption(f"{len(r['sin_emparejar'])} ítem(s) de la referencia sin emparejar (matriz no cargada o atributo no encontrado).")
     if recalibrar:
         gp = r['metricas_propuestas']['Global']
-        st.markdown(f"**Parámetros propuestos:** {r['parametros_propuestos']} — acuerdo {100 * gp['acuerdo']:.1f}%, "
+        st.markdown(f"**Parámetros propuestos:** {r['parametros_propuestos']} — acuerdo {100 * gp['acuerdo']:.0f}%, "
                     f"κ {gp['kappa']:.2f}. Para adoptarlos, edítalos en la configuración del método y vuelve a calcular.")
 
 
@@ -4676,7 +4690,7 @@ def _seccion_configuracion_asociacion():
                  'UMBRAL_CONTEXTO': cfg['UMBRAL_CONTEXTO'], 'PESO_CONTEXTO': cfg['PESO_CONTEXTO']})
     with c2:
         st.markdown(f"**Sinónimos de dominio ({len(cfg['SINONIMOS'])})**")
-        st.dataframe(pd.DataFrame([{'Término': k, 'Equivale a': ', '.join(v)} for k, v in cfg['SINONIMOS'].items()]),
+        _df(pd.DataFrame([{'Término': k, 'Equivale a': ', '.join(v)} for k, v in cfg['SINONIMOS'].items()]),
                      width='stretch', hide_index=True, height=260)
     exportable = {k: v for k, v in cfg.items() if k != 'HUELLA'}
     st.download_button("Exportar configuración (JSON)", json.dumps(exportable, ensure_ascii=False, indent=1),
@@ -4704,8 +4718,8 @@ def _texto_validacion(cfg: Dict) -> str:
     if not v.get('acuerdo'):
         return "Esta configuración no registra validación contra una lectura de referencia."
     rango = v.get('acuerdo_por_enfoque_excluido')
-    extra = (f"; entre {100 * rango[0]:.1f} % y {100 * rango[1]:.1f} % al excluir cada enfoque" if rango else "")
-    return (f"Calibración registrada: acuerdo **{100 * v['acuerdo']:.1f} %** (κ = {v.get('kappa', float('nan')):.2f}) "
+    extra = (f"; entre {100 * rango[0]:.0f} % y {100 * rango[1]:.0f} % al excluir cada enfoque" if rango else "")
+    return (f"Calibración registrada: acuerdo **{100 * v['acuerdo']:.0f} %** (κ = {v.get('kappa', float('nan')):.2f}) "
             f"en {v.get('decisiones', '?')} decisiones{extra}. Referencia: {v.get('referencia', 'no descrita')}.")
 
 
@@ -4739,15 +4753,15 @@ def _seccion_saberes_valor_agregado(uploaded_files):
     c1, c2, c3 = st.columns(3)
     c1.metric("Elementos", len(d))
     c2.metric("Con alerta", int((d['Estado'] == 'Alerta').sum()))
-    c3.metric("% con alerta", f"{100 * (d['Estado'] == 'Alerta').mean():.1f}%")
+    c3.metric("% con alerta", f"{100 * (d['Estado'] == 'Alerta').mean():.0f}%")
     res = (d.assign(alerta=d['Estado'] == 'Alerta').groupby('Campo')['alerta'].agg(['count', 'sum'])
            .reindex([c for c in SABERES_Y_VALOR if c in set(d['Campo'])]).reset_index())
     res['% con alerta'] = (100 * res['sum'] / res['count']).round(1)
     fig = px.bar(res, x='% con alerta', y='Campo', orientation='h', text='% con alerta', color_discrete_sequence=['#EC0677'])
-    fig.update_traces(texttemplate='%{text:.1f}%', textposition='outside')
+    fig.update_traces(texttemplate='%{text:.0f}%', textposition='outside')
     fig.update_layout(height=260, yaxis_title=None, xaxis=dict(range=[0, 100], ticksuffix=' %'))
     st.plotly_chart(fig, width='stretch')
-    st.dataframe(d.sort_values(['Estado', 'Puntaje']), width='stretch', hide_index=True)
+    _df(d.sort_values(['Estado', 'Puntaje']), width='stretch', hide_index=True)
     recs = [(r['programa'], x) for r in resultados.values() for x in r.get('recomendaciones', [])]
     if recs:
         with st.expander(f"Recomendaciones por matriz ({len(recs)})"):
@@ -4819,9 +4833,9 @@ def _resultados_asociacion_perfil(uploaded_files, cfg: Dict):
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("Matrices", len(validos))
     c2.metric("Atributos evaluados", tot['Atributos'])
-    c3.metric("V1 · alineación en alguna capa", f"{tot['V1 % (alguna capa)']}%",
-              help=f"Alineación con las tres capas a la vez: {tot['% Tres capas']}%.")
-    c4.metric("Sin alineación en ninguna capa", f"{tot['% Sin asociación']}%")
+    c3.metric("V1 · alineación en alguna capa", f"{tot['V1 % (alguna capa)']:.0f}%",
+              help=f"Alineación con las tres capas a la vez: {tot['% Tres capas']:.0f}%.")
+    c4.metric("Sin alineación en ninguna capa", f"{tot['% Sin asociación']:.0f}%")
     no_eval = int((~todos['evaluable']).sum())
     if no_eval:
         st.caption(f"{no_eval} ítem(s) no evaluables (cifras de encuestas o etiquetas de nivel) excluidos de los indicadores.")
@@ -4834,7 +4848,7 @@ def _resultados_asociacion_perfil(uploaded_files, cfg: Dict):
                                 '%': [tot['% Competencias'], tot['% RA'], tot['% Asignaturas']]})
         fig = px.bar(df_capa, x='%', y='Capa', orientation='h', text='%', range_x=[0, 100],
                      color='Capa', color_discrete_sequence=['#0F385A', '#1fb2de', '#42F2F2'])
-        fig.update_traces(texttemplate='%{text:.1f}%', textposition='outside')
+        fig.update_traces(texttemplate='%{text:.0f}%', textposition='outside')
         fig.update_layout(showlegend=False, height=300, yaxis_title=None, xaxis_title='% de atributos con respaldo')
         st.plotly_chart(fig, width='stretch')
     with col_b:
@@ -4851,8 +4865,8 @@ def _resultados_asociacion_perfil(uploaded_files, cfg: Dict):
     df_prog = pd.DataFrame([{'Matriz': p, **_indicadores_perfil(r['items'])} for p, r in validos.items()])
     df_prog = df_prog[df_prog['Atributos'] > 0].sort_values('% Sin asociación', ascending=False)
     st.caption("Ordenadas de mayor a menor proporción de atributos sin alineación.")
-    st.dataframe(
-        df_prog.style.format({c: '{:.1f}' for c in df_prog.columns if '%' in c}),
+    _df(
+        df_prog.style.format({c: '{:.0f}%' for c in df_prog.columns if '%' in c}),
         width='stretch', hide_index=True)
     if len(df_prog) >= 2:
         fig = px.bar(df_prog.sort_values('V1 % (alguna capa)'), x='V1 % (alguna capa)', y='Matriz', orientation='h',
@@ -4868,7 +4882,7 @@ def _resultados_asociacion_perfil(uploaded_files, cfg: Dict):
     items = r['items']
     perfil_sel = st.radio("Perfil", ['Todos'] + sorted(items['perfil'].unique()), horizontal=True)
     vista = items if perfil_sel == 'Todos' else items[items['perfil'] == perfil_sel]
-    st.dataframe(
+    _df(
         vista[['perfil', 'origen', 'item', 'Competencia', 'RA', 'Asignatura', 'estado']]
         .rename(columns={'perfil': 'Perfil', 'origen': 'Componente', 'item': 'Atributo', 'estado': 'Estado'})
         .style.apply(lambda f: [f"color: {COLORES_ESTADO_PERFIL.get(f['Estado'], '#6b7280')}; font-weight: 600"
@@ -4879,11 +4893,11 @@ def _resultados_asociacion_perfil(uploaded_files, cfg: Dict):
     if len(sin):
         with st.expander(f"Atributos sin asociación ({len(sin)}): contenido más cercano en la matriz"):
             cerca = det[(det['entidad'] == 'NINGUNA') & det['item'].isin(sin['item'])]
-            st.dataframe(cerca[['item', 'capa', 'mas_cercana', 'cobertura', 'similitud']]
+            _df(cerca[['item', 'capa', 'mas_cercana', 'cobertura', 'similitud']]
                          .rename(columns={'item': 'Atributo', 'capa': 'Capa', 'mas_cercana': 'Más cercano'}),
                          width='stretch', hide_index=True)
     with st.expander("Evidencia de las asociaciones"):
-        st.dataframe(det[det['entidad'] != 'NINGUNA'][['item', 'capa', 'entidad', 'nivel', 'evidencia']]
+        _df(det[det['entidad'] != 'NINGUNA'][['item', 'capa', 'entidad', 'nivel', 'evidencia']]
                      .rename(columns={'item': 'Atributo', 'capa': 'Capa', 'entidad': 'Respaldo', 'nivel': 'Nivel',
                                       'evidencia': 'Evidencia'}),
                      width='stretch', hide_index=True)
@@ -4983,7 +4997,7 @@ def _seccion_valoracion_criterios(res: Dict, uploaded_files) -> None:
     if fig is not None:
         st.plotly_chart(fig, width='stretch')
     sel = st.selectbox("Ver la valoración de una matriz", list(val), key='val_matriz')
-    st.dataframe(pd.DataFrame(val[sel]), width='stretch', hide_index=True)
+    _df(pd.DataFrame(val[sel]), width='stretch', hide_index=True)
 
 
 def pagina_indicadores_articulo():
@@ -5009,7 +5023,7 @@ def pagina_indicadores_articulo():
     if not g['matrices']:
         st.warning("Ninguna matriz tiene los Pasos 2, 3 y 4 legibles.")
         return
-    fmt = lambda v: '—' if v is None else f"{v:.1f}%"  # noqa: E731
+    fmt = lambda v: '—' if v is None else f"{v:.0f}%"  # noqa: E731
     c = st.columns(6)
     c[0].metric("Matrices / programas", f"{g['matrices']} / {g['programas']}")
     c[1].metric("V1 Perfil", fmt(g['V1']), help=f"{g['atributos_perfil']} atributos evaluables del perfil.")
@@ -5036,7 +5050,7 @@ def pagina_indicadores_articulo():
     cadena = [x for x in cadena if x[1] is not None]
     fig = go.Figure(go.Bar(x=[x[1] for x in cadena][::-1], y=[x[0] for x in cadena][::-1], orientation='h',
                            marker_color=[x[3] for x in cadena][::-1],
-                           text=[f"{x[1]:.1f} %  ({x[2]})" for x in cadena][::-1], textposition='outside'))
+                           text=[f"{x[1]:.0f} %  ({x[2]})" for x in cadena][::-1], textposition='outside'))
     fig.update_layout(height=60 * len(cadena) + 80, xaxis=dict(range=[0, 125], ticksuffix=' %'),
                       margin=dict(l=10, r=10, t=10, b=10), plot_bgcolor='white')
     st.plotly_chart(fig, width='stretch')
@@ -5045,7 +5059,7 @@ def pagina_indicadores_articulo():
 
     st.subheader("Indicadores por matriz")
     df_m = pd.DataFrame(res['por_matriz'])
-    st.dataframe(df_m, width='stretch', hide_index=True)
+    _df(df_m, width='stretch', hide_index=True)
     largo = df_m.melt(id_vars=['Matriz', 'Sede'], value_vars=[v for v in ('V1 %', 'V3 %', 'V4 %', 'V5 %') if v in df_m],
                       var_name='Variable', value_name='Valor').dropna()
     if len(largo):
@@ -5062,11 +5076,11 @@ def pagina_indicadores_articulo():
             t = (ras.assign(Clase=ras['generica'].map({True: 'RA genérico institucional', False: 'RA de programa'}))
                  .groupby('Clase')['V4'].agg(['sum', 'count']).reset_index())
             t['V4 %'] = (100 * t['sum'] / t['count']).round(1)
-            st.dataframe(t.rename(columns={'sum': 'Con estrategia', 'count': 'RA únicos'}), width='stretch', hide_index=True)
+            _df(t.rename(columns={'sum': 'Con estrategia', 'count': 'RA únicos'}), width='stretch', hide_index=True)
             sin = ras[~ras['V4'] & ~ras['generica']][['matriz', 'ra']]
             if len(sin):
                 with st.expander(f"RA de programa sin estrategia mesocurricular ({len(sin)})"):
-                    st.dataframe(sin.rename(columns={'matriz': 'Matriz', 'ra': 'RA'}), width='stretch', hide_index=True)
+                    _df(sin.rename(columns={'matriz': 'Matriz', 'ra': 'RA'}), width='stretch', hide_index=True)
     with col_b:
         st.subheader("Indicadores del Paso 4 por nivel de evidencia (V5)")
         niv = pd.Series(g['niveles']).sort_index()
@@ -5074,7 +5088,7 @@ def pagina_indicadores_articulo():
             df_n = niv.reset_index()
             df_n.columns = ['Nivel', 'Indicadores']
             df_n['%'] = (100 * df_n['Indicadores'] / df_n['Indicadores'].sum()).round(1)
-            st.dataframe(df_n, width='stretch', hide_index=True)
+            _df(df_n, width='stretch', hide_index=True)
             st.caption("N1 implementación · N2 percepción · N3 aprendizaje demostrado · N4 transferencia · N5 efecto externo.")
 
     st.markdown("---")
@@ -5086,13 +5100,13 @@ def pagina_indicadores_articulo():
     with col_c:
         st.markdown("**Correlación de Spearman (por matriz)**")
         if ct['spearman']:
-            st.dataframe(pd.DataFrame(ct['spearman']), width='stretch', hide_index=True)
+            _df(pd.DataFrame(ct['spearman']), width='stretch', hide_index=True)
         else:
             st.caption("No hay pares estimables con el conjunto cargado.")
     with col_d:
         st.markdown("**Kruskal-Wallis entre sedes**")
         if ct['kruskal']:
-            st.dataframe(pd.DataFrame(ct['kruskal']), width='stretch', hide_index=True)
+            _df(pd.DataFrame(ct['kruskal']), width='stretch', hide_index=True)
         else:
             st.caption("No hay contrastes estimables con el conjunto cargado.")
     st.caption("Contrastes exploratorios: las matrices de un mismo programa en varias sedes no son independientes; "
@@ -5161,7 +5175,7 @@ def pagina_familias_curriculares(df: pd.DataFrame, resultados_nlp: Dict):
         pivot_rows.append(pivot_row)
 
     pivot_df = pd.DataFrame(pivot_rows)
-    st.dataframe(pivot_df, use_container_width=True, hide_index=True)
+    _df(pivot_df, use_container_width=True, hide_index=True)
 
     st.markdown("---")
     st.subheader("Mapa de calor: Asignaturas × Programas")
@@ -5227,9 +5241,9 @@ def _seccion_consistencia_asignaturas(df: pd.DataFrame):
             c1, c2, c3 = st.columns(3)
             c1.metric("Homónimas", len(homo))
             c2.metric("Divergentes", int(homo['divergente'].sum()),
-                      help=f"{100 * homo['divergente'].mean():.1f} % de las homónimas")
+                      help=f"{100 * homo['divergente'].mean():.0f} % de las homónimas")
             c3.metric("Similitud media", f"{homo['similitud_media'].mean():.3f}")
-            st.dataframe(homo.rename(columns={'asignatura': 'Asignatura', 'programas': 'Programas',
+            _df(homo.rename(columns={'asignatura': 'Asignatura', 'programas': 'Programas',
                                               'versiones': 'Versiones', 'similitud_media': 'Similitud media',
                                               'divergente': 'Divergente'}), width='stretch', hide_index=True)
     with tab_p:
@@ -5240,7 +5254,7 @@ def _seccion_consistencia_asignaturas(df: pd.DataFrame):
             st.metric("Pares candidatos a homologación", len(distintos))
             st.caption("Incluye variantes de una misma denominación y falsos positivos léxicos: requieren validación disciplinar.")
             cols = [c for c in ('programa_a', 'asignatura_a', 'programa_b', 'asignatura_b', 'similitud') if c in distintos]
-            st.dataframe(distintos[cols].sort_values('similitud', ascending=False), width='stretch', hide_index=True)
+            _df(distintos[cols].sort_values('similitud', ascending=False), width='stretch', hide_index=True)
 
 
 def pagina_config_tendencias():
@@ -5386,7 +5400,7 @@ def pagina_datos(df: pd.DataFrame):
         'Indicadores de logro asignatura o modulo', 'Nucleos tematicos'
     ]
     cols_disponibles = [c for c in columnas_mostrar if c in df_filtered.columns]
-    st.dataframe(df_filtered[cols_disponibles], use_container_width=True, hide_index=True)
+    _df(df_filtered[cols_disponibles], use_container_width=True, hide_index=True)
 
     csv = df_filtered.to_csv(index=False, encoding='utf-8-sig')
     st.download_button(

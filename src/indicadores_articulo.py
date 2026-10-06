@@ -408,7 +408,7 @@ def valorar_matriz(fila: Dict, sin_respaldo_pct: float = None, exigencia: float 
         lista de dicts: Variable, Tramo, Criterio, Resultado, Estado y Referencia (mediana del conjunto).
     """
     ref = referencia or {}
-    f = lambda x: '—' if x is None else f'{x:.1f} %'.replace('.', ',')
+    f = lambda x: '—' if x is None else f'{x:.0f} %'.replace('.', ',')
     n_ra, n_est = fila.get('RA únicos') or 0, fila.get('Estrategias') or 0
     directas = round((fila.get('Evidencia directa %') or 0) * n_est / 100)
     resultado = {
