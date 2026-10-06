@@ -3694,10 +3694,6 @@ def pagina_resumen_ejecutivo(df: pd.DataFrame, tendencias: Dict) -> None:
     if ctx['alertas']:
         for a in ctx['alertas']:
             with st.expander(f"🟡 {a['Categoría']}: {a['Hallazgo']}"):
-<<<<<<< HEAD
->>>>>>> Stashed changes
-=======
->>>>>>> 43ddfcceb9de3cc8856676e3a729e2ed8bf93159
                 st.markdown(f"**💡 Recomendación:** {a['Recomendación']}")
     else:
         st.success("✅ Sin alertas de tipo de saber ni de completitud de datos.")
