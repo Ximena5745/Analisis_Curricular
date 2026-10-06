@@ -3452,6 +3452,7 @@ def pagina_resumen_ejecutivo(df: pd.DataFrame, tendencias: Dict) -> None:
             'Recomendación': 'Completar la columna «Núcleos temáticos» en el formato Excel para un análisis más preciso.'
         })
 
+<<<<<<< Updated upstream
     if alertas:
         orden_prioridad = {'Alta': 0, 'Media': 1, 'Baja': 2}
         df_alertas = pd.DataFrame(alertas).sort_values(
@@ -3460,6 +3461,227 @@ def pagina_resumen_ejecutivo(df: pd.DataFrame, tendencias: Dict) -> None:
         for _, a in df_alertas.iterrows():
             icono = '🔴' if a['Prioridad'] == 'Alta' else ('🟡' if a['Prioridad'] == 'Media' else '🟢')
             with st.expander(f"{icono} [{a['Prioridad']}] {a['Categoría']}: {a['Hallazgo']}", expanded=(a['Prioridad'] == 'Alta')):
+=======
+    programas = []
+    for prog, g in df.groupby('Programa'):
+        programas.append({'Programa': prog, 'Matrices': g['Matriz'].nunique() if 'Matriz' in g else 1,
+                          'Asignaturas': g[asig_col].nunique(),
+                          **{t: (round(float(ts.loc[prog, t]), 1) if prog in ts.index and t in ts else None)
+                             for t in ('Saber', 'SaberHacer', 'SaberSer')},
+                          'Tendencias': f"{int((rt['matriz'].loc[prog] > 0).sum())}/{len(tendencias)}"})
+
+    # Lectura rápida: hechos del conjunto, sin umbrales
+    lectura = []
+    g = res['globales'] if res else {}
+    if prioridades:
+        n = len(prioridades)
+        con_nc = sum(p['No cumple'] > 0 for p in prioridades)
+        todas = sum(all(p[v] == 'Cumple' for v in VARIABLES_CRITERIO) for p in prioridades)
+        lectura.append(f"**{con_nc} de {n}** matrices tienen al menos un criterio en «No cumple»; "
+                       f"**{todas}** {'cumple' if todas == 1 else 'cumplen'} los cinco criterios.")
+        peor = max(conteo_criterios, key=lambda c: c[1]['No cumple'])
+        if peor[1]['No cumple']:
+            lectura.append(f"El criterio con más incumplimiento es **{peor[0]}** ({peor[1]['No cumple']} matrices en "
+                           f"«No cumple», {peor[1]['Parcial']} en «Parcial»).")
+        cumplidos = [c for c, k in conteo_criterios if k['Cumple'] == n]
+        if cumplidos:
+            lectura.append(f"Todas las matrices cumplen: **{', '.join(cumplidos)}**.")
+    validos = [r for r in perfil.values() if 'error' not in r and not r.get('capas_faltantes') and len(r['items'])]
+    if validos:
+        ev = pd.concat([r['items'][r['items']['evaluable']] for r in validos])
+        if len(ev):
+            n_sin = int((ev['capas_con_respaldo'] == 0).sum())
+            lectura.append(f"Perfil de egreso: **{n_sin} de {len(ev)}** atributos ({100 * n_sin / len(ev):.1f} %) sin "
+                           f"alineación en ninguna capa (competencias, RA o asignaturas).")
+    if g.get('ra_unicos'):
+        n_noeval = sum(not r['V3'] for r in res['ra'])
+        lectura.append(f"De **{g['ra_unicos']}** RA únicos, **{g['ra_sin_estrategia']}** no tienen estrategia "
+                       f"mesocurricular con instrumento (V4) y **{n_noeval}** no son evaluables (V3).")
+    if g.get('estrategias'):
+        lectura.append(f"**{g['estrategias_directa']} de {g['estrategias']}** estrategias declaran indicadores de "
+                       f"aprendizaje demostrado o transferencia (N3–N4).")
+    ausentes = [t['Tendencia'] for t in tabla_tend if t['Asignaturas'] == 0]
+    if ausentes:
+        lectura.append(f"Tendencias globales sin presencia: {', '.join(ausentes)}.")
+
+    # Matrices sin V1 y su causa (nunca se deja «Sin dato» sin explicar)
+    v1_sin_dato = []
+    for m in (res['por_matriz'] if res else []):
+        if m.get('V1 %') is not None:
+            continue
+        r = perfil.get(m['Matriz'])
+        if r is None:
+            motivo = 'la asociación del perfil no se calculó para esta matriz'
+        elif 'error' in r:
+            motivo = f"no se pudo leer el perfil de egreso ({r['error']})"
+        elif r.get('capas_faltantes'):
+            motivo = f"sin contenido en {', '.join(r['capas_faltantes'])} (hojas Paso 1, 2, 3 y 5)"
+        elif not len(r['items']):
+            motivo = 'el Paso 1 no tiene atributos del perfil profesional ni ocupacional'
+        else:
+            motivo = 'ningún atributo del perfil es evaluable (solo cifras de encuestas o etiquetas)'
+        v1_sin_dato.append((m['Matriz'], motivo))
+
+    total_ra = g.get('ra_unicos', 0)
+    kpis = [('Programas', df['Programa'].nunique()),
+            ('Matrices', df['Matriz'].nunique() if 'Matriz' in df.columns else len(archivos)),
+            ('Asignaturas', df[asig_col].nunique()), ('RA únicos', total_ra),
+            ('Estrategias (Paso 4)', g.get('estrategias', 0))]
+    return {'df': df, 'res': res, 'val': val, 'perfil': perfil, 'prioridades': prioridades,
+            'conteo_criterios': conteo_criterios, 'tendencias_tabla': tabla_tend, 'tendencias': tendencias,
+            'rt': rt, 'ts': ts, 'etiquetas': etiquetas, 'v1_sin_dato': v1_sin_dato, 'medianas': medianas, 'programas': programas, 'lectura': lectura, 'kpis': kpis,
+            'alertas': _alertas_resumen(df), 'alcance': _alcance_filtros(), 'archivos': archivos}
+
+
+def _datos_informe_general(ctx: Dict) -> Dict:
+    from src import indicadores_articulo as ia
+    res = ctx['res'] or {}
+    return {'alcance': ctx['alcance'], 'kpis': [(k, f'{v:,}'.replace(',', '.')) for k, v in ctx['kpis']],
+            'globales': res.get('globales', {}), 'criterios': ia.CRITERIOS, 'conteo_criterios': ctx['conteo_criterios'],
+            'lectura': ctx['lectura'], 'prioridades': ctx['prioridades'], 'alertas': ctx['alertas'],
+            'tendencias': ctx['tendencias_tabla'], 'programas': ctx['programas'],
+            'errores': res.get('errores', []) + [{'archivo': f'{mz} (V1)', 'causa': mt} for mz, mt in ctx['v1_sin_dato']]}
+
+
+def _datos_informe_programa(ctx: Dict, programa: str) -> Dict:
+    """Valoración, acciones sugeridas y elementos a revisar de cada matriz (sede) del programa."""
+    from src import indicadores_articulo as ia
+    from src.informes_pdf import recomendaciones_matriz
+    asig_col = 'Nombre asignatura o modulo'
+    df_p = ctx['df'][ctx['df']['Programa'] == programa]
+    matrices = sorted(df_p['Matriz'].unique()) if 'Matriz' in df_p.columns else []
+    res = ctx['res'] or {'por_matriz': [], 'ra': [], 'estrategias': [], 'errores': []}
+    filas = {m['Matriz']: m for m in res['por_matriz']}
+
+    detalle, alertas = [], []
+    for mz in matrices:
+        fila = filas.get(mz)
+        if fila is None:
+            alertas.append(f'{mz}: la matriz no se pudo evaluar (Pasos 2, 3 o 4 ilegibles).')
+            continue
+        r = ctx['perfil'].get(mz, {})
+        sin_alin = []
+        if 'error' in r:
+            alertas.append(f"{mz}: no se pudo leer el perfil de egreso ({r['error']}).")
+        elif r.get('capas_faltantes'):
+            alertas.append(f"{mz}: sin contenido en {', '.join(r['capas_faltantes'])}; V1 sin dato.")
+        elif len(r.get('items', [])):
+            it = r['items'][r['items']['evaluable'] & (r['items']['capas_con_respaldo'] == 0)]
+            sin_alin = it[['perfil', 'origen', 'item']].astype(str).values.tolist()
+        ras = [x for x in res['ra'] if x['matriz'] == mz]
+        no_eval = [[x['ra'], x['motivo_V3']] for x in ras if not x['V3']]
+        sin_est = [x['ra'] + (' (RA genérico institucional)' if x['generica'] else '') for x in ras if not x['V4']]
+        incompletas = [[e['estrategia'], ' e '.join(f for f, ok in (('indicador', e['indicadores']),
+                                                                       ('instrumento', e['instrumento'])) if not ok)]
+                       for e in res['estrategias'] if e['matriz'] == mz and not (e['indicadores'] and e['instrumento'])]
+        valoracion = ctx['val'].get(mz, [])
+        estados = {v['Variable']: v['Estado'] for v in valoracion if v['Variable'] != '—'}
+        etq = ctx['etiquetas'].get(mz, {})
+        detalle.append({'matriz': mz, 'etiqueta': etq.get('completa', mz), 'sede': etq.get('sede', fila['Sede']), 'valoracion': valoracion, 'estados': estados,
+                        'recomendaciones': recomendaciones_matriz(estados, fila, len(sin_alin), len(no_eval), len(incompletas)),
+                        'sin_alineacion': sin_alin, 'ra_no_evaluables': no_eval, 'ra_sin_estrategia': sin_est,
+                        'estrategias_incompletas': incompletas, 'fila': fila})
+
+    alertas += [a['Hallazgo'] for a in ctx['alertas'] if a['Programa'] == programa]
+    n_sin_sem = int(pd.to_numeric(df_p['Semestre'], errors='coerce').isna().sum())
+    if n_sin_sem:
+        alertas.append(f'{n_sin_sem} registros del Paso 5 sin semestre reconocible.')
+    sin_nuc = sorted(_asignaturas_sin_nucleos(df_p))
+    if sin_nuc:
+        alertas.append(f"{len(sin_nuc)} asignatura(s) no electivas sin núcleos temáticos: {', '.join(sin_nuc)}.")
+
+    ts, med = ctx['ts'], ctx['medianas']
+    tipo_saber = [{'Tipo': t, 'Programa': float(ts.loc[programa, t]) if programa in ts.index and t in ts else None,
+                   'Mediana': med.get(t)} for t in ('Saber', 'SaberHacer', 'SaberSer')]
+    presencia = ctx['rt']['matriz'].loc[programa] if programa in ctx['rt']['matriz'].index else pd.Series(dtype=int)
+    tend = ctx['tendencias']
+    presentes = [tend[t]['descripcion'] for t in tend if presencia.get(t, 0) > 0]
+    ausentes = [tend[t]['descripcion'] for t in tend if presencia.get(t, 0) == 0]
+
+    sedes = ', '.join(sorted(df_p['Sede'].dropna().astype(str).unique()))
+    niveles = ', '.join(sorted(df_p['Nivel'].dropna().astype(str).unique())) if 'Nivel' in df_p else ''
+    modalidades = ', '.join(sorted(df_p['Modalidad'].dropna().astype(str).unique()))
+    no_cumple = sum(e == 'No cumple' for d in detalle for e in d['estados'].values())
+    kpis = [('Matrices (sedes)', len(matrices)), ('Asignaturas', df_p[asig_col].nunique()),
+            ('RA únicos', sum(d['fila']['RA únicos'] for d in detalle)),
+            ('Estrategias', sum(d['fila']['Estrategias'] for d in detalle)), ('Criterios en No cumple', no_cumple)]
+    return {'programa': programa, 'alcance': f'Sedes: {sedes}  |  Nivel: {niveles}  |  Modalidad: {modalidades}',
+            'kpis': [(k, str(v)) for k, v in kpis], 'matrices': detalle, 'tipo_saber': tipo_saber,
+            'tendencias_presentes': presentes, 'tendencias_ausentes': ausentes, 'alertas': alertas,
+            'criterios': ia.CRITERIOS}
+
+
+def _nombre_archivo_pdf(texto_base: str) -> str:
+    base = unicodedata.normalize('NFKD', texto_base).encode('ascii', 'ignore').decode()
+    return re.sub(r'[^A-Za-z0-9]+', '_', base).strip('_')[:80] or 'programa'
+
+
+def pagina_resumen_ejecutivo(df: pd.DataFrame, tendencias: Dict) -> None:
+    """Resumen ejecutivo: estado del conjunto (V1–V5), prioridades por matriz e informes PDF general y por programa."""
+    from src import informes_pdf
+    st.title("📋 Resumen Ejecutivo")
+    st.markdown("---")
+    st.info(
+        "Responde tres preguntas para el comité curricular: **¿cómo está el conjunto?** (V1–V5 y valoración por "
+        "criterios), **¿qué matrices requieren atención primero?** y **¿qué hacer en cada programa?** (informe "
+        "individual en PDF con acciones sugeridas y los elementos a revisar). Todo se calcula con los archivos "
+        "cargados y los filtros activos; los resultados son una propuesta para validar por el comité."
+    )
+    uploaded_files = st.session_state.get('archivos_subidos') or []
+    with st.spinner("Preparando el resumen (la primera vez calcula la asociación del perfil y V1–V5)…"):
+        ctx = _datos_resumen(df, tendencias, uploaded_files)
+
+    cols = st.columns(len(ctx['kpis']))
+    for c, (etq, v) in zip(cols, ctx['kpis']):
+        c.metric(etq, f'{v:,}'.replace(',', '.'))
+
+    if ctx['lectura']:
+        st.subheader("🔎 Lectura rápida")
+        st.markdown('\n'.join(f'- {b}' for b in ctx['lectura']))
+
+    res = ctx['res']
+    if res and res['globales']['matrices']:
+        st.markdown("---")
+        st.subheader("📐 Coherencia y trazabilidad curricular (V1–V5)")
+        g = res['globales']
+        fmt = lambda v: '—' if v is None else f"{v:.1f}%"  # noqa: E731
+        c = st.columns(5)
+        c[0].metric("V1 Perfil", fmt(g['V1']), help=f"{g['atributos_perfil']} atributos evaluables del perfil.")
+        c[1].metric("V2 Coherencia", fmt(g['V2']), help=f"{g['matrices_con_repeticion']} matriz(ces) con verbo repetido.")
+        c[2].metric("V3 Evaluabilidad", fmt(g['V3']), help=f"{g['ra_unicos']} RA únicos.")
+        c[3].metric("V4 Trazabilidad", fmt(g['V4']), help=f"Sin el RA genérico: {fmt(g['V4_programa'])}.")
+        c[4].metric("V5 Evidencia (N2+)", fmt(g['V5']), help=f"{g['estrategias']} estrategias.")
+        if ctx['v1_sin_dato']:
+            st.warning(f"**V1 sin dato en {len(ctx['v1_sin_dato'])} de {len(res['por_matriz'])} matrices.** "
+                       "No se calculó el perfil de esas matrices:\n" +
+                       '\n'.join(f'- **{mz}**: {mt}' for mz, mt in ctx['v1_sin_dato']))
+        fig = _fig_valoracion(ctx['val'])
+        if fig is not None:
+            st.caption("Valoración por criterios: número de matrices en cada estado. Cumple = la regla de la plantilla "
+                       "se cumple en todos los casos; Parcial = en algunos; No cumple = en ninguno.")
+            st.plotly_chart(fig, width='stretch')
+        for e in res['errores']:
+            st.warning(f"❌ **{e['archivo']}**: {e['causa']}")
+
+    if ctx['prioridades']:
+        st.markdown("---")
+        st.subheader("🚦 Matrices que requieren atención")
+        st.caption("Ordenadas por número de criterios en «No cumple» y luego en «Parcial». El detalle y las acciones "
+                   "de cada programa están en su informe PDF (abajo).")
+        from src.indicadores_articulo import CRITERIOS
+        nombres = {v: f'{v} {e}' for v, e, _ in CRITERIOS}
+        tabla = pd.DataFrame(ctx['prioridades'])
+        for v in VARIABLES_CRITERIO:
+            tabla[v] = tabla[v].map(ESTADO_ICONO)
+        st.dataframe(tabla.rename(columns=nombres), hide_index=True, width='stretch',
+                     height=min(560, 35 * len(tabla) + 40))
+
+    st.markdown("---")
+    st.subheader("⚠️ Hallazgos transversales")
+    if ctx['alertas']:
+        for a in ctx['alertas']:
+            with st.expander(f"🟡 {a['Categoría']}: {a['Hallazgo']}"):
+>>>>>>> Stashed changes
                 st.markdown(f"**💡 Recomendación:** {a['Recomendación']}")
     else:
         st.success("✅ No se detectaron alertas críticas en los programas analizados.")
@@ -4504,7 +4726,8 @@ def _asociacion_perfil_por_programa(uploaded_files) -> Dict:
                 res = {'error': str(e)[:200], 'avisos': avisos, 'sha256': clave[0]}
             finally:
                 f.seek(0)
-            cache[clave] = res
+            if 'error' not in res:  # un fallo puntual no se guarda: se reintenta en la siguiente ejecución
+                cache[clave] = res
             resultados[programa] = res
         barra.empty()
     return resultados
