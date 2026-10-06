@@ -5,8 +5,8 @@ Fuente: hojas Paso 2, Paso 3 y Paso 4 de cada matriz. Unidad de RA: RA único po
 clave = texto del RA de la columna I del Paso 3 sin mayúsculas, tildes ni puntuación; ajuste C03). Cada estrategia del Paso 4 es un bloque
 de celdas combinadas (B, C y E); sus indicadores (D) e instrumentos (F) ocupan filas propias.
 
-  V1 Correspondencia del perfil: % de atributos del perfil respaldados a la vez en competencias, RA y
-                            asignaturas (src/asociacion_perfil.py; se recibe ya calculado, por matriz).
+  V1 Correspondencia del perfil: % de atributos del perfil alineados en al menos una capa (competencias, RA o
+                            asignaturas; src/asociacion_perfil.py; se recibe ya calculado, por matriz).
      RA con competencia     % de RA únicos que citan una competencia redactada en el Paso 2. Condición del
                             instrumento (la plantilla exige la referencia); antes figuraba como V1 (D13).
   V2 Coherencia (D14)       Matriz sin verbo repetido entre competencias específicas; la competencia
@@ -15,7 +15,9 @@ de celdas combinadas (B, C y E); sus indicadores (D) e instrumentos (F) ocupan f
                             finalidad de desempeño o producto concreto. Condición del instrumento.
   V4 Trazabilidad (D16)     % de RA únicos con estrategia meso que declara instrumento, emparejados
                             por similitud ≥ 0,80 o mejor coincidencia mutua ≥ 0,50.
-  V5 Evidencia directa (D17) % de estrategias con al menos un indicador N3 o N4.
+  V5 Evidencia (D29)        % de estrategias cuyo indicador de mayor nivel es N2 o superior (0 solo si no hay
+                            indicadores o todos son de implementación). La evidencia directa (N3–N4, antes V5
+                            según D17) se informa como dato descriptivo.
 
 Los scripts de auditoria/scripts (verificar_v3, v4_alternativas, verificar_v5) son la evidencia del
 artículo; este módulo reproduce sus reglas para el dashboard (tests: test_indicadores_articulo).
@@ -184,7 +186,8 @@ def _evaluar_matriz(m: Dict) -> Dict:
         est.append({'matriz': m['matriz'], 'programa': m['programa'], 'sede': m['sede'], 'estrategia': e['estrategia'],
                     'indicadores': len(e['indicadores']), 'niveles': niveles, 'instrumento': e['ins'],
                     'nivel_max': max(niveles) if niveles else None,
-                    'V5': any(n[:2] in ('N3', 'N4') for n in niveles)})
+                    'V5': bool(niveles) and max(niveles)[:2] >= 'N2',  # D29
+                    'directa': any(n[:2] in ('N3', 'N4') for n in niveles)})
     return {'matriz': m['matriz'], 'programa': m['programa'], 'sede': m['sede'],
             'competencias': len(m['competencias']), 'verbos_repetidos': repetidos, 'V2': not repetidos,
             'ras': ras, 'estrategias': est,
@@ -197,7 +200,7 @@ def calcular_indicadores(archivos: Iterable[Tuple[str, object]], v1: Dict[str, T
 
     Args:
         archivos: pares (nombre_archivo, ruta o archivo abierto) de las matrices FormatoRA.
-        v1: por matriz ('Programa_SEDE'), (atributos respaldados en las tres capas, atributos evaluables), de
+        v1: por matriz ('Programa_SEDE'), (atributos con alineación en al menos una capa, atributos evaluables), de
             src.asociacion_perfil. Sin este dato, V1 queda vacío.
 
     Returns:
@@ -228,6 +231,7 @@ def calcular_indicadores(archivos: Iterable[Tuple[str, object]], v1: Dict[str, T
                            'V3 %': pct([x['V3'] for x in r]), 'V4 %': pct([x['V4'] for x in r]),
                            'RA sin estrategia': sum(not x['V4'] for x in r),
                            'V5 %': pct([x['V5'] for x in e]),
+                           'Evidencia directa %': pct([x['directa'] for x in e]),
                            'Estrategias con indicador e instrumento': sum(bool(x['indicadores']) and x['instrumento'] for x in e),
                            'Indicadores por nivel': dict(Counter(n[:2] for x in e for n in x['niveles']))})
     globales = {
@@ -245,7 +249,8 @@ def calcular_indicadores(archivos: Iterable[Tuple[str, object]], v1: Dict[str, T
         'genericos_con_estrategia': sum(r['V4'] for r in ras if r['generica']),
         'ra_sin_estrategia': sum(not r['V4'] for r in ras),
         'ra_sin_estrategia_programa': sum(not r['V4'] and not r['generica'] for r in ras),
-        'V5': pct([e['V5'] for e in est]), 'estrategias_directa': sum(e['V5'] for e in est),
+        'V5': pct([e['V5'] for e in est]), 'estrategias_directa': sum(e['directa'] for e in est),
+        'evidencia_directa': pct([e['directa'] for e in est]),
         'niveles': dict(Counter(i['nivel'] for i in inds)),
         'matrices_con_repeticion': sum(not m['V2'] for m in matrices),
         'programas_con_repeticion': len({m['programa'] for m in matrices if not m['V2']}),
@@ -359,11 +364,11 @@ def calcular_exigencia(archivos: Iterable[Tuple[str, object]]) -> List[Dict]:
 
 
 # --- Valoración por criterios (sustituye al puntaje de calidad 0–100; decisión D26) ----------------------------
-# Cada eslabón se valora contra la regla que la propia plantilla institucional exige (criterio absoluto, sin pesos
+# Cada tramo se valora contra la regla que la propia plantilla institucional exige (criterio absoluto, sin pesos
 # ni línea base): Cumple = la regla se cumple en todos los casos; Parcial = en algunos; No cumple = en ninguno.
 # La mediana del conjunto cargado se informa solo como referencia descriptiva; no interviene en el estado.
 CRITERIOS = [
-    ('V1', 'Perfil respaldado', 'Cada atributo del perfil respaldado en competencias, RA y asignaturas'),
+    ('V1', 'Perfil alineado', 'Cada atributo del perfil alineado en al menos una capa (competencias, RA o asignaturas)'),
     ('V2', 'Coherencia de competencias', 'Ningún verbo repetido entre competencias específicas'),
     ('V3', 'Evaluabilidad de los RA', 'Todo RA con verbo observable y finalidad de desempeño o producto'),
     ('V4', 'Trazabilidad de los RA', 'Todo RA vinculado a una estrategia mesocurricular con instrumento'),
@@ -395,21 +400,21 @@ def referencias_conjunto(por_matriz: List[Dict], exigencia: Dict[str, float] = N
 
 
 def valorar_matriz(fila: Dict, sin_respaldo_pct: float = None, exigencia: float = None,
-                   referencia: Dict = None) -> List[Dict]:
+                   referencia: Dict = None, tres_capas_pct: float = None) -> List[Dict]:
     """
     Valoración por criterios de una matriz (fila de calcular_indicadores()['por_matriz']).
 
     Returns:
-        lista de dicts: Variable, Eslabón, Criterio, Resultado, Estado y Referencia (mediana del conjunto).
+        lista de dicts: Variable, Tramo, Criterio, Resultado, Estado y Referencia (mediana del conjunto).
     """
     ref = referencia or {}
     f = lambda x: '—' if x is None else f'{x:.1f} %'.replace('.', ',')
     n_ra, n_est = fila.get('RA únicos') or 0, fila.get('Estrategias') or 0
-    v5 = fila.get('V5 %')
-    directas = round((v5 or 0) * n_est / 100)
+    directas = round((fila.get('Evidencia directa %') or 0) * n_est / 100)
     resultado = {
-        'V1': (fila.get('V1 %'), f"{f(fila.get('V1 %'))} en las tres capas"
-               + (f"; {f(sin_respaldo_pct)} sin respaldo" if sin_respaldo_pct is not None else '')),
+        'V1': (fila.get('V1 %'), f"{f(fila.get('V1 %'))} con alguna alineación"
+               + (f"; {f(sin_respaldo_pct)} sin alineación" if sin_respaldo_pct is not None else '')
+               + (f"; {f(tres_capas_pct)} con las tres capas" if tres_capas_pct is not None else '')),
         'V2': (100.0 if fila.get('V2') == 'Sí' else 0.0,
                'Sin verbos repetidos' if fila.get('V2') == 'Sí' else f"Verbo repetido: {fila.get('Verbos repetidos')}"),
         'V3': (fila.get('V3 %'), f"{f(fila.get('V3 %'))} de {n_ra} RA"),
@@ -419,20 +424,21 @@ def valorar_matriz(fila: Dict, sin_respaldo_pct: float = None, exigencia: float 
     }
     refs = {'V1': f(ref.get('V1 %')), 'V2': (f"{f(ref.get('V2'))} de las matrices cumple" if ref.get('V2') is not None else '—'),
             'V3': f(ref.get('V3 %')), 'V4': f(ref.get('V4 %')), 'V5': '—'}
-    filas = [{'Variable': v, 'Eslabón': e, 'Criterio': c, 'Resultado': resultado[v][1],
+    filas = [{'Variable': v, 'Tramo': e, 'Criterio': c, 'Resultado': resultado[v][1],
               'Estado': estado_criterio(resultado[v][0]), 'Referencia (mediana)': refs[v]} for v, e, c in CRITERIOS]
     niv = fila.get('Indicadores por nivel') or {}
     n_ind = sum(niv.values())
-    filas.append({'Variable': '—', 'Eslabón': 'Nivel de evidencia de los indicadores (descriptivo)',
+    filas.append({'Variable': '—', 'Tramo': 'Nivel de evidencia de los indicadores (descriptivo)',
                   'Criterio': 'Sin criterio en la plantilla. Recomendación: al menos un indicador de aprendizaje '
                               'demostrado (N3) por estrategia',
                   'Resultado': (f"{n_ind} indicadores: N1 implementación {niv.get('N1', 0)}, N2 percepción "
                                 f"{niv.get('N2', 0)}, N3–N4 aprendizaje {niv.get('N3', 0) + niv.get('N4', 0)}, "
-                                f"N5 efecto externo {niv.get('N5', 0)}; {directas} de {n_est} estrategias con N3–N4")
+                                f"N5 efecto externo {niv.get('N5', 0)}; V5 (N2 o superior) {f(fila.get('V5 %'))}; "
+                                f"{directas} de {n_est} estrategias con N3–N4")
                                 if n_ind else '—',
-                  'Estado': 'Descriptiva', 'Referencia (mediana)': f(ref.get('V5 %')) + ' de estrategias con N3–N4'
+                  'Estado': 'Descriptiva', 'Referencia (mediana)': f(ref.get('V5 %')) + ' de estrategias con N2 o superior'
                   if ref.get('V5 %') is not None else '—'})
-    filas.append({'Variable': '—', 'Eslabón': 'Exigencia de los RA (descriptiva)',
+    filas.append({'Variable': '—', 'Tramo': 'Exigencia de los RA (descriptiva)',
                   'Criterio': 'Sin criterio: la exigencia adecuada depende del nivel de formación',
                   'Resultado': '—' if exigencia is None else f'índice {exigencia:.1f}'.replace('.', ','),
                   'Estado': 'Descriptiva',

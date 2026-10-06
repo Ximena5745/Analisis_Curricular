@@ -73,9 +73,10 @@ def _cadena_matriz(file_path: Path) -> dict:
     tres = sum(i['estado'] == 'Asociado en las tres capas' for i in items)
     sin = sum(i['estado'] == 'Sin asociación' for i in items)
     clave = ia.nombre_matriz(file_path.name)[0]
-    fila = ia.calcular_indicadores([(file_path.name, str(file_path))], v1={clave: (tres, len(items))})['por_matriz'][0]
+    fila = ia.calcular_indicadores([(file_path.name, str(file_path))], v1={clave: (len(items) - sin, len(items))})['por_matriz'][0]
     exig = ia.calcular_exigencia([(file_path.name, str(file_path))])[0]['Índice de exigencia']
-    return {'fila': fila, 'sin_pct': round(100 * sin / len(items), 1) if items else None, 'exigencia': exig}
+    return {'fila': fila, 'sin_pct': round(100 * sin / len(items), 1) if items else None, 'exigencia': exig,
+            'tres_pct': round(100 * tres / len(items), 1) if items else None}
 
 
 def generar_informes_html(resultados: list, generator: ReportGenerator) -> None:
@@ -85,7 +86,7 @@ def generar_informes_html(resultados: list, generator: ReportGenerator) -> None:
                                   {r['cadena']['fila']['Matriz']: r['cadena']['exigencia'] for r in resultados})
     for r in resultados:
         c = r['cadena']
-        valoracion = ia.valorar_matriz(c['fila'], c['sin_pct'], c['exigencia'], ref)
+        valoracion = ia.valorar_matriz(c['fila'], c['sin_pct'], c['exigencia'], ref, c.get('tres_pct'))
         generator.generate_html_report(r['data'], r['indicadores'], r['html_path'], valoracion=valoracion,
                                        n_referencia=ref['n'])
 

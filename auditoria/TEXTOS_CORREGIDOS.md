@@ -4,7 +4,7 @@ Versiones aprobadas por la autora durante la auditoría (verificación 2026-10-0
 
 ## Resumen (versión corregida)
 
-Estudio aplicado de métodos mixtos sobre 50 matrices curriculares de 39 programas académicos: 338 resultados de aprendizaje únicos (deduplicados en cada matriz), 391 estrategias mesocurriculares declaradas, 1.757 registros de asignatura y 50 perfiles profesionales y 50 perfiles ocupacionales, analizados mediante cinco variables de coherencia y trazabilidad, minería de texto, modelado temático y contraste estadístico exploratorio. Resultados. La evaluabilidad alcanzó el 100 %, condición impuesta por la plantilla, y el 87,0 % de los resultados de aprendizaje presentó una ruta documentada hasta una estrategia con instrumento de evaluación (98,0 % sin el RA genérico institucional). El 65,7 % de los 2.574 atributos del perfil se respaldó a la vez en competencias, RA y asignaturas, y el 3,8 % en ninguna de ellas (10,9 % en las poblaciones de actuación); el 9,4 % de las asignaturas homónimas mostró contenidos divergentes y la inteligencia artificial apareció en el 79,5 % de los programas, pero solo en el 3,8 % de las asignaturas.
+Estudio aplicado de métodos mixtos sobre 50 matrices curriculares de 39 programas académicos: 338 resultados de aprendizaje únicos (deduplicados en cada matriz), 391 estrategias mesocurriculares declaradas, 1.757 registros de asignatura y 50 perfiles profesionales y 50 perfiles ocupacionales, analizados mediante cinco variables de coherencia y trazabilidad, minería de texto, modelado temático y contraste estadístico exploratorio. Resultados. La evaluabilidad alcanzó el 100 %, condición impuesta por la plantilla, y el 87,0 % de los resultados de aprendizaje presentó una ruta documentada hasta una estrategia con instrumento de evaluación (98,0 % sin el RA genérico institucional). El 96,2 % de los 2.574 atributos del perfil tiene alineación con al menos una capa curricular y el 3,8 % con ninguna (10,9 % en las poblaciones de actuación); la alineación simultánea con competencias, RA y asignaturas alcanza el 65,7 %; el 9,4 % de las asignaturas homónimas mostró contenidos divergentes y la inteligencia artificial apareció en el 79,5 % de los programas, pero solo en el 3,8 % de las asignaturas.
 
 *Cifras de IA según la lista oficial de 15 tendencias (D21) sobre las 1.616 asignaturas sin electivas (R8.2): 31 de 39 programas y 62 asignaturas.*
 
@@ -39,7 +39,7 @@ Etapa 2. Identificación de los núcleos temáticos. Cada asignatura declara sus
 
 ## Procedimiento – Etapa 3
 
-Etapa 3. Valoración por criterios. Cada matriz se valora eslabón por eslabón de la cadena de evidencia contra la regla que exige la propia plantilla institucional: todo atributo del perfil respaldado en competencias, RA y asignaturas (V1); ningún verbo repetido entre competencias específicas (V2); todo RA con verbo observable y finalidad (V3); todo RA vinculado a una estrategia mesocurricular con instrumento (V4), y cada estrategia con al menos un indicador y un instrumento (V5; Paso 4). El estado es Cumple si la regla se cumple en todos los casos, Parcial si se cumple en algunos y No cumple si no se cumple en ninguno, de modo que la valoración se refiere a un criterio y no a la posición del programa en el grupo (Glaser, 1963). No se construye un puntaje compuesto: sin una línea base institucional, los pesos y las normalizaciones de un índice serían arbitrarios. La mediana del conjunto se informa solo como referencia descriptiva. La completitud de la matriz y la proporción de competencias con resultados de aprendizaje asociados se verificaron en todos los programas (100 % en las 50 matrices) y se reportan como condiciones verificadas. Se describen sin valorarse la exigencia de los resultados de aprendizaje, porque su nivel adecuado depende del nivel de formación, y el nivel de evidencia de los indicadores (V5), porque la plantilla no lo exige; para este se recomienda al menos un indicador de aprendizaje demostrado (N3) por estrategia.
+Etapa 3. Valoración por criterios. Cada matriz se valora tramo por tramo de la ruta de alineación curricular contra la regla que exige la propia plantilla institucional: todo atributo del perfil alineado en al menos una capa curricular (V1); ningún verbo repetido entre competencias específicas (V2); todo RA con verbo observable y finalidad (V3); todo RA vinculado a una estrategia mesocurricular con instrumento (V4), y cada estrategia con al menos un indicador y un instrumento (V5; Paso 4). El estado es Cumple si la regla se cumple en todos los casos, Parcial si se cumple en algunos y No cumple si no se cumple en ninguno, de modo que la valoración se refiere a un criterio y no a la posición del programa en el grupo (Glaser, 1963). No se construye un puntaje compuesto: sin una línea base institucional, los pesos y las normalizaciones de un índice serían arbitrarios. La mediana del conjunto se informa solo como referencia descriptiva. La completitud de la matriz y la proporción de competencias con resultados de aprendizaje asociados se verificaron en todos los programas (100 % en las 50 matrices) y se reportan como condiciones verificadas. Se describen sin valorarse la exigencia de los resultados de aprendizaje, porque su nivel adecuado depende del nivel de formación, y el nivel de evidencia de los indicadores (V5), porque la plantilla no lo exige; para este se recomienda al menos un indicador de aprendizaje demostrado (N3) por estrategia.
 
 Para ubicar cada resultado de aprendizaje en una escala de exigencia, las matrices emplean dos taxonomías: Bloom en su versión clásica (48,5 % de los resultados de aprendizaje únicos) y una adaptación con aportes de Krathwohl (BAK, 51,5 %); 26 de las 50 matrices combinan ambas. Las dos distinguen los dominios cognitivo, procedimental y actitudinal, pero solo BAK asigna escalas propias a los dos últimos, al reconocer que dominar un procedimiento o consolidar una actitud siguen progresiones distintas de las del conocimiento conceptual (Tabla 4).
 
@@ -59,7 +59,7 @@ Cada nivel declarado se traduce a una escala común de 1 a 6 según su posición
 
 Etapa 4. Asociación del perfil profesional y ocupacional (V1). El perfil se descompone en atributos: las funciones que el texto narrativo de cada perfil atribuye al egresado, identificadas con el léxico de verbos de las hojas de taxonomía de la propia matriz, y cada ítem de las áreas profesionales, las tareas profesionales y las poblaciones de actuación del perfil ocupacional. Se obtuvieron 2.580 atributos; seis no son atributos del perfil (cifras de encuestas de empleo y etiquetas de nivel) y se excluyen, lo que deja 2.574 (Tabla 5). El perfil profesional se evalúa solo a partir de su texto narrativo, porque el Paso 1 no lo descompone en áreas, tareas ni poblaciones. Quedan fuera del alcance los campos Saber, SaberHacer y SaberSer, que alimentan por lista desplegable la redacción de los RA (Paso 3) y harían circular la comparación, y el valor agregado. Cada atributo se contrasta solo con la matriz de su programa, en tres capas: competencias (Paso 2), resultados de aprendizaje (Paso 3) y asignaturas (nombre, indicadores de logro y núcleos temáticos del Paso 5, sin electivas). Se excluyen la competencia genérica institucional y su RA, comunes a 40 matrices. El procedimiento se inscribe en el mapeo curricular asistido por procesamiento de lenguaje natural, que relaciona resultados de aprendizaje de curso y de programa (Zaki et al., 2023), contenidos y estándares educativos mediante representaciones vectoriales del texto (Butterfuss & Doran, 2025) o planes de estudio completos (Duarte et al., 2023); a diferencia de esos trabajos, el contraste parte del perfil de egreso y se limita a la matriz de cada programa.
 
-Un atributo se considera respaldado en una capa si alguna unidad de texto cubre sus conceptos. La cobertura pondera cada lema por su rareza en la matriz (IDF), reduce el peso del vocabulario presente en más del 15 % de sus unidades, reconoce familias de palabras y un diccionario de equivalencias de dominio ampliable por la institución, y exige que un rol (p. ej., «consultor») encuentre su actividad o conserve solo la mitad de su cobertura. La similitud semántica (paraphrase-multilingual-MiniLM-L12-v2) actúa solo como apoyo de coberturas parciales: el respaldo es explícito si la cobertura alcanza 0,25 y parcial si alcanza 0,05 con similitud de al menos 0,58. La rareza se pondera con IDF (Spärck Jones, 1972) y la similitud semántica usa un modelo de oraciones multilingüe (Reimers & Gurevych, 2020). V1 es la proporción de atributos respaldados en las tres capas; se informa además la proporción sin respaldo en ninguna.
+Un atributo se considera respaldado en una capa si alguna unidad de texto cubre sus conceptos. La cobertura pondera cada lema por su rareza en la matriz (IDF), reduce el peso del vocabulario presente en más del 15 % de sus unidades, reconoce familias de palabras y un diccionario de equivalencias de dominio ampliable por la institución, y exige que un rol (p. ej., «consultor») encuentre su actividad o conserve solo la mitad de su cobertura. La similitud semántica (paraphrase-multilingual-MiniLM-L12-v2) actúa solo como apoyo de coberturas parciales: el respaldo es explícito si la cobertura alcanza 0,25 y parcial si alcanza 0,05 con similitud de al menos 0,58. La rareza se pondera con IDF (Spärck Jones, 1972) y la similitud semántica usa un modelo de oraciones multilingüe (Reimers & Gurevych, 2020). V1 es la proporción de atributos alineados en al menos una capa; se informan además la alineación con las tres capas a la vez y la proporción sin alineación.
 
 Los parámetros se calibraron contra una lectura de referencia de 11 matrices de ocho enfoques disciplinares (429 atributos; 1.287 decisiones atributo × capa), elaborada con asistencia de IAg sobre la matriz original, con revisión puntual de 40 de los 429 atributos. El acuerdo fue del 80,1 % (κ de Cohen = 0,44; Cohen, 1960), medido dentro de la muestra usada para calibrar; al calibrar excluyendo cada enfoque, osciló entre 68,9 % y 84,2 % en el enfoque excluido, lo que aproxima el desempeño fuera de ella. El método es determinista: la misma matriz produce el mismo resultado, y sus asociaciones se entregan como propuesta para validar por el comité curricular.
 
@@ -128,36 +128,36 @@ El código, las versiones exactas de las bibliotecas, las semillas, los parámet
 
 **Tabla 7. Corpus analizado por sede y modalidad**
 
-| Sede | Modalidad | Matrices | Competencias | RA únicos | Estrategias meso |
-|---|---|---|---|---|---|
-| VNAL | Virtual nacional | 22 | 93 | 138 | 170 |
-| PBOG | Bogotá presencial | 17 | 75 | 118 | 132 |
-| PMED | Medellín presencial | 7 | 34 | 51 | 59 |
-| HMED | Medellín híbrido | 3 | 17 | 25 | 24 |
-| HBOG | Bogotá híbrido | 1 | 3 | 6 | 6 |
-| Total |  | 50 | 222 | 338 | 391 |
+| Sede | Modalidad | Matrices | Competencias | RA únicos | Registros de RA | Estrategias meso | Asignaturas |
+|---|---|---|---|---|---|---|---|
+| VNAL | Virtual nacional | 22 | 93 | 138 | 249 | 170 | 682 |
+| PBOG | Bogotá presencial | 17 | 75 | 118 | 197 | 132 | 616 |
+| PMED | Medellín presencial | 7 | 34 | 51 | 88 | 59 | 286 |
+| HMED | Medellín híbrido | 3 | 17 | 25 | 45 | 24 | 132 |
+| HBOG | Bogotá híbrido | 1 | 3 | 6 | 7 | 6 | 41 |
+| Total |  | 50 | 222 | 338 | 586 | 391 | 1.757 |
 
-*Nota. Los RA únicos se cuentan dentro de cada matriz, sin distinguir mayúsculas, tildes ni puntuación (D4); las estrategias son las declaradas en el Paso 4.*
+*Nota. Los RA únicos se cuentan dentro de cada matriz, sin distinguir mayúsculas, tildes ni puntuación (D4); un registro es un RA asociado a una competencia (Paso 3). Las estrategias son las declaradas en el Paso 4 y las asignaturas, los registros del Paso 5, incluidos 141 espacios electivos.*
 
-VNAL y PBOG reúnen el 78 % de las matrices, y HBOG cuenta con una sola. Diecinueve matrices pertenecen a ocho programas ofrecidos en varias sedes con RA idénticos, de modo que las sedes no constituyen observaciones independientes. La Figura 1 resume la cadena de evidencia del logro que se detalla en R1–R5, cada eslabón sobre su propia base.
+VNAL y PBOG reúnen el 78 % de las matrices, y HBOG cuenta con una sola. Diecinueve matrices pertenecen a ocho programas ofrecidos en varias sedes con RA idénticos, de modo que las sedes no constituyen observaciones independientes. La Figura 1 resume la ruta de alineación curricular (Biggs, 1996) que se detalla en R1–R5, cada tramo sobre su propia base.
 
 ## Resultados – R1 (V1)
 
-R1. Correspondencia del perfil con competencias, resultados de aprendizaje y asignaturas (V1). De los 2.574 atributos del perfil, el 75,6 % se respalda en alguna competencia, el 72,4 % en algún RA y el 95,2 % en alguna asignatura; el 65,7 % se respalda en las tres capas (V1) y el 3,8 % (98 atributos) en ninguna (Tabla 8). El perfil profesional se respalda más que el ocupacional: 73,8 % y 64,0 % en las tres capas, y 2,6 % y 4,0 % sin respaldo. Por matriz, V1 promedia 65,2 % (rango 25,0 %–86,5 %). Los valores más bajos corresponden a la Especialización en Gerencia Tributaria (25,0 %), la Maestría en Gerencia Estratégica de Mercadeo (27,3 %) y Matemáticas (34,5 %), donde los RA respaldan menos de la mitad de los atributos (29,2 %, 31,8 % y 41,4 %). La competencia de referencia de cada RA, en cambio, está declarada en los 338 RA únicos de las 50 matrices, porque la plantilla la exige.
+R1. Correspondencia del perfil con competencias, resultados de aprendizaje y asignaturas (V1). Se examinó en qué medida los atributos declarados en el perfil de egreso encuentran correspondencia en las competencias, los RA o las asignaturas de la misma matriz. De los 2.574 atributos del perfil, 2.476 (96,2 %) tienen alineación con al menos una capa (V1) y 98 (3,8 %) con ninguna (Tabla 8). Por capa, el 95,2 % se alinea con alguna asignatura, el 75,6 % con alguna competencia y el 72,4 % con algún RA; el 65,7 % se alinea con las tres a la vez. El perfil profesional alcanza el 97,4 % y el ocupacional el 96,0 %. Por matriz, V1 va de 87,2 % a 100 % (mediana 97,3 %): 12 matrices alinean todos sus atributos y 38 tienen al menos uno sin alineación. La alineación con las tres capas varía más, de 25,0 % a 86,5 %; los valores más bajos corresponden a la Especialización en Gerencia Tributaria (25,0 %), la Maestría en Gerencia Estratégica de Mercadeo (27,3 %) y Matemáticas (34,5 %), donde los RA respaldan menos de la mitad de los atributos (29,2 %, 31,8 % y 41,4 %). La competencia de referencia de cada RA, en cambio, está declarada en los 338 RA únicos de las 50 matrices, porque la plantilla la exige.
 
 **Tabla 8. Respaldo de los atributos del perfil por capa curricular**
 
-| Perfil | Atributos | Competencias | RA | Asignaturas | Tres capas (V1) | Ninguna capa |
-|---|---|---|---|---|---|---|
-| Profesional | 424 | 82,8 % | 78,3 % | 96,5 % | 73,8 % | 2,6 % |
-| Ocupacional | 2.150 | 74,2 % | 71,2 % | 95,0 % | 64,0 % | 4,0 % |
-| Total | 2.574 | 75,6 % | 72,4 % | 95,2 % | 65,7 % | 3,8 % |
+| Perfil | Atributos | Competencias | RA | Asignaturas | Alguna capa (V1) | Tres capas | Ninguna capa |
+|---|---|---|---|---|---|---|---|
+| Profesional | 424 | 82,8 % | 78,3 % | 96,5 % | 97,4 % | 73,8 % | 2,6 % |
+| Ocupacional | 2.150 | 74,2 % | 71,2 % | 95,0 % | 96,0 % | 64,0 % | 4,0 % |
+| Total | 2.574 | 75,6 % | 72,4 % | 95,2 % | 96,2 % | 65,7 % | 3,8 % |
 
 *Nota. Respaldo explícito o parcial en la matriz del propio programa (Etapa 4). Acuerdo del método con una lectura de referencia elaborada con asistencia de IAg y revisada puntualmente (40 de 429 atributos): 80,1 % (κ = 0,44; 11 matrices, 1.287 decisiones), medido sobre las mismas matrices usadas para calibrar; pendiente de validación por el comité curricular.*
 
 ## Resultados – R2 (V2)
 
-R2. Tipología y frecuencia de inconsistencias curriculares (V2). De las 222 competencias, 182 son específicas y 40 genéricas; las genéricas corresponden a una única competencia institucional («Analizar fenómenos contemporáneos») presente en 40 matrices. Por ello Analizar es el verbo más frecuente (50 ocurrencias, 40 en la competencia genérica); entre las específicas predominan Dominar (26), Aplicar (22), Implementar (20), Desarrollar (19) y Diseñar (19) (Figura 2). Cinco matrices de tres programas repiten un verbo entre competencias específicas (V2 = 90 %), y ninguna omite un tipo de saber (Tabla 9).
+R2. Tipología y frecuencia de inconsistencias curriculares (V2). Se analizó la coherencia horizontal de las competencias, entendida como la formulación de cada competencia específica mediante una acción diferenciada; la repetición del verbo entre competencias de un mismo programa se interpreta como indicio de solapamiento. De las 222 competencias, 182 son específicas y 40 genéricas; las genéricas corresponden a una única competencia institucional («Analizar fenómenos contemporáneos») presente en 40 matrices. Por ello Analizar es el verbo más frecuente (50 ocurrencias, 40 en la competencia genérica); entre las específicas predominan Dominar (26), Aplicar (22), Implementar (20), Desarrollar (19) y Diseñar (19) (Figura 2). Cinco matrices de tres programas repiten un verbo entre competencias específicas (V2 = 90 %), y ninguna omite un tipo de saber (Tabla 9).
 
 **Tabla 9. Desajustes horizontales por matriz**
 
@@ -193,7 +193,7 @@ De los 44 RA sin estrategia, 38 corresponden a la competencia genérica (Figura 
 
 ## Resultados – R5 (V5)
 
-R5. Indicadores de resultado e impacto (V5). Las 391 estrategias declaran al menos un indicador (1.185 en total, con 170 redacciones distintas). Como todos son indicadores de logro del RA, se clasificaron por nivel de evidencia: implementación (N1), percepción y reacción (N2), aprendizaje demostrado con criterios (N3), transferencia a contextos auténticos (N4) y efecto externo (N5). Las simulaciones se asignaron a N3, el conteo de participantes a N1 y los indicadores compuestos a su nivel más alto. V5 corresponde a la proporción de estrategias con evidencia directa del logro (N3 o N4).
+R5. Indicadores de resultado e impacto (V5). Se analizó qué evidencia del logro aportan los indicadores asociados a cada estrategia, desde la constatación de su implementación hasta la demostración del aprendizaje. Las 391 estrategias declaran al menos un indicador (1.185 en total, con 170 redacciones distintas). Como todos son indicadores de logro del RA, se clasificaron por nivel de evidencia: implementación (N1), percepción y reacción (N2), aprendizaje demostrado con criterios (N3), transferencia a contextos auténticos (N4) y efecto externo (N5). Las simulaciones se asignaron a N3, el conteo de participantes a N1 y los indicadores compuestos a su nivel más alto. V5 corresponde a la proporción de estrategias con evidencia directa del logro (N3 o N4).
 
 **Tabla 11. Indicadores de logro por nivel de evidencia**
 
@@ -212,18 +212,18 @@ Dos indicadores concentran casi toda la declaración: el número de estudiantes 
 
 ## Resultados – R6
 
-R6. Asociación entre variables curriculares (V1–V5). Seis pares admiten estimación, porque V3 es constante. La correlación de Spearman sobre las 50 matrices fue V1–V2 ρ = 0,09 (p = 0,513), V1–V4 ρ = 0,12 (p = 0,417), V1–V5 ρ = −0,13 (p = 0,381), V2–V4 ρ = −0,04 (p = 0,771), V2–V5 ρ = 0,07 (p = 0,639) y V4–V5 ρ = −0,13 (p = 0,353); ninguna es significativa, tampoco con una matriz por programa (n = 39). V2 adopta dos valores y V5 es distinta de cero en dos matrices (Figura 5), por lo que los pares que las incluyen carecen de potencia y no se interpretan.
+R6. Asociación entre variables curriculares (V1–V5). Se examinó la covariación entre las variables, con el fin de establecer si los programas con mayor articulación en un tramo de la ruta la presentan también en los demás. Seis pares admiten estimación, porque V3 es constante. La correlación de Spearman sobre las 50 matrices fue V1–V2 ρ = 0,10 (p = 0,479), V1–V4 ρ = −0,17 (p = 0,240), V1–V5 ρ = −0,05 (p = 0,709), V2–V4 ρ = −0,04 (p = 0,771), V2–V5 ρ = 0,07 (p = 0,639) y V4–V5 ρ = −0,13 (p = 0,353); ninguna es significativa, tampoco con una matriz por programa (n = 39). V2 adopta dos valores y V5 es distinta de cero en dos matrices (Figura 5), por lo que los pares que las incluyen carecen de potencia y no se interpretan.
 
 ## Resultados – R7
 
-R7. Diferencias entre sedes (V1, V2, V4, V5). Las diferencias entre sedes se contrastaron con la prueba de Kruskal-Wallis, dada la desigualdad de tamaños de grupo y el incumplimiento de los supuestos de normalidad y homocedasticidad. HBOG (n = 1) se trató como caso descriptivo, porque un grupo unitario carece de varianza estimable, y V3 se excluyó por ser constante. Con 49 matrices —VNAL (n = 22), PBOG (n = 17), PMED (n = 7) y HMED (n = 3)—, ninguna variable difiere entre sedes, tampoco con una matriz por programa para controlar la dependencia de la oferta multisede (n = 38) (Tabla 12). Sin contrastes globales significativos, no se realizaron comparaciones post hoc de Dunn. Con n = 3 en HMED y n = 7 en PMED la potencia es baja: la no significación indica ausencia de evidencia de diferencia, no equivalencia; las posiciones por sede de la Tabla 10 son descriptivas.
+R7. Diferencias entre sedes (V1, V2, V4, V5). Se contrastó si la articulación curricular difiere según la sede o la modalidad de oferta del programa mediante la prueba de Kruskal-Wallis, elegida por la desigualdad de tamaños de grupo y el incumplimiento de los supuestos de normalidad y homocedasticidad. HBOG (n = 1) se trató como caso descriptivo, porque un grupo unitario carece de varianza estimable, y V3 se excluyó por ser constante. Con 49 matrices —VNAL (n = 22), PBOG (n = 17), PMED (n = 7) y HMED (n = 3)—, ninguna variable difiere entre sedes, tampoco con una matriz por programa para controlar la dependencia de la oferta multisede (n = 38) (Tabla 12). Sin contrastes globales significativos, no se realizaron comparaciones post hoc de Dunn. Con n = 3 en HMED y n = 7 en PMED la potencia es baja: la no significación indica ausencia de evidencia de diferencia, no equivalencia; las posiciones por sede de la Tabla 10 son descriptivas.
 
 **Tabla 12. Prueba de Kruskal-Wallis entre sedes**
 
 | Variable | H(3) | p | ε² | H(3) | p | ε² |
 |---|---|---|---|---|---|---|
 |  | 49 matrices |  |  | 38 programas¹ |  |  |
-| V1 Correspondencia del perfil | 2,20 | 0,531 | 0,000 | 3,74 | 0,290 | 0,022 |
+| V1 Correspondencia del perfil | 0,84 | 0,841 | 0,000 | 2,05 | 0,562 | 0,000 |
 | V2 Coherencia horizontal | 2,64 | 0,451 | 0,000 | 4,86 | 0,182 | 0,055 |
 | V4 Trazabilidad | 3,86 | 0,277 | 0,019 | 2,21 | 0,529 | 0,000 |
 | V5 Evidencia directa del logro | 2,51 | 0,474 | 0,000 | 2,28 | 0,516 | 0,000 |
@@ -310,7 +310,7 @@ Los 98 atributos sin respaldo en ninguna capa (R1) se concentran en las poblacio
 
 ## Resultados – aportes para la Discusión
 
-V3, la paridad de tipos de saber y la referencia de cada RA a una competencia son propiedades del instrumento: la plantilla fija la estructura del RA, su descomposición en tres tipos de saber y la competencia de origen. Su valor no describe la calidad del diseño y no debe leerse como fortaleza. V1, medida como respaldo del perfil en las tres capas, sí varía entre matrices (25,0 %–86,5 %).
+V3, la paridad de tipos de saber y la referencia de cada RA a una competencia son propiedades del instrumento: la plantilla fija la estructura del RA, su descomposición en tres tipos de saber y la competencia de origen. Su valor no describe la calidad del diseño y no debe leerse como fortaleza. La alineación del perfil con las tres capas a la vez sí varía entre matrices (25,0 %–86,5 %), aunque V1 sea alta (96,2 %).
 
 Los rangos de referencia de un currículo por competencias (Saber 25–45 %, SaberHacer 35–60 %, SaberSer 10–30 %) [fuente pendiente] no son aplicables a registros con esta estructura; aplicarlos llevaría a concluir un déficit práctico en todas las matrices. La distribución por RA únicos (SaberSer 16,0 %) indica que el componente actitudinal se formula con pocos RA reutilizados.
 
@@ -318,11 +318,11 @@ La brecha de trazabilidad no es estructural: ningún RA carece de evaluación en
 
 Los indicadores declarados informan si la estrategia ocurrió y cómo fue valorada, pero casi nunca si el RA se alcanzó: el 99,5 % es evidencia indirecta. Para sostener decisiones de mejora, el Paso 4 debería exigir por estrategia al menos un indicador de aprendizaje demostrado (N3) con criterio de desempeño y umbral de suficiencia, y, cuando la estrategia ocurra en contexto real, uno de transferencia (N4).
 
-Con la plantilla actual, la mayoría de las variables mide el cumplimiento del formato y no decisiones de diseño: V3 es constante, V2 casi binaria y V5 casi nula; solo V1 y V4 reflejan variación entre programas. Ello explica la ausencia de asociaciones (R6) y orienta la revisión del instrumento hacia variables que discriminen.
+Con la plantilla actual, la mayoría de las variables mide el cumplimiento del formato y no decisiones de diseño: V3 es constante, V2 casi binaria, V5 casi nula y V1 cercana al techo; solo V4 y la alineación del perfil con las tres capas reflejan variación entre programas. Ello explica la ausencia de asociaciones (R6) y orienta la revisión del instrumento hacia variables que discriminen.
 
 La brecha de trazabilidad tiene dos fuentes distintas: una regla común —el RA de la competencia genérica institucional, sin estrategia meso en 38 de 40 matrices— y decisiones de programa, que explican seis RA en cinco matrices. La revisión debe atender ambas, no diferenciarse por sede (R7).
 
-Síntesis. El currículo está bien formulado y articulado, pero no genera evidencia directa del logro: las variables que dependen de enunciados (V3) y de su articulación (V2, V4) se acercan al techo, el perfil se respalda en las tres capas en dos de cada tres atributos (V1 = 65,7 %), mientras que solo el 0,8 % de las estrategias declara un indicador de aprendizaje demostrado (V5). Las brechas son puntuales y localizables —15 asignaturas homónimas divergentes, 14 variantes de denominación, 98 atributos del perfil sin respaldo, seis RA de programa sin estrategia— y se entregan como listados nominales. La IA tiene amplitud (79,5 % de los programas) sin profundidad (3,8 % de las asignaturas); la sostenibilidad combina ambas. El procedimiento es transferible a otra institución multisede con matrices estandarizadas: identificar campos obligatorios y opcionales, medir la cobertura de los segundos y comparar la variabilidad dentro y entre unidades académicas.
+Síntesis. El currículo está bien formulado y articulado, pero no genera evidencia directa del logro: las variables que dependen de enunciados (V3) y de su articulación (V2, V4) se acercan al techo, casi todo el perfil tiene alineación con alguna capa (V1 = 96,2 %), aunque solo dos de cada tres atributos se alinean con las tres a la vez (65,7 %), mientras que solo el 0,8 % de las estrategias declara un indicador de aprendizaje demostrado (V5). Las brechas son puntuales y localizables —15 asignaturas homónimas divergentes, 14 variantes de denominación, 98 atributos del perfil sin respaldo, seis RA de programa sin estrategia— y se entregan como listados nominales. La IA tiene amplitud (79,5 % de los programas) sin profundidad (3,8 % de las asignaturas); la sostenibilidad combina ambas. El procedimiento es transferible a otra institución multisede con matrices estandarizadas: identificar campos obligatorios y opcionales, medir la cobertura de los segundos y comparar la variabilidad dentro y entre unidades académicas.
 
 ## Discusión
 
@@ -332,7 +332,7 @@ Síntesis. El currículo está bien formulado y articulado, pero no genera evide
 
 La IAg puede asistir la estructuración de las matrices y la programación del aplicativo, mientras la detección de desajustes corresponde al análisis determinista y la decisión a los equipos académicos (Liu et al., 2024; Pusporini & Nurdiyanto, 2024). Los resultados matizan esta proposición. V3 alcanza el 100 % y la paridad de tipos de saber (Saber 37,9 %, SaberHacer 31,1 % y SaberSer 31,1 % de los registros) es constante porque la plantilla fija la estructura del RA y su descomposición por saber (R2–R3); lo mismo ocurre con la referencia de cada RA a su competencia. Estos valores describen el instrumento, no la calidad del diseño, y no deben leerse como fortaleza.
 
-La correspondencia del perfil (V1) sí discrimina entre programas: el respaldo en las tres capas va de 25,0 % a 86,5 % (R1). El perfil se sostiene sobre todo en las asignaturas (95,2 % de los atributos) y se debilita en las competencias y los RA (75,6 % y 72,4 %), de modo que parte de lo que el perfil promete se enseña sin formularse como resultado esperado ni evaluarse como tal. Los vacíos tampoco son aleatorios: se concentran en las poblaciones de actuación (10,9 % sin respaldo) y responden a tres patrones —docencia sin formación didáctica, dirección sin contenido directivo y poblaciones vulnerables sin tratamiento curricular— (R8.3). El perfil ocupacional enumera escenarios del mercado laboral que el plan no desarrolla; la brecha es más de promesa que de contenido, y su corrección puede pasar tanto por ajustar el plan como por acotar el perfil que se difunde.
+La correspondencia del perfil (V1) es alta: el 96,2 % de los atributos tiene alineación con alguna capa, y la diferencia entre programas está en la alineación con las tres capas a la vez, que va de 25,0 % a 86,5 % (R1). El perfil se sostiene sobre todo en las asignaturas (95,2 % de los atributos) y se debilita en las competencias y los RA (75,6 % y 72,4 %), de modo que parte de lo que el perfil promete se enseña sin formularse como resultado esperado ni evaluarse como tal. Los vacíos tampoco son aleatorios: se concentran en las poblaciones de actuación (10,9 % sin respaldo) y responden a tres patrones —docencia sin formación didáctica, dirección sin contenido directivo y poblaciones vulnerables sin tratamiento curricular— (R8.3). El perfil ocupacional enumera escenarios del mercado laboral que el plan no desarrolla; la brecha es más de promesa que de contenido, y su corrección puede pasar tanto por ajustar el plan como por acotar el perfil que se difunde.
 
 Las inconsistencias reales son escasas y localizables: cinco matrices de tres programas (3 de 39; 7,7 %) repiten un verbo entre competencias específicas (V2 = 90 %). La alta frecuencia de Analizar no es una inconsistencia, pues 40 de sus 50 ocurrencias corresponden a la competencia genérica institucional. Por la misma razón, los rangos de referencia por tipo de saber (SaberHacer 35–60 %) no son aplicables a registros con esta estructura: aplicarlos atribuiría un déficit práctico a todas las matrices. Sobre los 338 RA únicos, SaberSer representa el 16,0 %, lo que indica que el componente actitudinal se formula con pocos RA reutilizados en varias competencias.
 
@@ -340,7 +340,7 @@ Las inconsistencias reales son escasas y localizables: cinco matrices de tres pr
 
 La educación orientada a resultados supone que los indicadores permiten decidir sobre el logro. Los datos no respaldan esta proposición en su forma actual. De 1.185 indicadores declarados en el Paso 4, el 99,5 % es evidencia indirecta: informa si la estrategia se implementó (N1, 808) o cómo fue valorada (N2, 371), pero no si el RA se alcanzó. Solo cinco demuestran aprendizaje (N3), ninguno transferencia (N4) y uno un efecto externo (N5); en consecuencia, solo 3 de las 391 estrategias (0,8 %) declaran evidencia directa del logro (V5, R5).
 
-Tampoco puede sostenerse una relación entre variables. Ninguna correlación fue significativa (V2–V4 ρ = −0,04; V2–V5 ρ = 0,07; V4–V5 ρ = −0,13; V1–V4 ρ = 0,12; n = 50) y ninguna variable difiere entre sedes (R6, R7). Esta ausencia no prueba independencia: V3 es constante, V2 casi binaria y V5 distinta de cero en dos matrices, de modo que solo V1 y V4 varían entre programas, y no covarían. Con la plantilla actual, la mayoría de las variables mide el cumplimiento del formato y no decisiones de diseño.
+Tampoco puede sostenerse una relación entre variables. Ninguna correlación fue significativa (V2–V4 ρ = −0,04; V2–V5 ρ = 0,07; V4–V5 ρ = −0,13; V1–V4 ρ = −0,17; n = 50) y ninguna variable difiere entre sedes (R6, R7). Esta ausencia no prueba independencia: V3 es constante, V2 casi binaria y V5 distinta de cero en dos matrices, y V1 se acerca al techo (87,2 %–100 %), de modo que solo V4 varía de forma apreciable entre programas. Con la plantilla actual, la mayoría de las variables mide el cumplimiento del formato y no decisiones de diseño.
 
 El aporte atribuible al sistema se sitúa, por tanto, menos en generar indicadores que en hacer visible su nivel. Para sostener decisiones de mejora, el Paso 4 debería exigir por estrategia al menos un indicador de aprendizaje demostrado (N3), con criterio de desempeño y umbral de suficiencia, y uno de transferencia (N4) cuando la estrategia ocurra en contexto real.
 
@@ -376,11 +376,11 @@ El segundo riesgo es estructural en los archivos fuente: en el Paso 5, el nombre
 
 **Respaldo del perfil por capa (para la sección de Resultados)**
 
-| Perfil | Atributos | Tres capas (V1) | Ninguna capa |
-|---|---|---|---|
-| Profesional | 424 | 73,8 % | 2,6 % |
-| Ocupacional | 2.150 | 64,0 % | 4,0 % |
-| Total | 2.574 | 65,7 % | 3,8 % |
+| Perfil | Atributos | Alguna capa (V1) | Tres capas | Ninguna capa |
+|---|---|---|---|---|
+| Profesional | 424 | 97,4 % | 73,8 % | 2,6 % |
+| Ocupacional | 2.150 | 96,0 % | 64,0 % | 4,0 % |
+| Total | 2.574 | 96,2 % | 65,7 % | 3,8 % |
 
 Asignaturas compartidas: 159 asignaturas homónimas, de las cuales 15 (9,4 %) son divergentes; 203 pares de asignaturas con nombre distinto y contenido similar entre programas.
 
@@ -389,6 +389,8 @@ Asignaturas compartidas: 159 asignaturas homónimas, de las cuales 15 (9,4 %) so
 Se conserva: Robertson, S., & Zaragoza, H. (2009). The probabilistic relevance framework: BM25 and beyond. Foundations and Trends in Information Retrieval, 3(4), 333–389. https://doi.org/10.1561/1500000019 — la cita la medida complementaria de saberes y valor agregado (Etapa 4 del Procedimiento); no interviene en V1.
 
 Se retira: Liu, F. T., Ting, K. M., & Zhou, Z.-H. (2008). Isolation forest. En Proceedings of the 2008 Eighth IEEE International Conference on Data Mining (pp. 413–422). IEEE. https://doi.org/10.1109/ICDM.2008.17 — el detector no se ejecuta en el flujo (P21; ver Observaciones).
+
+Se agrega: Biggs, J. (1996). Enhancing teaching through constructive alignment. Higher Education, 32(3), 347–364. https://doi.org/10.1007/BF00138871
 
 Se agrega: Glaser, R. (1963). Instructional technology and the measurement of learning outcomes: Some questions. American Psychologist, 18(8), 519–521. https://doi.org/10.1037/h0049294
 
