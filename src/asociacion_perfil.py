@@ -212,9 +212,11 @@ def _nlp():
 
 @lru_cache(maxsize=1)
 def _modelo():
-    os.environ.setdefault('HF_HUB_OFFLINE', '1')
     from sentence_transformers import SentenceTransformer
-    return SentenceTransformer(MODELO)
+    try:  # con el modelo ya en la caché local no se consulta la red
+        return SentenceTransformer(MODELO, local_files_only=True)
+    except Exception:  # noqa: BLE001  primera ejecución en un equipo nuevo o servidor: se descarga una vez
+        return SentenceTransformer(MODELO)
 
 
 NEGACION = re.compile(r'\b(no|sin)\s+(animo de lucro|[a-z]+)', re.I)
