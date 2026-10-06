@@ -3667,6 +3667,10 @@ def pagina_resumen_ejecutivo(df: pd.DataFrame, tendencias: Dict) -> None:
             st.warning(f"**V1 sin dato en {len(ctx['v1_sin_dato'])} de {len(res['por_matriz'])} matrices.** "
                        "No se calculó el perfil de esas matrices:\n" +
                        '\n'.join(f'- **{mz}**: {mt}' for mz, mt in ctx['v1_sin_dato']))
+            if st.button("🔄 Reintentar el cálculo del perfil"):
+                for k in ('asociacion_perfil_cache', 'indicadores_cache'):
+                    st.session_state.pop(k, None)
+                st.rerun()
 
         fig = _fig_valoracion(ctx['val'])
         if fig is not None:
@@ -4687,7 +4691,7 @@ def _asociacion_perfil_por_programa(uploaded_files) -> Dict:
                 res = {'items': pd.DataFrame(ap.resumen_items(filas)), 'detalle': det, 'avisos': avisos,
                        'sha256': clave[0], 'capas_faltantes': [c for c in ap.CAPAS if c not in capas_ok]}
             except Exception as e:  # noqa: BLE001
-                res = {'error': str(e)[:200], 'avisos': avisos, 'sha256': clave[0]}
+                res = {'error': f'{type(e).__name__}: {str(e)[:600]}', 'avisos': avisos, 'sha256': clave[0]}
             finally:
                 f.seek(0)
             if 'error' not in res:  # un fallo puntual no se guarda: se reintenta en la siguiente ejecución
@@ -5021,6 +5025,8 @@ def _indicadores_v1_v5(uploaded_files) -> Dict:
         for f in uploaded_files:
             f.seek(0)
         res['contrastes'] = ia.contrastes(res['por_matriz'])
+        if any('error' in r for r in perfil.values()):
+            return res  # sin V1 por un fallo: no se guarda, para que se recalcule al reintentar
         cache[firma] = res
     return cache[firma]
 
