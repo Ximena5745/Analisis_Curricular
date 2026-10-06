@@ -78,8 +78,10 @@ def _portada(pdf: _Informe, titulo: str, subtitulo: str, alcance: str, fecha: st
     pdf.add_page()
     pdf.set_fill_color(*AZUL)
     pdf.rect(0, 0, pdf.w, 46, style='F')
-    if LOGO.exists():
-        pdf.image(str(LOGO), x=pdf.w - 15 - 34, y=9, w=34)
+    if LOGO.exists():  # el logo es azul oscuro: va sobre un recuadro blanco para que se vea en la franja
+        pdf.set_fill_color(255, 255, 255)
+        pdf.rect(pdf.w - 15 - 42, 6, 42, 28, style='F', round_corners=True, corner_radius=2)
+        pdf.image(str(LOGO), x=pdf.w - 15 - 40, y=8, w=38)
     pdf.set_xy(15, 12)
     pdf.set_text_color(255, 255, 255)
     pdf.set_font('Helvetica', '', 9)
