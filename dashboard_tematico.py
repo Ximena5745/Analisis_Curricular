@@ -957,6 +957,7 @@ def procesar_archivos(uploaded_files) -> pd.DataFrame:
                     st.warning(f"{nombre}: Faltan columnas requeridas - {', '.join(missing_fields)}")
 
                 df['Programa'] = programa_nombre
+                df['Matriz'] = _nombre_matriz(nombre)  # unidad programa-sede, enlaza con los indicadores V1–V5
                 df['Modalidad'] = metadata['modalidad']
                 df['Sede'] = metadata['sede']
                 df['Codigo'] = metadata['codigo']
@@ -3354,43 +3355,24 @@ def pagina_tipo_saber(df: pd.DataFrame):
     )
 
 
-def pagina_resumen_ejecutivo(df: pd.DataFrame, tendencias: Dict) -> None:
-    """Pagina de resumen ejecutivo con hallazgos y recomendaciones para toma de decisiones."""
-    st.title("📋 Resumen Ejecutivo")
-    st.markdown("---")
-    st.info(
-        "Esta sección sintetiza los hallazgos más relevantes del análisis microcurricular "
-        "para facilitar la **toma de decisiones** en comités académicos, procesos de "
-        "autoevaluación y rediseños curriculares. Incluye alertas automáticas, fortalezas "
-        "detectadas y recomendaciones priorizadas."
-    )
+ESTADO_ICONO = {'Cumple': '🟢 Cumple', 'Parcial': '🟡 Parcial', 'No cumple': '🔴 No cumple', 'Sin dato': '⚪ Sin dato'}
+VARIABLES_CRITERIO = ('V1', 'V2', 'V3', 'V4', 'V5')
 
-    programas = df['Programa'].unique().tolist()
+
+def _asignaturas_sin_nucleos(df: pd.DataFrame) -> set:
+    """Asignaturas no electivas sin núcleos temáticos (las electivas no declaran núcleos propios: no son brecha)."""
     asig_col = 'Nombre asignatura o modulo'
-    total_asigs = df[asig_col].nunique()
-    total_registros = len(df)
+    es_electiva = df[asig_col].astype(str).str.strip().str.lower().str.startswith('electiv')
+    nuc = df['Nucleos tematicos'].astype(str).str.strip()
+    sin = df[~es_electiva & (df['Nucleos tematicos'].isna() | nuc.isin(['', 'nan']))]
+    return set(sin[asig_col].dropna().astype(str))
 
-    # ── Métricas generales ──────────────────────────────────────────────────
-    col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Programas analizados", len(programas))
-    col2.metric("Asignaturas únicas", total_asigs)
-    col3.metric("Registros procesados", f"{total_registros:,}")
-    col4.metric("Semestres detectados",
-                df['Semestre'].dropna().nunique())
 
-    st.markdown("---")
-
-    # ── Sección 1: Alertas priorizadas ─────────────────────────────────────
-    st.subheader("🚦 Alertas y Brechas Detectadas")
-    st.caption(
-        "Situaciones que requieren atención según criterios de calidad académica. "
-        "Ordenadas por prioridad."
-    )
-
+def _alertas_resumen(df: pd.DataFrame) -> list:
+    """Alertas del conjunto cargado; cada una lleva 'Programa' (None si es transversal)."""
     alertas = []
-
-    # 1a. Tipo de Saber — programas atípicos frente al conjunto cargado (sin rangos «ideales» externos:
-    #     la plantilla fija la paridad; se señalan solo los programas que se apartan del resto)
+    # Tipo de Saber — programas atípicos frente al conjunto cargado (sin rangos «ideales» externos:
+    # la plantilla fija la paridad; se señalan solo los programas que se apartan del resto)
     piv = (df[df['Tipo de Saber'].isin(['Saber', 'SaberHacer', 'SaberSer'])]
            .groupby(['Programa', 'Tipo de Saber']).size().unstack(fill_value=0))
     if len(piv) >= 4:
@@ -3398,175 +3380,343 @@ def pagina_resumen_ejecutivo(df: pd.DataFrame, tendencias: Dict) -> None:
         for tipo in piv.columns:
             q1, q3 = piv[tipo].quantile(0.25), piv[tipo].quantile(0.75)
             lim_bajo, lim_alto = q1 - 1.5 * (q3 - q1), q3 + 1.5 * (q3 - q1)
-            for prog, pct in piv[tipo].items():
-                if pct < lim_bajo or pct > lim_alto:
+            for prog, p in piv[tipo].items():
+                if p < lim_bajo or p > lim_alto:
                     alertas.append({
-                        'Prioridad': 'Media',
-                        'Categoría': 'Tipo de Saber',
-                        'Hallazgo': (f'**{prog}**: {tipo} {pct:.1f}% se aparta del conjunto cargado '
+                        'Programa': prog, 'Categoría': 'Tipo de Saber',
+                        'Hallazgo': (f'**{prog}**: {tipo} {p:.1f}% se aparta del conjunto cargado '
                                      f'(mediana {piv[tipo].median():.1f}%; P25–P75 {q1:.1f}–{q3:.1f}%)'),
                         'Recomendación': ('Revisar si la diferencia responde a una decisión de diseño o a un error de '
-                                          'diligenciamiento de la matriz.')
-                    })
-
-    # 1b. Semestres sin datos
-    df_sem_num = df.copy()
-    df_sem_num['Semestre_num'] = pd.to_numeric(df_sem_num['Semestre'], errors='coerce')
+                                          'diligenciamiento de la matriz.')})
     # Sin umbral: cualquier registro sin semestre reconocible se informa con su conteo (los romanos ya se normalizan)
-    n_sin_semestre = int(df_sem_num['Semestre_num'].isna().sum())
+    n_sin_semestre = int(pd.to_numeric(df['Semestre'], errors='coerce').isna().sum())
     if n_sin_semestre:
         alertas.append({
-            'Prioridad': 'Media',
-            'Categoría': 'Completitud de datos',
-            'Hallazgo': (f'{n_sin_semestre} de {len(df_sem_num)} registros ({100 * n_sin_semestre / len(df_sem_num):.1f} %) '
+            'Programa': None, 'Categoría': 'Completitud de datos',
+            'Hallazgo': (f'{n_sin_semestre} de {len(df)} registros ({100 * n_sin_semestre / len(df):.1f} %) '
                          f'sin semestre reconocible'),
-            'Recomendación': 'Revisar el campo Semestre de esas asignaturas en el Paso 5 (valores vacíos o no numéricos).'
-        })
-
-    # 1c. Tendencias globales: no hay un mínimo de cobertura establecido, así que no se califican como «baja»;
-    # se presentan juntas, con sus conteos, como una recomendación de revisión (después de las alertas).
-    resultados_tend = analizar_tendencias(df, tendencias)
-    n_prog = df['Programa'].nunique()
-    tabla_tend = pd.DataFrame([{
-        'Tendencia': tendencias[tid]['descripcion'],
-        'Asignaturas': resultados_tend['asig_counts'].get(tid, 0),
-        '% de asignaturas': round(pct, 1),
-        'Programas': int((resultados_tend['matriz'][tid] > 0).sum()),
-    } for tid, pct in resultados_tend['cobertura'].items() if tid in tendencias])
-    if not tabla_tend.empty:
-        tabla_tend['% de programas'] = (100 * tabla_tend['Programas'] / n_prog).round(1) if n_prog else 0.0
-        tabla_tend = tabla_tend.sort_values(['% de asignaturas', 'Programas']).reset_index(drop=True)
-
-    # 1e. Asignaturas sin núcleos temáticos
-    # Las electivas no declaran núcleos propios (su contenido depende de la electiva elegida): no son brecha
-    es_electiva = df[asig_col].astype(str).str.strip().str.lower().str.startswith('electiv')
-    sin_nucleos = df[~es_electiva & (df['Nucleos tematicos'].isna() | (df['Nucleos tematicos'].astype(str).str.strip() == '') |
-                     (df['Nucleos tematicos'].astype(str).str.strip() == 'nan'))]
-    asigs_sin_nucleos = sin_nucleos[asig_col].nunique() if not sin_nucleos.empty else 0
-    if asigs_sin_nucleos > 0:
-        pct_sin = asigs_sin_nucleos / total_asigs * 100
+            'Recomendación': 'Revisar el campo Semestre de esas asignaturas en el Paso 5 (valores vacíos o no numéricos).'})
+    n_sin_nucleos = len(_asignaturas_sin_nucleos(df))
+    if n_sin_nucleos:
         alertas.append({
-            'Prioridad': 'Media',
-            'Categoría': 'Completitud de datos',
-            'Hallazgo': f'{asigs_sin_nucleos} asignaturas no electivas ({pct_sin:.0f}%) sin núcleos temáticos declarados',
-            'Recomendación': 'Completar la columna «Núcleos temáticos» en el formato Excel para un análisis más preciso.'
-        })
+            'Programa': None, 'Categoría': 'Completitud de datos',
+            'Hallazgo': (f'{n_sin_nucleos} asignaturas no electivas '
+                         f'({100 * n_sin_nucleos / df["Nombre asignatura o modulo"].nunique():.0f}%) sin núcleos '
+                         f'temáticos declarados'),
+            'Recomendación': 'Completar la columna «Núcleos temáticos» en el formato Excel para un análisis más preciso.'})
+    return alertas
 
-    if alertas:
-        orden_prioridad = {'Alta': 0, 'Media': 1, 'Baja': 2}
-        df_alertas = pd.DataFrame(alertas).sort_values(
-            'Prioridad', key=lambda x: x.map(orden_prioridad)
-        )
-        for _, a in df_alertas.iterrows():
-            icono = '🔴' if a['Prioridad'] == 'Alta' else ('🟡' if a['Prioridad'] == 'Media' else '🟢')
-            with st.expander(f"{icono} [{a['Prioridad']}] {a['Categoría']}: {a['Hallazgo']}", expanded=(a['Prioridad'] == 'Alta')):
+
+def _alcance_filtros() -> str:
+    filtros = [(k, st.session_state.get(c)) for k, c in (('Programa', 'sel_prog'), ('Modalidad', 'sel_modalidad'),
+                                                         ('Sede', 'sel_sede'), ('Nivel', 'sel_nivel'))]
+    activos = [f'{k}: {v}' for k, v in filtros if v and v != 'Todos']
+    return 'Filtros: ' + ('; '.join(activos) if activos else 'ninguno (conjunto completo)')
+
+
+def _datos_resumen(df: pd.DataFrame, tendencias: Dict, uploaded_files) -> Dict:
+    """Reúne lo que muestran el Resumen Ejecutivo y sus informes PDF, limitado a las matrices del filtro activo."""
+    from src import indicadores_articulo as ia
+    asig_col = 'Nombre asignatura o modulo'
+    matrices_df = set(df['Matriz']) if 'Matriz' in df.columns else None
+    archivos = [f for f in uploaded_files if matrices_df is None or _nombre_matriz(f.name) in matrices_df]
+
+    res = _indicadores_v1_v5(archivos) if archivos else None
+    val = _valoracion_matrices(res, archivos) if res and res['por_matriz'] else {}
+    perfil = _asociacion_perfil_por_programa(archivos) if archivos else {}
+    prog_de = (df.groupby('Matriz')['Programa'].first().to_dict() if 'Matriz' in df.columns else {})
+    # Etiqueta legible de cada matriz: nombre completo del programa, sede y modalidad (nunca el código de archivo)
+    etiquetas = {}
+    if 'Matriz' in df.columns:
+        for mz, g in df.groupby('Matriz'):
+            sede, mod = str(g['Sede'].iloc[0]), str(g['Modalidad'].iloc[0])
+            etiquetas[mz] = {'ciudad': sede, 'modalidad': mod, 'sede': f'{mod}, {sede}',
+                             'completa': f"{g['Programa'].iloc[0]} - {mod} - {sede}"}
+
+    # Prioridades: matrices ordenadas por criterios en «No cumple» y luego en «Parcial»
+    prioridades = []
+    for m in (res['por_matriz'] if res else []):
+        est = {v['Variable']: v['Estado'] for v in val.get(m['Matriz'], []) if v['Variable'] != '—'}
+        prioridades.append({'Matriz': m['Matriz'], 'Programa': prog_de.get(m['Matriz'], m['Programa']),
+                            'Modalidad': etiquetas.get(m['Matriz'], {}).get('modalidad', ''),
+                            'Ciudad': etiquetas.get(m['Matriz'], {}).get('ciudad', m['Sede']),
+                            **{v: est.get(v, 'Sin dato') for v in VARIABLES_CRITERIO},
+                            'No cumple': sum(e == 'No cumple' for e in est.values()),
+                            'Parcial': sum(e == 'Parcial' for e in est.values())})
+    prioridades.sort(key=lambda p: (-p['No cumple'], -p['Parcial'], p['Programa'], p['Matriz']))
+    conteo_criterios = [(f'{v} {e}', {s: sum(p[v] == s for p in prioridades) for s in ('Cumple', 'Parcial', 'No cumple', 'Sin dato')})
+                        for v, e, _ in ia.CRITERIOS]
+
+    # Tendencias globales (una sola pasada; la presencia por programa sale de la matriz programa × tendencia)
+    rt = analizar_tendencias(df, tendencias)
+    n_prog = df['Programa'].nunique()
+    tabla_tend = [{'Tendencia': tendencias[tid]['descripcion'], 'Asignaturas': rt['asig_counts'].get(tid, 0),
+                   '% de asignaturas': round(p, 1), 'Programas': int((rt['matriz'][tid] > 0).sum()),
+                   '% de programas': round(100 * int((rt['matriz'][tid] > 0).sum()) / n_prog, 1) if n_prog else 0.0}
+                  for tid, p in rt['cobertura'].items() if tid in tendencias]
+    tabla_tend.sort(key=lambda t: (t['% de asignaturas'], t['Programas']))
+
+    # Tipo de saber por programa y mediana del conjunto (referencia de comparación, sin umbrales externos)
+    ts = (df[df['Tipo de Saber'].isin(['Saber', 'SaberHacer', 'SaberSer'])]
+          .groupby(['Programa', 'Tipo de Saber']).size().unstack(fill_value=0))
+    ts = ts.div(ts.sum(axis=1), axis=0) * 100 if len(ts) else ts
+    medianas = {t: float(ts[t].median()) for t in ('Saber', 'SaberHacer', 'SaberSer') if t in ts}
+
+    programas = []
+    for prog, g in df.groupby('Programa'):
+        programas.append({'Programa': prog, 'Matrices': g['Matriz'].nunique() if 'Matriz' in g else 1,
+                          'Asignaturas': g[asig_col].nunique(),
+                          **{t: (round(float(ts.loc[prog, t]), 1) if prog in ts.index and t in ts else None)
+                             for t in ('Saber', 'SaberHacer', 'SaberSer')},
+                          'Tendencias': f"{int((rt['matriz'].loc[prog] > 0).sum())}/{len(tendencias)}"})
+
+    # Lectura rápida: hechos del conjunto, sin umbrales
+    lectura = []
+    g = res['globales'] if res else {}
+    if prioridades:
+        n = len(prioridades)
+        con_nc = sum(p['No cumple'] > 0 for p in prioridades)
+        todas = sum(all(p[v] == 'Cumple' for v in VARIABLES_CRITERIO) for p in prioridades)
+        lectura.append(f"**{con_nc} de {n}** matrices tienen al menos un criterio en «No cumple»; "
+                       f"**{todas}** {'cumple' if todas == 1 else 'cumplen'} los cinco criterios.")
+        peor = max(conteo_criterios, key=lambda c: c[1]['No cumple'])
+        if peor[1]['No cumple']:
+            lectura.append(f"El criterio con más incumplimiento es **{peor[0]}** ({peor[1]['No cumple']} matrices en "
+                           f"«No cumple», {peor[1]['Parcial']} en «Parcial»).")
+        cumplidos = [c for c, k in conteo_criterios if k['Cumple'] == n]
+        if cumplidos:
+            lectura.append(f"Todas las matrices cumplen: **{', '.join(cumplidos)}**.")
+    validos = [r for r in perfil.values() if 'error' not in r and not r.get('capas_faltantes') and len(r['items'])]
+    if validos:
+        ev = pd.concat([r['items'][r['items']['evaluable']] for r in validos])
+        if len(ev):
+            n_sin = int((ev['capas_con_respaldo'] == 0).sum())
+            lectura.append(f"Perfil de egreso: **{n_sin} de {len(ev)}** atributos ({100 * n_sin / len(ev):.1f} %) sin "
+                           f"alineación en ninguna capa (competencias, RA o asignaturas).")
+    if g.get('ra_unicos'):
+        n_noeval = sum(not r['V3'] for r in res['ra'])
+        lectura.append(f"De **{g['ra_unicos']}** RA únicos, **{g['ra_sin_estrategia']}** no tienen estrategia "
+                       f"mesocurricular con instrumento (V4) y **{n_noeval}** no son evaluables (V3).")
+    if g.get('estrategias'):
+        lectura.append(f"**{g['estrategias_directa']} de {g['estrategias']}** estrategias declaran indicadores de "
+                       f"aprendizaje demostrado o transferencia (N3–N4).")
+    ausentes = [t['Tendencia'] for t in tabla_tend if t['Asignaturas'] == 0]
+    if ausentes:
+        lectura.append(f"Tendencias globales sin presencia: {', '.join(ausentes)}.")
+
+    total_ra = g.get('ra_unicos', 0)
+    kpis = [('Programas', df['Programa'].nunique()),
+            ('Matrices', df['Matriz'].nunique() if 'Matriz' in df.columns else len(archivos)),
+            ('Asignaturas', df[asig_col].nunique()), ('RA únicos', total_ra),
+            ('Estrategias (Paso 4)', g.get('estrategias', 0))]
+    return {'df': df, 'res': res, 'val': val, 'perfil': perfil, 'prioridades': prioridades,
+            'conteo_criterios': conteo_criterios, 'tendencias_tabla': tabla_tend, 'tendencias': tendencias,
+            'rt': rt, 'ts': ts, 'etiquetas': etiquetas, 'medianas': medianas, 'programas': programas, 'lectura': lectura, 'kpis': kpis,
+            'alertas': _alertas_resumen(df), 'alcance': _alcance_filtros(), 'archivos': archivos}
+
+
+def _datos_informe_general(ctx: Dict) -> Dict:
+    from src import indicadores_articulo as ia
+    res = ctx['res'] or {}
+    return {'alcance': ctx['alcance'], 'kpis': [(k, f'{v:,}'.replace(',', '.')) for k, v in ctx['kpis']],
+            'globales': res.get('globales', {}), 'criterios': ia.CRITERIOS, 'conteo_criterios': ctx['conteo_criterios'],
+            'lectura': ctx['lectura'], 'prioridades': ctx['prioridades'], 'alertas': ctx['alertas'],
+            'tendencias': ctx['tendencias_tabla'], 'programas': ctx['programas'], 'errores': res.get('errores', [])}
+
+
+def _datos_informe_programa(ctx: Dict, programa: str) -> Dict:
+    """Valoración, acciones sugeridas y elementos a revisar de cada matriz (sede) del programa."""
+    from src import indicadores_articulo as ia
+    from src.informes_pdf import recomendaciones_matriz
+    asig_col = 'Nombre asignatura o modulo'
+    df_p = ctx['df'][ctx['df']['Programa'] == programa]
+    matrices = sorted(df_p['Matriz'].unique()) if 'Matriz' in df_p.columns else []
+    res = ctx['res'] or {'por_matriz': [], 'ra': [], 'estrategias': [], 'errores': []}
+    filas = {m['Matriz']: m for m in res['por_matriz']}
+
+    detalle, alertas = [], []
+    for mz in matrices:
+        fila = filas.get(mz)
+        if fila is None:
+            alertas.append(f'{mz}: la matriz no se pudo evaluar (Pasos 2, 3 o 4 ilegibles).')
+            continue
+        r = ctx['perfil'].get(mz, {})
+        sin_alin = []
+        if 'error' in r:
+            alertas.append(f"{mz}: no se pudo leer el perfil de egreso ({r['error']}).")
+        elif r.get('capas_faltantes'):
+            alertas.append(f"{mz}: sin contenido en {', '.join(r['capas_faltantes'])}; V1 sin dato.")
+        elif len(r.get('items', [])):
+            it = r['items'][r['items']['evaluable'] & (r['items']['capas_con_respaldo'] == 0)]
+            sin_alin = it[['perfil', 'origen', 'item']].astype(str).values.tolist()
+        ras = [x for x in res['ra'] if x['matriz'] == mz]
+        no_eval = [[x['ra'], x['motivo_V3']] for x in ras if not x['V3']]
+        sin_est = [x['ra'] + (' (RA genérico institucional)' if x['generica'] else '') for x in ras if not x['V4']]
+        incompletas = [[e['estrategia'], ' e '.join(f for f, ok in (('indicador', e['indicadores']),
+                                                                       ('instrumento', e['instrumento'])) if not ok)]
+                       for e in res['estrategias'] if e['matriz'] == mz and not (e['indicadores'] and e['instrumento'])]
+        valoracion = ctx['val'].get(mz, [])
+        estados = {v['Variable']: v['Estado'] for v in valoracion if v['Variable'] != '—'}
+        etq = ctx['etiquetas'].get(mz, {})
+        detalle.append({'matriz': mz, 'etiqueta': etq.get('completa', mz), 'sede': etq.get('sede', fila['Sede']), 'valoracion': valoracion, 'estados': estados,
+                        'recomendaciones': recomendaciones_matriz(estados, fila, len(sin_alin), len(no_eval), len(incompletas)),
+                        'sin_alineacion': sin_alin, 'ra_no_evaluables': no_eval, 'ra_sin_estrategia': sin_est,
+                        'estrategias_incompletas': incompletas, 'fila': fila})
+
+    alertas += [a['Hallazgo'] for a in ctx['alertas'] if a['Programa'] == programa]
+    n_sin_sem = int(pd.to_numeric(df_p['Semestre'], errors='coerce').isna().sum())
+    if n_sin_sem:
+        alertas.append(f'{n_sin_sem} registros del Paso 5 sin semestre reconocible.')
+    sin_nuc = sorted(_asignaturas_sin_nucleos(df_p))
+    if sin_nuc:
+        alertas.append(f"{len(sin_nuc)} asignatura(s) no electivas sin núcleos temáticos: {', '.join(sin_nuc)}.")
+
+    ts, med = ctx['ts'], ctx['medianas']
+    tipo_saber = [{'Tipo': t, 'Programa': float(ts.loc[programa, t]) if programa in ts.index and t in ts else None,
+                   'Mediana': med.get(t)} for t in ('Saber', 'SaberHacer', 'SaberSer')]
+    presencia = ctx['rt']['matriz'].loc[programa] if programa in ctx['rt']['matriz'].index else pd.Series(dtype=int)
+    tend = ctx['tendencias']
+    presentes = [tend[t]['descripcion'] for t in tend if presencia.get(t, 0) > 0]
+    ausentes = [tend[t]['descripcion'] for t in tend if presencia.get(t, 0) == 0]
+
+    sedes = ', '.join(sorted(df_p['Sede'].dropna().astype(str).unique()))
+    niveles = ', '.join(sorted(df_p['Nivel'].dropna().astype(str).unique())) if 'Nivel' in df_p else ''
+    modalidades = ', '.join(sorted(df_p['Modalidad'].dropna().astype(str).unique()))
+    no_cumple = sum(e == 'No cumple' for d in detalle for e in d['estados'].values())
+    kpis = [('Matrices (sedes)', len(matrices)), ('Asignaturas', df_p[asig_col].nunique()),
+            ('RA únicos', sum(d['fila']['RA únicos'] for d in detalle)),
+            ('Estrategias', sum(d['fila']['Estrategias'] for d in detalle)), ('Criterios en No cumple', no_cumple)]
+    return {'programa': programa, 'alcance': f'Sedes: {sedes}  |  Nivel: {niveles}  |  Modalidad: {modalidades}',
+            'kpis': [(k, str(v)) for k, v in kpis], 'matrices': detalle, 'tipo_saber': tipo_saber,
+            'tendencias_presentes': presentes, 'tendencias_ausentes': ausentes, 'alertas': alertas,
+            'criterios': ia.CRITERIOS}
+
+
+def _nombre_archivo_pdf(texto_base: str) -> str:
+    base = unicodedata.normalize('NFKD', texto_base).encode('ascii', 'ignore').decode()
+    return re.sub(r'[^A-Za-z0-9]+', '_', base).strip('_')[:80] or 'programa'
+
+
+def pagina_resumen_ejecutivo(df: pd.DataFrame, tendencias: Dict) -> None:
+    """Resumen ejecutivo: estado del conjunto (V1–V5), prioridades por matriz e informes PDF general y por programa."""
+    from src import informes_pdf
+    st.title("📋 Resumen Ejecutivo")
+    st.markdown("---")
+    st.info(
+        "Responde tres preguntas para el comité curricular: **¿cómo está el conjunto?** (V1–V5 y valoración por "
+        "criterios), **¿qué matrices requieren atención primero?** y **¿qué hacer en cada programa?** (informe "
+        "individual en PDF con acciones sugeridas y los elementos a revisar). Todo se calcula con los archivos "
+        "cargados y los filtros activos; los resultados son una propuesta para validar por el comité."
+    )
+    uploaded_files = st.session_state.get('archivos_subidos') or []
+    with st.spinner("Preparando el resumen (la primera vez calcula la asociación del perfil y V1–V5)…"):
+        ctx = _datos_resumen(df, tendencias, uploaded_files)
+
+    cols = st.columns(len(ctx['kpis']))
+    for c, (etq, v) in zip(cols, ctx['kpis']):
+        c.metric(etq, f'{v:,}'.replace(',', '.'))
+
+    if ctx['lectura']:
+        st.subheader("🔎 Lectura rápida")
+        st.markdown('\n'.join(f'- {b}' for b in ctx['lectura']))
+
+    res = ctx['res']
+    if res and res['globales']['matrices']:
+        st.markdown("---")
+        st.subheader("📐 Coherencia y trazabilidad curricular (V1–V5)")
+        g = res['globales']
+        fmt = lambda v: '—' if v is None else f"{v:.1f}%"  # noqa: E731
+        c = st.columns(5)
+        c[0].metric("V1 Perfil", fmt(g['V1']), help=f"{g['atributos_perfil']} atributos evaluables del perfil.")
+        c[1].metric("V2 Coherencia", fmt(g['V2']), help=f"{g['matrices_con_repeticion']} matriz(ces) con verbo repetido.")
+        c[2].metric("V3 Evaluabilidad", fmt(g['V3']), help=f"{g['ra_unicos']} RA únicos.")
+        c[3].metric("V4 Trazabilidad", fmt(g['V4']), help=f"Sin el RA genérico: {fmt(g['V4_programa'])}.")
+        c[4].metric("V5 Evidencia (N2+)", fmt(g['V5']), help=f"{g['estrategias']} estrategias.")
+        fig = _fig_valoracion(ctx['val'])
+        if fig is not None:
+            st.caption("Valoración por criterios: número de matrices en cada estado. Cumple = la regla de la plantilla "
+                       "se cumple en todos los casos; Parcial = en algunos; No cumple = en ninguno.")
+            st.plotly_chart(fig, width='stretch')
+        for e in res['errores']:
+            st.warning(f"❌ **{e['archivo']}**: {e['causa']}")
+
+    if ctx['prioridades']:
+        st.markdown("---")
+        st.subheader("🚦 Matrices que requieren atención")
+        st.caption("Ordenadas por número de criterios en «No cumple» y luego en «Parcial». El detalle y las acciones "
+                   "de cada programa están en su informe PDF (abajo).")
+        from src.indicadores_articulo import CRITERIOS
+        nombres = {v: f'{v} {e}' for v, e, _ in CRITERIOS}
+        tabla = pd.DataFrame(ctx['prioridades'])
+        for v in VARIABLES_CRITERIO:
+            tabla[v] = tabla[v].map(ESTADO_ICONO)
+        st.dataframe(tabla.rename(columns=nombres), hide_index=True, width='stretch',
+                     height=min(560, 35 * len(tabla) + 40))
+
+    st.markdown("---")
+    st.subheader("⚠️ Hallazgos transversales")
+    if ctx['alertas']:
+        for a in ctx['alertas']:
+            with st.expander(f"🟡 {a['Categoría']}: {a['Hallazgo']}"):
                 st.markdown(f"**💡 Recomendación:** {a['Recomendación']}")
     else:
-        st.success("✅ No se detectaron alertas críticas en los programas analizados.")
-
-    if not tabla_tend.empty:
-        total_asig = resultados_tend['total_asigs']
-        ausentes = tabla_tend[tabla_tend['Asignaturas'] == 0]['Tendencia'].tolist()
-        st.markdown("### 💡 Recomendación: presencia de las tendencias globales")
-        with st.expander(f"{len(tabla_tend)} tendencias, de menor a mayor presencia en {total_asig} asignaturas y "
-                         f"{n_prog} programas", expanded=False):
-            st.markdown(
-                "No existe un mínimo institucional de cobertura, por lo que ninguna tendencia se califica como baja. "
-                "La tabla ordena las tendencias según su presencia para que el comité curricular decida cuáles "
-                "reforzar de acuerdo con el perfil de egreso de cada programa."
-                + (f" **Sin presencia:** {', '.join(ausentes)}." if ausentes else ""))
-            st.dataframe(tabla_tend, hide_index=True, width='stretch',
+        st.success("✅ Sin alertas de tipo de saber ni de completitud de datos.")
+    if ctx['tendencias_tabla']:
+        with st.expander(f"💡 Presencia de las {len(ctx['tendencias_tabla'])} tendencias globales, de menor a mayor"):
+            st.markdown("No existe un mínimo institucional de cobertura, por lo que ninguna tendencia se califica como "
+                        "baja. La tabla las ordena para que el comité decida cuáles reforzar según el perfil de egreso "
+                        "de cada programa.")
+            st.dataframe(pd.DataFrame(ctx['tendencias_tabla']), hide_index=True, width='stretch',
                          column_config={'% de asignaturas': st.column_config.NumberColumn(format='%.1f %%'),
                                         '% de programas': st.column_config.NumberColumn(format='%.1f %%')})
 
-    # ── Sección 2: Fortalezas detectadas ───────────────────────────────────
+    # ── Informes PDF ──────────────────────────────────────────────────────
     st.markdown("---")
-    st.subheader("✅ Fortalezas Detectadas")
-    st.caption("Aspectos positivos identificados en el análisis.")
+    st.subheader("📄 Informes en PDF")
+    col_gen, col_prog = st.columns(2)
+    with col_gen:
+        st.markdown("**Informe general**")
+        st.caption("Lectura rápida, V1–V5, valoración por criterios, matrices que requieren atención, hallazgos "
+                   "transversales, tendencias y perfil por programa.")
+        # Se construye al hacer clic con los datos vigentes (archivos y filtros actuales); nada se guarda
+        st.download_button("⬇️ Descargar informe general (PDF)",
+                           lambda: informes_pdf.informe_general(_datos_informe_general(ctx)),
+                           "informe_general_microcurricular.pdf", mime='application/pdf', type='primary')
+    with col_prog:
+        st.markdown("**Informe por programa**")
+        st.caption("Valoración de cada sede, acciones sugeridas, tipo de saber, tendencias y anexo con los atributos, "
+                   "RA y estrategias a revisar.")
+        programas = sorted(df['Programa'].dropna().unique())
+        prog = st.selectbox("Programa", programas, key='resumen_programa')
+        if prog:
+            datos = _datos_informe_programa(ctx, prog)
+            st.download_button(f"⬇️ Descargar informe de {prog} (PDF)",
+                               lambda: informes_pdf.informe_programa(_datos_informe_programa(ctx, prog)),
+                               f"informe_{_nombre_archivo_pdf(prog)}.pdf", mime='application/pdf')
 
-    fortalezas = []
-    tend_detectadas = len(tendencias) - len(resultados_tend['ausentes'])
-    if tend_detectadas >= len(tendencias) * 0.8:
-        fortalezas.append(f"Alta alineación con tendencias globales: **{tend_detectadas}/{len(tendencias)}** tendencias presentes")
+    if prog:
+        for d in datos['matrices']:
+            with st.expander(f"Vista previa: {d['etiqueta']}", expanded=len(datos['matrices']) == 1):
+                st.dataframe(pd.DataFrame(d['valoracion'])[['Variable', 'Tramo', 'Resultado', 'Estado', 'Referencia (mediana)']],
+                             hide_index=True, width='stretch')
+                if d['recomendaciones']:
+                    st.markdown("**Acciones sugeridas**\n" + '\n'.join(f'- {r}' for r in d['recomendaciones']))
+        for a in datos['alertas']:
+            st.caption(f"⚠️ {a}")
 
-    # Diversidad temática
-    nucleos_list = []
-    for _, row in df.iterrows():
-        raw = str(row.get('Nucleos tematicos', ''))
-        if raw and raw not in ('nan', ''):
-            nucleos_list.extend([limpiar_nucleo(n.strip()) for n in _split_nucleos(raw) if es_nucleo_valido(n.strip())[0]])
-    n_unicos = len(set(nucleos_list))
-    if n_unicos > total_asigs * 2:
-        fortalezas.append(f"Alta diversidad temática: **{n_unicos}** núcleos únicos para {total_asigs} asignaturas")
+    def _zip_informes() -> bytes:
+        import zipfile
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as z:
+            z.writestr('informe_general_microcurricular.pdf', informes_pdf.informe_general(_datos_informe_general(ctx)))
+            for p in programas:
+                z.writestr(f"programas/informe_{_nombre_archivo_pdf(p)}.pdf",
+                           informes_pdf.informe_programa(_datos_informe_programa(ctx, p)))
+        return buf.getvalue()
 
-    if asigs_sin_nucleos == 0:
-        fortalezas.append("**100%** de asignaturas con núcleos temáticos declarados")
-
-    if fortalezas:
-        for f_item in fortalezas:
-            st.markdown(f"- {f_item}")
-    else:
-        st.info("No se identificaron fortalezas destacadas con los umbrales actuales.")
-
-    # ── Sección 3: Resumen por programa ────────────────────────────────────
-    st.markdown("---")
-    st.subheader("📊 Perfil por Programa")
-    st.caption("Resumen de los indicadores clave por programa para soporte a decisiones curriculares.")
-
-    # Mediana del conjunto cargado: referencia de comparación (sin umbrales externos)
-    _ts = (df[df['Tipo de Saber'].isin(['Saber', 'SaberHacer', 'SaberSer'])]
-           .groupby(['Programa', 'Tipo de Saber']).size().unstack(fill_value=0))
-    _ts = _ts.div(_ts.sum(axis=1), axis=0) * 100 if len(_ts) else _ts
-    med_sh = float(_ts['SaberHacer'].median()) if 'SaberHacer' in _ts else 0.0
-    med_ss = float(_ts['SaberSer'].median()) if 'SaberSer' in _ts else 0.0
-
-    for prog in sorted(programas):
-        df_prog = df[df['Programa'] == prog]
-        n_asigs = df_prog[asig_col].nunique()
-        n_reg = len(df_prog)
-        ts = df_prog['Tipo de Saber'].value_counts()
-        ts_total = ts.sum()
-        sh_pct = ts.get('SaberHacer', 0) / ts_total * 100 if ts_total > 0 else 0
-        ss_pct = ts.get('SaberSer', 0) / ts_total * 100 if ts_total > 0 else 0
-        tend_prog = len(tendencias) - len(analizar_tendencias(df_prog, tendencias)['ausentes'])
-
-        with st.expander(f"📚 {prog} — {n_asigs} asignaturas, {n_reg} registros"):
-            c1, c2, c3, c4 = st.columns(4)
-            c1.metric("Asignaturas", n_asigs)
-            c2.metric("SaberHacer", f"{sh_pct:.1f}%", delta=f"{sh_pct - med_sh:+.1f} pp vs. mediana",
-                      delta_color="off", help="Diferencia con la mediana de los programas cargados.")
-            c3.metric("SaberSer", f"{ss_pct:.1f}%", delta=f"{ss_pct - med_ss:+.1f} pp vs. mediana",
-                      delta_color="off", help="Diferencia con la mediana de los programas cargados.")
-            c4.metric("Tendencias cubiertas", f"{tend_prog}/{len(tendencias)}")
-
-    # ── Sección 4: Descarga ─────────────────────────────────────────────────
-    st.markdown("---")
-    st.subheader("⬇️ Descargar Datos del Análisis")
-    st.caption("Exporta los datos filtrados o el resumen de alertas para presentaciones y reportes.")
-
-    col_dl1, col_dl2 = st.columns(2)
-    with col_dl1:
-        csv_datos = df[[
-            'Programa', 'Nombre asignatura o modulo', 'Semestre',
-            'Tipo de Saber', 'Resultado de aprendizaje', 'Nucleos tematicos'
-        ]].to_csv(index=False, encoding='utf-8-sig')
-        st.download_button(
-            label="📄 Descargar datos consolidados (CSV)",
-            data=csv_datos,
-            file_name="datos_microcurriculares.csv",
-            mime="text/csv",
-            help="Descarga todos los registros procesados en formato Excel-compatible"
-        )
-    with col_dl2:
-        if alertas:
-            csv_alertas = pd.DataFrame(alertas).to_csv(index=False, encoding='utf-8-sig')
-            st.download_button(
-                label="🚨 Descargar alertas (CSV)",
-                data=csv_alertas,
-                file_name="alertas_curriculares.csv",
-                mime="text/csv",
-                help="Descarga el listado de alertas y recomendaciones detectadas"
-            )
+    st.markdown("**Todos los programas**")
+    st.download_button(f"⬇️ Descargar informe general y {len(programas)} informes por programa (ZIP)", _zip_informes,
+                       "informes_microcurriculares.zip", mime='application/zip')
 
 
 def _seccion_exigencia_ra():
@@ -4838,8 +4988,21 @@ def _indicadores_v1_v5(uploaded_files) -> Dict:
     return cache[firma]
 
 
-def _seccion_valoracion_criterios(res: Dict, uploaded_files) -> None:
-    """Valoración por criterios (D26): cada matriz contra la regla de la plantilla; sin puntaje ni pesos."""
+def _exigencia_por_matriz(uploaded_files) -> Dict:
+    """Índice de exigencia de los RA por matriz (caché por contenido de los archivos)."""
+    from src.indicadores_articulo import calcular_exigencia
+    firma = tuple(sorted(_sha256_archivo(f) for f in uploaded_files))
+    cache = st.session_state.setdefault('exigencia_cache', {})
+    if firma not in cache:
+        ex = calcular_exigencia([(f.name, f) for f in uploaded_files])
+        for f in uploaded_files:
+            f.seek(0)
+        cache[firma] = {e['Matriz']: e['Índice de exigencia'] for e in ex}
+    return cache[firma]
+
+
+def _valoracion_matrices(res: Dict, uploaded_files) -> Dict[str, list]:
+    """Valoración por criterios (D26) de cada matriz: lista de tramos con Resultado, Estado y mediana del conjunto."""
     from src import indicadores_articulo as ia
     perfil = _asociacion_perfil_por_programa(uploaded_files)
     sin_pct, tres_pct = {}, {}
@@ -4848,30 +5011,39 @@ def _seccion_valoracion_criterios(res: Dict, uploaded_files) -> None:
             ev = r['items'][r['items']['evaluable']]
             sin_pct[p] = round(100 * (ev['capas_con_respaldo'] == 0).mean(), 1) if len(ev) else None
             tres_pct[p] = round(100 * (ev['capas_con_respaldo'] == 3).mean(), 1) if len(ev) else None
-    if 'exigencia' not in st.session_state:
-        st.session_state['exigencia'] = pd.DataFrame(ia.calcular_exigencia([(f.name, f) for f in uploaded_files]))
-        for f in uploaded_files:
-            f.seek(0)
-    exig = dict(zip(st.session_state['exigencia']['Matriz'], st.session_state['exigencia']['Índice de exigencia']))
+    exig = _exigencia_por_matriz(uploaded_files)
     ref = ia.referencias_conjunto(res['por_matriz'], exig)
-    val = {m['Matriz']: ia.valorar_matriz(m, sin_pct.get(m['Matriz']), exig.get(m['Matriz']), ref, tres_pct.get(m['Matriz']))
-           for m in res['por_matriz']}
+    return {m['Matriz']: ia.valorar_matriz(m, sin_pct.get(m['Matriz']), exig.get(m['Matriz']), ref, tres_pct.get(m['Matriz']))
+            for m in res['por_matriz']}
 
+
+def _fig_valoracion(val: Dict[str, list]):
+    """Barras apiladas: matrices por estado en cada criterio (None si no hay criterios evaluados)."""
+    from src import indicadores_articulo as ia
+    filas = [{'Variable': f"{v['Variable']} {v['Tramo']}", 'Estado': v['Estado']}
+             for vs in val.values() for v in vs if v['Variable'] != '—']
+    if not filas:
+        return None
+    conteo = pd.DataFrame(filas).value_counts().rename('Matrices').reset_index()
+    fig = px.bar(conteo, y='Variable', x='Matrices', color='Estado', orientation='h', text='Matrices',
+                 category_orders={'Estado': list(ia.ESTADOS) + ['Sin dato'],
+                                  'Variable': [f"{v} {e}" for v, e, _ in ia.CRITERIOS]},
+                 color_discrete_map={'Cumple': '#1FB2DE', 'Parcial': '#FBAF17', 'No cumple': '#EC0677',
+                                     'Sin dato': '#8A94A0'})
+    fig.update_layout(height=320, yaxis_title=None, xaxis_title='Matrices', legend_title=None,
+                      margin=dict(l=10, r=10, t=10, b=10))
+    return fig
+
+
+def _seccion_valoracion_criterios(res: Dict, uploaded_files) -> None:
+    """Valoración por criterios (D26): cada matriz contra la regla de la plantilla; sin puntaje ni pesos."""
+    val = _valoracion_matrices(res, uploaded_files)
     st.subheader("Valoración por criterios")
     st.caption("Cada tramo se compara con la regla que exige la plantilla institucional. Cumple: en todos los "
                "casos; Parcial: en algunos; No cumple: en ninguno. No hay puntaje compuesto ni pesos; la mediana del "
                "conjunto cargado solo sitúa a cada matriz.")
-    filas = [{'Variable': f"{v['Variable']} {v['Tramo']}", 'Estado': v['Estado']}
-             for vs in val.values() for v in vs if v['Variable'] != '—']
-    if filas:
-        conteo = pd.DataFrame(filas).value_counts().rename('Matrices').reset_index()
-        fig = px.bar(conteo, y='Variable', x='Matrices', color='Estado', orientation='h', text='Matrices',
-                     category_orders={'Estado': list(ia.ESTADOS),
-                                      'Variable': [f"{v} {e}" for v, e, _ in ia.CRITERIOS]},
-                     color_discrete_map={'Cumple': '#1FB2DE', 'Parcial': '#FBAF17', 'No cumple': '#EC0677',
-                                         'Sin dato': '#8A94A0'})
-        fig.update_layout(height=320, yaxis_title=None, xaxis_title='Matrices', legend_title=None,
-                          margin=dict(l=10, r=10, t=10, b=10))
+    fig = _fig_valoracion(val)
+    if fig is not None:
         st.plotly_chart(fig, width='stretch')
     sel = st.selectbox("Ver la valoración de una matriz", list(val), key='val_matriz')
     st.dataframe(pd.DataFrame(val[sel]), width='stretch', hide_index=True)
@@ -5737,7 +5909,8 @@ def main():
 
 
     # Procesar archivos (usar caché de session_state para evitar reprocesar en cada rerun)
-    cache_key = tuple(f.name for f in uploaded_files)
+    # La llave es el contenido (SHA-256) de cada matriz: si se reemplaza o edita un archivo, todo se recalcula
+    cache_key = ('v3',) + tuple(sorted((f.name, _sha256_archivo(f)) for f in uploaded_files))
     
     if 'proc_cache_key' in st.session_state and st.session_state['proc_cache_key'] == cache_key:
         # Usar datos cacheados
